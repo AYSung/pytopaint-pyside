@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QStyle,
 )
 from PySide6.QtGui import QPixmap, QPainter, QPen, QFont, QMouseEvent, QAction
-from PySide6.QtCore import Slot, Qt, QPoint, QRect
+from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 import numpy as np
 
 import math
@@ -25,18 +25,24 @@ from pytopaint.io import test_df, bin_df, LINEAR_PARAMETERS
 from pytopaint.selection import get_selection_index
 
 RESOLUTION = 256
+RED = "#d12f2f"
+BACKGROUND = "#121010"
+LIGHT_GREY = "#bababa"
 
 
 class DotPlot(QLabel):
+    lasso_selection = Signal(object, str, str, QMouseEvent)
+
     def __init__(self):
         super().__init__()
         canvas = QPixmap(RESOLUTION, RESOLUTION)
-        canvas.fill("#121010")
+        canvas.fill(BACKGROUND)
         self.setPixmap(canvas)
+        self.setCursor(Qt.CursorShape.CrossCursor)
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
-        self.selection_index = pd.Index([])
+        # self.selection_index = pd.Index([])
 
     def mouseMoveEvent(self, e: QMouseEvent):
         pos = e.position()
@@ -49,7 +55,10 @@ class DotPlot(QLabel):
         canvas = self.pixmap()
         painter = QPainter(canvas)
         pen = QPen()
-        pen.setColor("#d12f2f")
+        if bool(e.buttons() & Qt.MouseButton.LeftButton):
+            pen.setColor(RED)
+        elif bool(e.buttons() & Qt.MouseButton.RightButton):
+            pen.setColor(LIGHT_GREY)
         painter.setPen(pen)
         painter.drawLine(self.last_x, self.last_y, pos.x(), pos.y())
         painter.end()
@@ -59,52 +68,55 @@ class DotPlot(QLabel):
         self.last_y = pos.y()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        print(self.selection_geometry)
-        self.selection_index = get_selection_index(
+        if len(self.selection_geometry) < 4:
+            return
+
+        self.lasso_selection.emit(
             self.selection_geometry,
-            self.df,
-            x_label=self.x_label,
-            y_label=self.y_label,
+            self.x_label,
+            self.y_label,
+            e,
         )
-        print(len(self.selection_index))
 
         self.last_x = None
         self.last_y = None
         self.selection_geometry = []
-
-        self.render_plot()
 
     def set_working_data(self, df: pd.DataFrame, x_label: str, y_label: str):
         self.df = df[[x_label, y_label]]
         self.x_label = x_label
         self.y_label = y_label
 
-    def render_plot(self):
+    @Slot(object)
+    def render_plot(self, selection_index: pd.Index = None):
         canvas = self.pixmap()
-        canvas.fill("#121010")
+        canvas.fill(BACKGROUND)
         painter = QPainter(canvas)
         pen = QPen()
         painter.translate(0, 255)
         painter.scale(1, -1)
 
+        if selection_index is None:
+            selection_index = pd.Index([])
+
         working_df = self.df.drop_duplicates(subset=[self.x_label, self.y_label])
-        pen.setColor("#bababa")
+        pen.setColor(LIGHT_GREY)
         painter.setPen(pen)
         painter.drawPointsNp(
-            working_df.loc[~working_df.index.isin(self.selection_index)][
+            working_df.loc[~working_df.index.isin(selection_index)][
                 self.x_label
             ].to_numpy(),
-            working_df.loc[~working_df.index.isin(self.selection_index)][
+            working_df.loc[~working_df.index.isin(selection_index)][
                 self.y_label
             ].to_numpy(),
         )
-        pen.setColor("#d12f2f")
+        pen.setColor(RED)
         painter.setPen(pen)
         painter.drawPointsNp(
-            working_df.loc[working_df.index.isin(self.selection_index)][
+            working_df.loc[working_df.index.isin(selection_index)][
                 self.x_label
             ].to_numpy(),
-            working_df.loc[working_df.index.isin(self.selection_index)][
+            working_df.loc[working_df.index.isin(selection_index)][
                 self.y_label
             ].to_numpy(),
         )
@@ -372,11 +384,14 @@ class Biplot(QWidget):
 
 
 class MainWindow(QMainWindow):
+    selection_updated = Signal(object)
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle("PytoPaint")
         self.resolution = 256
         self.df = bin_df(test_df(), n_bins=self.resolution)
+        self.selection_index = pd.Index([])
 
         # self.setStyleSheet("QMainWindow { background-color: #121010; }")
 
@@ -392,14 +407,58 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         layout = QGridLayout()
         layout.setSpacing(0)
-        layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="SSC-A"), 0, 0)
-        layout.addWidget(Biplot(self.df, x_label="SSC-A", y_label="CD45 AF700"), 1, 0)
-        layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="FSC-H"), 2, 0)
-        layout.addWidget(Biplot(self.df, x_label="CD5 BV480", y_label="CD19"), 0, 1)
-        layout.addWidget(Biplot(self.df, x_label="CD10", y_label="CD20"), 0, 2)
+
+        biplots = {
+            ("FSC-A", "SSC-A"): (0, 0),
+            ("SSC-A", "CD45 AF700"): (1, 0),
+            ("FSC-A", "FSC-H"): (2, 0),
+            ("CD5 BV480", "CD19"): (0, 1),
+            ("CD10", "CD20"): (0, 2),
+        }
+
+        for label, coords in biplots.items():
+            x_label, y_label = label
+            row, col = coords
+            biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
+            biplot.plot.lasso_selection.connect(self.update_selection)
+            self.selection_updated.connect(biplot.plot.render_plot)
+            layout.addWidget(biplot, row, col)
+
+        # layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="SSC-A"), 0, 0)
+        # layout.addWidget(Biplot(self.df, x_label="SSC-A", y_label="CD45 AF700"), 1, 0)
+        # layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="FSC-H"), 2, 0)
+        # layout.addWidget(Biplot(self.df, x_label="CD5 BV480", y_label="CD19"), 0, 1)
+        # layout.addWidget(Biplot(self.df, x_label="CD10", y_label="CD20"), 0, 2)
         central_widget.setLayout(layout)
 
         self.setCentralWidget(central_widget)
+
+    @Slot(object, str, str, QMouseEvent)
+    def update_selection(
+        self,
+        selection_geometry: list[list[int, int]],
+        x_label: str,
+        y_label: str,
+        e: QMouseEvent,
+    ):
+        modifiers = e.modifiers()
+        selection = get_selection_index(
+            selection_geometry,
+            self.df,
+            x_label=x_label,
+            y_label=y_label,
+        )
+        if e.button() == Qt.MouseButton.LeftButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.selection_index = self.selection_index.union(selection)
+            # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+            #     self.selection_index = self.selection_index.union(selection)
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                self.selection_index = self.selection_index.intersection(selection)
+        elif e.button() == Qt.MouseButton.RightButton:
+            self.selection_index = self.selection_index.difference(selection)
+
+        self.selection_updated.emit(self.selection_index)
 
 
 app = QApplication(sys.argv)
