@@ -27,7 +27,7 @@ from pytopaint.selection import get_selection_index
 RESOLUTION = 256
 RED = "#d12f2f"
 BACKGROUND = "#121010"
-LIGHT_GREY = "#bababa"
+LIGHT_GREY = "#828282"
 
 
 class DotPlot(QLabel):
@@ -42,7 +42,7 @@ class DotPlot(QLabel):
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
-        # self.selection_index = pd.Index([])
+        self.selection_index = pd.Index([])
 
     def mouseMoveEvent(self, e: QMouseEvent):
         pos = e.position()
@@ -68,9 +68,6 @@ class DotPlot(QLabel):
         self.last_y = pos.y()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if len(self.selection_geometry) < 4:
-            return
-
         self.lasso_selection.emit(
             self.selection_geometry,
             self.x_label,
@@ -96,27 +93,27 @@ class DotPlot(QLabel):
         painter.translate(0, 255)
         painter.scale(1, -1)
 
-        if selection_index is None:
-            selection_index = pd.Index([])
+        if selection_index is not None:
+            self.selection_index = selection_index
 
         working_df = self.df.drop_duplicates(subset=[self.x_label, self.y_label])
         pen.setColor(LIGHT_GREY)
         painter.setPen(pen)
         painter.drawPointsNp(
-            working_df.loc[~working_df.index.isin(selection_index)][
+            working_df.loc[~working_df.index.isin(self.selection_index)][
                 self.x_label
             ].to_numpy(),
-            working_df.loc[~working_df.index.isin(selection_index)][
+            working_df.loc[~working_df.index.isin(self.selection_index)][
                 self.y_label
             ].to_numpy(),
         )
         pen.setColor(RED)
         painter.setPen(pen)
         painter.drawPointsNp(
-            working_df.loc[working_df.index.isin(selection_index)][
+            working_df.loc[working_df.index.isin(self.selection_index)][
                 self.x_label
             ].to_numpy(),
-            working_df.loc[working_df.index.isin(selection_index)][
+            working_df.loc[working_df.index.isin(self.selection_index)][
                 self.y_label
             ].to_numpy(),
         )
@@ -413,22 +410,24 @@ class MainWindow(QMainWindow):
             ("SSC-A", "CD45 AF700"): (1, 0),
             ("FSC-A", "FSC-H"): (2, 0),
             ("CD5 BV480", "CD19"): (0, 1),
-            ("CD10", "CD20"): (0, 2),
+            ("CD10", "CD19"): (0, 2),
+            ("CD10", "CD20"): (0, 3),
+            ("m Lambda", "m Kappa"): (0, 4),
+            ("CD20", "CD38"): (1, 1),
+            ("CD45 AF700", "CD38"): (1, 2),
+            ("CD34", "CD38"): (1, 3),
+            ("CD22", "CD34"): (1, 4),
         }
 
         for label, coords in biplots.items():
             x_label, y_label = label
             row, col = coords
+
             biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
             biplot.plot.lasso_selection.connect(self.update_selection)
             self.selection_updated.connect(biplot.plot.render_plot)
             layout.addWidget(biplot, row, col)
 
-        # layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="SSC-A"), 0, 0)
-        # layout.addWidget(Biplot(self.df, x_label="SSC-A", y_label="CD45 AF700"), 1, 0)
-        # layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="FSC-H"), 2, 0)
-        # layout.addWidget(Biplot(self.df, x_label="CD5 BV480", y_label="CD19"), 0, 1)
-        # layout.addWidget(Biplot(self.df, x_label="CD10", y_label="CD20"), 0, 2)
         central_widget.setLayout(layout)
 
         self.setCentralWidget(central_widget)
@@ -457,6 +456,8 @@ class MainWindow(QMainWindow):
                 self.selection_index = self.selection_index.intersection(selection)
         elif e.button() == Qt.MouseButton.RightButton:
             self.selection_index = self.selection_index.difference(selection)
+        elif e.button() == Qt.MouseButton.MiddleButton:
+            self.selection_index = pd.Index([])
 
         self.selection_updated.emit(self.selection_index)
 
