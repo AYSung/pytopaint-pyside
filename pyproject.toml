@@ -9,4 +9,5 @@ dependencies = [
     "polars>=1.40.1",
     "pyside6>=6.11.0",
     "pytest>=9.0.3",
+    "spatialpandas>=0.5.0",
 ]
