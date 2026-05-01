@@ -22,6 +22,7 @@ import flowkit
 import pandas as pd
 
 from pytopaint.io import test_df, bin_df, LINEAR_PARAMETERS
+from pytopaint.selection import get_selection_index
 
 RESOLUTION = 256
 
@@ -35,10 +36,11 @@ class DotPlot(QLabel):
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
+        self.selection_index = pd.Index([])
 
     def mouseMoveEvent(self, e: QMouseEvent):
         pos = e.position()
-        self.selection_geometry += [[pos.x(), pos.y()]]
+        self.selection_geometry += [[pos.x(), RESOLUTION - pos.y()]]
         if self.last_x is None:  # First event.
             self.last_x = pos.x()
             self.last_y = pos.y()
@@ -58,30 +60,55 @@ class DotPlot(QLabel):
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         print(self.selection_geometry)
+        self.selection_index = get_selection_index(
+            self.selection_geometry,
+            self.df,
+            x_label=self.x_label,
+            y_label=self.y_label,
+        )
+        print(len(self.selection_index))
+
         self.last_x = None
         self.last_y = None
         self.selection_geometry = []
 
         self.render_plot()
 
-    def set_working_data(self, df: pd.DataFrame, x: str, y: str):
-        self.x_label = x
-        self.y_label = y
-        self.working_df = df[[x, y]].drop_duplicates(subset=[x, y])
+    def set_working_data(self, df: pd.DataFrame, x_label: str, y_label: str):
+        self.df = df[[x_label, y_label]]
+        self.x_label = x_label
+        self.y_label = y_label
 
     def render_plot(self):
         canvas = self.pixmap()
         canvas.fill("#121010")
         painter = QPainter(canvas)
         pen = QPen()
-        pen.setColor("#bababa")
-        painter.setPen(pen)
         painter.translate(0, 255)
         painter.scale(1, -1)
+
+        working_df = self.df.drop_duplicates(subset=[self.x_label, self.y_label])
+        pen.setColor("#bababa")
+        painter.setPen(pen)
         painter.drawPointsNp(
-            self.working_df[self.x_label].to_numpy(),
-            self.working_df[self.y_label].to_numpy(),
+            working_df.loc[~working_df.index.isin(self.selection_index)][
+                self.x_label
+            ].to_numpy(),
+            working_df.loc[~working_df.index.isin(self.selection_index)][
+                self.y_label
+            ].to_numpy(),
         )
+        pen.setColor("#d12f2f")
+        painter.setPen(pen)
+        painter.drawPointsNp(
+            working_df.loc[working_df.index.isin(self.selection_index)][
+                self.x_label
+            ].to_numpy(),
+            working_df.loc[working_df.index.isin(self.selection_index)][
+                self.y_label
+            ].to_numpy(),
+        )
+
         painter.end()
         self.setPixmap(canvas)
         self.update()
@@ -364,7 +391,7 @@ class MainWindow(QMainWindow):
 
         central_widget = QWidget()
         layout = QGridLayout()
-        layout.setSpacing(5)
+        layout.setSpacing(0)
         layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="SSC-A"), 0, 0)
         layout.addWidget(Biplot(self.df, x_label="SSC-A", y_label="CD45 AF700"), 1, 0)
         layout.addWidget(Biplot(self.df, x_label="FSC-A", y_label="FSC-H"), 2, 0)
