@@ -1,5 +1,6 @@
 import math
 from pathlib import Path
+import re
 
 import flowkit
 
@@ -47,11 +48,35 @@ def to_df(self, source: str, subsample: bool = None, indices: list[int] = list()
     )
 
 
-def _get_channels(df: pd.DataFrame) -> list[str]:
-    # PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
-    # used_channels = df.loc[lambda x: x.pnn.isin(PHYSICAL_PARAMETERS) | (x.pns != ''), ['pnn', 'pns']]
+def _clean_marker_name(marker: str) -> str:
+    if marker.startswith('CD'):
+        if marker == 'CD45 RA' or marker == 'CD45 RO':
+            return marker
+        elif re.match(r'CD\d+$', marker):
+            return marker
+        else:
+            return re.match(r'(CD\d+\w*) ?', marker).group(1)
+    else:
+        if 'lambda' in marker.lower():
+            return 'lambda'
+        elif 'kappa' in marker.lower():
+            return 'kappa'
+        elif marker.lower() == 'tdt':
+            return 'TdT'
+        elif marker.lower() == 'mpo':
+            return 'MPO'
+        else:
+            return marker
 
-    return df.pns.mask(lambda x: x == '').fillna(df.pnn).to_list()
+
+def _get_channels(df: pd.DataFrame) -> list[str]:
+    PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
+
+    channels = df.pns.mask(lambda x: x == '').fillna(df.pnn).to_list()
+    return [
+        channel if channel in PHYSICAL_PARAMETERS else _clean_marker_name(channel)
+        for channel in channels
+    ]
 
 
 def _get_compensation(metadata: dict[str, str]) -> str | None:

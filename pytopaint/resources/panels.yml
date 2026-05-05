@@ -1,12 +1,10 @@
 ---
 # B cell
-- [ CD5 BV480, CD19 ]
+- [ CD5, CD19 ]
 - [ CD10, CD19 ]
 - [ CD10, CD20 ]
-- [ m Lambda, m Kappa ]
-- [ mLAMBDA, mKAPPA ]
+- [ Lambda, Kappa ]
 - [ CD20, CD38 ]
-- [ CD45 AF700, CD38 ]
 - [ CD45, CD38 ]
 - [ CD34, CD38 ]
 - [ CD22, CD34 ]
@@ -75,8 +73,5 @@
 
 # TdT
 - [ TdT, CD34 ]
-- [ TDT, CD34 ]
 - [ TdT, CD22 ]
-- [ TDT, CD22 ]
 - [ TdT, CD3 ]
-- [ TDT, CD3 ]

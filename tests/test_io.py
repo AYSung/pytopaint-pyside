@@ -9,10 +9,30 @@ import pandas as pd
 from pytopaint.io import (
     bin_df,
     clip_df,
+    _clean_marker_name,
     _get_channels,
     _get_compensation,
     LINEAR_PARAMETERS,
 )
+
+
+def test_clean_marker_name():
+    assert _clean_marker_name('KAPPA') == 'kappa'
+    assert _clean_marker_name('m Kappa') == 'kappa'
+    assert _clean_marker_name('mKAPPA') == 'kappa'
+    assert _clean_marker_name('LAMBDA') == 'lambda'
+    assert _clean_marker_name('m Lambda') == 'lambda'
+    assert _clean_marker_name('mLAMBDA') == 'lambda'
+    assert _clean_marker_name('TDT') == 'TdT'
+    assert _clean_marker_name('TdT') == 'TdT'
+    assert _clean_marker_name('mpo') == 'MPO'
+
+    assert _clean_marker_name('CD45 AF700') == 'CD45'
+    assert _clean_marker_name('CD45') == 'CD45'
+    assert _clean_marker_name('CD45 RA') == 'CD45 RA'
+    assert _clean_marker_name('CD45 BV480') == 'CD45'
+    assert _clean_marker_name('CD5 BV480') == 'CD5'
+    assert _clean_marker_name('CD11b') == 'CD11b'
 
 
 def load_panel_config() -> list[list[str]]:
@@ -40,9 +60,9 @@ def _get_ssc_dims(channels: list[str]) -> list[list[str, str]]:
         [channel for channel in marker_channels if channel.startswith('CD')],
         key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
     )
-    non_cd_channels = sorted(
-        [channel for channel in marker_channels if not channel.startswith('CD')]
-    )
+    non_cd_channels = sorted([
+        channel for channel in marker_channels if not channel.startswith('CD')
+    ])
 
     dims = [[channel, 'SSC-A'] for channel in cd_channels + non_cd_channels]
     return dims
@@ -86,20 +106,29 @@ def test_get_channels():
             ('SSC-A', ''),
             ('SSC-H', ''),
             ('fluor1', 'CD2'),
-            ('fluor2', 'CD3'),
-            ('fluor3', 'CD64'),
+            ('fluor2', 'CD11b'),
+            ('fluor3', 'HLA-DR'),
+            ('fluor4', 'CD45 AF700'),
+            ('fluor5', 'mKAPPA'),
+            ('fluor6', 'mLAMBDA'),
+            ('fluor7', ''),
             ('Time', ''),
         ],
         columns=['pnn', 'pns'],
     )
+
     assert _get_channels(test_df) == [
         'FSC-A',
         'FSC-H',
         'SSC-A',
         'SSC-H',
         'CD2',
-        'CD3',
-        'CD64',
+        'CD11b',
+        'HLA-DR',
+        'CD45',
+        'kappa',
+        'lambda',
+        'fluor7',
         'Time',
     ]
 

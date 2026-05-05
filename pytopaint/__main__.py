@@ -94,14 +94,14 @@ class MainWindow(QMainWindow):
 
         biplots = {
             ('FSC-A', 'SSC-A'): (0, 0),
-            ('SSC-A', 'CD45 AF700'): (1, 0),
+            ('SSC-A', 'CD45'): (1, 0),
             ('FSC-A', 'FSC-H'): (2, 0),
-            ('CD5 BV480', 'CD19'): (0, 1),
+            ('CD5', 'CD19'): (0, 1),
             ('CD10', 'CD19'): (0, 2),
             ('CD10', 'CD20'): (0, 3),
-            ('m Lambda', 'm Kappa'): (0, 4),
+            ('lambda', 'kappa'): (0, 4),
             ('CD20', 'CD38'): (1, 1),
-            ('CD45 AF700', 'CD38'): (1, 2),
+            ('CD45', 'CD38'): (1, 2),
             ('CD34', 'CD38'): (1, 3),
             ('CD22', 'CD34'): (1, 4),
         }
@@ -149,16 +149,16 @@ class MainWindow(QMainWindow):
                 self.record_current_state()
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
-                self.df = add_color_to_selection(self.df, selection, self.active_color)
+                self.df = add_color_to_selection(self.df, self.active_color, selection)
 
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # ignore unselected points (paint composite color)
                 self.df = add_color_to_selection(
                     self.df,
-                    selection.difference(
-                        self.df.loc[self.df.color == Color.GREY].index
-                    ),
                     self.active_color,
+                    selection.difference(
+                        self.df.color.loc[lambda s: s == Color.GREY].index
+                    ),
                 )
 
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
@@ -183,15 +183,15 @@ class MainWindow(QMainWindow):
                 # zap color from selection
                 self.df = subtract_color_from_selection(
                     self.df,
-                    selection.intersection(
-                        self.df.loc[self.df.color == self.active_color].index
-                    ),
                     self.active_color,
+                    selection.intersection(
+                        self.df.color.loc[lambda s: s == self.active_color].index
+                    ),
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # exact zap color from selection
                 self.df = subtract_color_from_selection(
-                    self.df, selection, self.active_color
+                    self.df, self.active_color, selection
                 )
 
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
@@ -237,7 +237,7 @@ class MainWindow(QMainWindow):
         self.df.loc[self.df.color == color, 'color'] = Color.GREY
 
     def exact_zap_color(self, color: Color):
-        self.df = subtract_color_from_selection(self.df, self.df.index, color)
+        self.df = subtract_color_from_selection(self.df, color, self.df.index)
 
     def zap_all(self):
         self.df['color'] = Color.GREY
