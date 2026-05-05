@@ -26,7 +26,7 @@ RESOLUTION = 256
 
 
 class DotPlot(QLabel):
-    lasso_selection = Signal(object, str, str, QMouseEvent)
+    pointsSelected = Signal(object, str, str, QMouseEvent)
 
     def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
         super().__init__()
@@ -73,7 +73,7 @@ class DotPlot(QLabel):
         self.last_y = pos.y()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        self.lasso_selection.emit(
+        self.pointsSelected.emit(
             self.selection_geometry,
             self.x_label,
             self.y_label,
@@ -325,6 +325,8 @@ class YAxis(QLabel):
 
 
 class Biplot(QWidget):
+    pointsSelected = Signal(object, str, str, QMouseEvent)
+
     def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
@@ -332,6 +334,7 @@ class Biplot(QWidget):
         channels = [col for col in df.columns if col not in ['Time', 'color']]
 
         self.plot = DotPlot(df, x_label, y_label)
+        self.plot.pointsSelected.connect(self.pointsSelected)
         self.x_axis = XAxis(x_label, channels)
         self.x_axis.label_changed.connect(self.plot.update_x_label)
         self.x_axis.label_changed.connect(self.update_title)

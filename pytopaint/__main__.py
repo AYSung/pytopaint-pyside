@@ -30,6 +30,7 @@ from pytopaint.colors import (
 )
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
+from pytopaint.actions import MenuAction
 
 RESOLUTION = 256
 
@@ -38,8 +39,7 @@ class MainWindow(QMainWindow):
     selection_updated = Signal(object)
     data_updated = Signal(object)
     percent_selected = Signal(object)
-    set_active_color = Signal(int)
-    update_active_color = Signal(int)
+    activeColorChanged = Signal(int)
 
     def __init__(self):
         super().__init__()
@@ -49,15 +49,11 @@ class MainWindow(QMainWindow):
         # self.setStyleSheet("QMainWindow { background-color: #121010; }")
 
         red_shortcut = QShortcut(QKeySequence('S'), self)
-        red_shortcut.activated.connect(lambda: self.set_active_color.emit(Color.RED))
+        red_shortcut.activated.connect(lambda: self.change_color(Color.RED))
         green_shortcut = QShortcut(QKeySequence('D'), self)
-        green_shortcut.activated.connect(
-            lambda: self.set_active_color.emit(Color.GREEN)
-        )
+        green_shortcut.activated.connect(lambda: self.change_color(Color.GREEN))
         blue_shortcut = QShortcut(QKeySequence('F'), self)
-        blue_shortcut.activated.connect(lambda: self.set_active_color.emit(Color.BLUE))
-
-        self.set_active_color.connect(self.change_color)
+        blue_shortcut.activated.connect(lambda: self.change_color(Color.BLUE))
 
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(self.undo_action)
@@ -88,13 +84,8 @@ class MainWindow(QMainWindow):
         layout.setSpacing(0)
 
         color_bar = ColorBar()
-        color_bar.merge_color.connect(self.merge_color)
-        color_bar.set_active_color.connect(self.set_active_color)
-        color_bar.zap_color.connect(self.zap_color)
-        color_bar.exact_zap_color.connect(self.exact_zap_color)
-        color_bar.hide_color.connect(self.hide_color)
-        color_bar.isolate_color.connect(self.isolate_color)
-        self.update_active_color.connect(color_bar.update_active_color)
+        color_bar.menuActionTriggered.connect(self.handle_menu_action)
+        self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.percent_selected.connect(color_bar.update_percent)
         layout.addWidget(color_bar, 0, 0)
 
@@ -120,11 +111,11 @@ class MainWindow(QMainWindow):
             row, col = coords
 
             biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
-            biplot.plot.lasso_selection.connect(self.update_selection)
+            biplot.pointsSelected.connect(self.handle_selection)
             color_bar.highlight_color.connect(biplot.plot.update_highlight)
             self.data_updated.connect(biplot.set_data)
             self.selection_updated.connect(biplot.plot.render_plot)
-            self.set_active_color.connect(biplot.plot.set_active_color)
+            self.activeColorChanged.connect(biplot.plot.set_active_color)
             biplot_layout.addWidget(biplot, row, col)
 
         biplot_container.setLayout(biplot_layout)
@@ -134,11 +125,11 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
 
-        self.set_active_color.emit(Color.RED)
+        self.change_color(Color.RED)
         self.emit_changes()
 
     @Slot(object, str, str, QMouseEvent)
-    def update_selection(
+    def handle_selection(
         self,
         selection_geometry: list[list[int, int]],
         x_label: str,
@@ -185,8 +176,6 @@ class MainWindow(QMainWindow):
                     'color',
                 ] = self.active_color
 
-            self.emit_changes()
-
         elif e.button() == Qt.MouseButton.RightButton:
             if not selection.empty:
                 self.record_current_state()
@@ -208,9 +197,10 @@ class MainWindow(QMainWindow):
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # subtract all
                 self.df.loc[selection, 'color'] = Color.GREY
-            self.emit_changes()
 
         elif e.button() == Qt.MouseButton.MiddleButton:
+            if not self.df.loc[self.df.color == self.active_color].empty:
+                self.record_current_state()
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.zap_color(self.active_color)
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
@@ -218,32 +208,58 @@ class MainWindow(QMainWindow):
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 self.zap_all()
 
-    @Slot(int)
-    def zap_color(self, color: Color):
-        self.record_current_state()
-        self.df.loc[self.df.color == color, 'color'] = Color.GREY
         self.emit_changes()
 
-    @Slot(int)
-    def exact_zap_color(self, color: Color):
-        self.record_current_state()
-        self.df = subtract_color_from_selection(self.df, self.df.index, color)
-        self.emit_changes()
+    @Slot(int, dict)
+    def handle_menu_action(self, action: MenuAction, kwargs: dict):
+        FUNCTION_MAP = {
+            MenuAction.SET_ACTIVE: self.change_color,
+            MenuAction.ZAP: self.zap_color,
+            MenuAction.EXACT_ZAP: self.exact_zap_color,
+            MenuAction.ZAP_ALL: self.zap_all,
+            MenuAction.MERGE: self.merge_color,
+            MenuAction.HIDE: self.hide_color,
+            MenuAction.ISOLATE: self.isolate_color,
+        }
 
-    @Slot()
-    def zap_all(self):
-        self.record_current_state()
-        self.df['color'] = Color.GREY
-        self.emit_changes()
+        if action == MenuAction.SET_ACTIVE:
+            self.change_color(**kwargs)
+        else:
+            self.record_current_state()
+            FUNCTION_MAP[action](**kwargs)
+            self.emit_changes()
 
-    def emit_changes(self):
-        self.selection_updated.emit(indices_by_color(self.df))
-        self.percent_selected.emit(percents_by_colors(self.df))
-
-    @Slot(int)
     def change_color(self, color: Color):
         self.active_color = color
-        self.update_active_color.emit(self.active_color)
+        self.activeColorChanged.emit(self.active_color)
+
+    def zap_color(self, color: Color):
+        self.df.loc[self.df.color == color, 'color'] = Color.GREY
+
+    def exact_zap_color(self, color: Color):
+        self.df = subtract_color_from_selection(self.df, self.df.index, color)
+
+    def zap_all(self):
+        self.df['color'] = Color.GREY
+
+    @Slot(int, int)
+    def merge_color(self, source_color: Color, target_color: Color):
+        self.df = merge_colors(self.df, [source_color], target_color)
+
+    def hide_color(self, color: Color):
+        self.df = self.df.loc[self.df.color != color]
+        self.data_updated.emit(self.df)
+
+    def isolate_color(self, color: Color):
+        self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
+        self.data_updated.emit(self.df)
+
+    @Slot()
+    def reset_df(self):
+        self.record_current_state()
+        self.df = self.original_df
+        self.data_updated.emit(self.df)
+        self.emit_changes()
 
     def record_current_state(self):
         self.undo_history += [self.df.color.copy()]
@@ -281,31 +297,9 @@ class MainWindow(QMainWindow):
 
         self.emit_changes()
 
-    @Slot(int, int)
-    def merge_color(self, source_color: Color, target_color: Color):
-        self.record_current_state()
-        self.df = merge_colors(self.df, [source_color], target_color)
-        self.emit_changes()
-
-    @Slot(int)
-    def isolate_color(self, color: Color):
-        self.record_current_state()
-        self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
-        self.data_updated.emit(self.df)
-        self.emit_changes()
-
-    @Slot(int)
-    def hide_color(self, color: Color):
-        self.record_current_state()
-        self.df = self.df.loc[self.df.color != color]
-        self.data_updated.emit(self.df)
-        self.emit_changes()
-
-    @Slot()
-    def reset_df(self):
-        self.record_current_state()
-        self.df = self.original_df
-        self.data_updated.emit(self.df)
+    def emit_changes(self):
+        self.selection_updated.emit(indices_by_color(self.df))
+        self.percent_selected.emit(percents_by_colors(self.df))
 
     @Slot()
     def open_files(self):

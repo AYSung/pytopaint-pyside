@@ -13,18 +13,14 @@ from pytopaint.colors import (
     COLOR_RGB_MAP,
     COLOR_NAME_MAP,
 )
+from pytopaint.actions import MenuAction
 
 RESOLUTION = 256
 
 
 class ColorLabel(QWidget):
     highlight_color = Signal(int, bool)
-    set_active_color = Signal(int)
-    merge_color = Signal(int, int)
-    zap_color = Signal(int)
-    exact_zap_color = Signal(int)
-    hide_color = Signal(int)
-    isolate_color = Signal(int)
+    menuActionTriggered = Signal(int, dict)
 
     def __init__(self, color: Color, parent=None):
         super().__init__(parent)
@@ -82,7 +78,11 @@ class ColorLabel(QWidget):
                 return QIcon(pixmap)
 
             action = QAction(_color_icon(color), name)
-            action.triggered.connect(lambda: self.merge_color.emit(self.color, color))
+            action.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.MERGE, dict(source_color=self.color, target_color=color)
+                )
+            )
             return action
 
         menu = QMenu()
@@ -90,7 +90,9 @@ class ColorLabel(QWidget):
         if self.color in [Color.RED, Color.BLUE, Color.GREEN]:
             set_active_color = QAction('Set Active Color')
             set_active_color.triggered.connect(
-                lambda: self.set_active_color.emit(self.color)
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.SET_ACTIVE, dict(color=self.color)
+                )
             )
             menu.addAction(set_active_color)
 
@@ -103,11 +105,19 @@ class ColorLabel(QWidget):
 
         if self.color != Color.GREY:
             zap = QAction('Zap', enabled=self.percent > 0)
-            zap.triggered.connect(lambda: self.zap_color.emit(self.color))
+            zap.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.ZAP, dict(color=self.color)
+                )
+            )
             menu.addAction(zap)
 
             exact_zap = QAction('Exact Zap', enabled=self.percent > 0)
-            exact_zap.triggered.connect(lambda: self.exact_zap_color.emit(self.color))
+            exact_zap.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.EXACT_ZAP, dict(color=self.color)
+                )
+            )
             menu.addAction(exact_zap)
 
             menu.addSeparator()
@@ -127,10 +137,18 @@ class ColorLabel(QWidget):
         menu.addSeparator()
         menu.addSection('Filter')
         hide = QAction('Hide Color', enabled=self.percent > 0)
-        hide.triggered.connect(lambda: self.hide_color.emit(self.color))
+        hide.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.HIDE, dict(color=self.color)
+            )
+        )
         menu.addAction(hide)
         isolate = QAction('Isolate Color', enabled=self.percent > 0)
-        isolate.triggered.connect(lambda: self.isolate_color.emit(self.color))
+        isolate.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.ISOLATE, dict(color=self.color)
+            )
+        )
         menu.addAction(isolate)
 
         menu.exec(self.mapToGlobal(pos))
@@ -138,13 +156,8 @@ class ColorLabel(QWidget):
 
 class ColorBar(QWidget):
     highlight_color = Signal(int, bool)
-    merge_color = Signal(int, int)
-    set_active_color = Signal(int)
-    update_active_color = Signal(int)
-    zap_color = Signal(int)
-    exact_zap_color = Signal(int)
-    hide_color = Signal(int)
-    isolate_color = Signal(int)
+    activeColorChanged = Signal(int)
+    menuActionTriggered = Signal(int, dict)
 
     def __init__(self):
         super().__init__()
@@ -156,14 +169,14 @@ class ColorBar(QWidget):
         self.color_labels = [ColorLabel(c) for c in COLOR_RGB_MAP.keys()]
         for color_label in self.color_labels:
             layout.addWidget(color_label)
-            color_label.merge_color.connect(self.merge_color)
-            color_label.set_active_color.connect(self.set_active_color)
+            color_label.menuActionTriggered.connect(self.menuActionTriggered)
+            # color_label.set_active_color.connect(self.set_active_color)
             color_label.highlight_color.connect(self.highlight_color)
-            color_label.zap_color.connect(self.zap_color)
-            color_label.exact_zap_color.connect(self.exact_zap_color)
-            color_label.hide_color.connect(self.hide_color)
-            color_label.isolate_color.connect(self.isolate_color)
-            self.update_active_color.connect(color_label.update_active_color)
+            # color_label.zap_color.connect(self.zap_color)
+            # color_label.exact_zap_color.connect(self.exact_zap_color)
+            # color_label.hide_color.connect(self.hide_color)
+            # color_label.isolate_color.connect(self.isolate_color)
+            self.activeColorChanged.connect(color_label.update_active_color)
 
         self.setLayout(layout)
 
