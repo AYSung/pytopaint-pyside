@@ -6,7 +6,7 @@ from shapely.geometry import Polygon
 
 def get_selection_index(
     point_array: list[list[float, float]], df: pd.DataFrame, x_label: str, y_label: str
-) -> pd.Series:
+) -> pd.Index:
     if len(point_array) < 4:
         return pd.Index([])
 

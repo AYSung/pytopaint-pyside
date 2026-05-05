@@ -1,0 +1,82 @@
+---
+# B cell
+- [ CD5 BV480, CD19 ]
+- [ CD10, CD19 ]
+- [ CD10, CD20 ]
+- [ m Lambda, m Kappa ]
+- [ mLAMBDA, mKAPPA ]
+- [ CD20, CD38 ]
+- [ CD45 AF700, CD38 ]
+- [ CD45, CD38 ]
+- [ CD34, CD38 ]
+- [ CD22, CD34 ]
+
+# T cell tube
+- [ CD7, CD3 ]
+- [ CD2, CD3 ]
+- [ CD8, CD4 ]
+- [ CD4, CD3 ]
+- [ CD2, CD5 ]
+- [ CD3, CD5 ]
+- [ CD7, CD5 ]
+- [ CD8, CD5 ]
+- [ CD56, CD45 ]
+- [ CD2, CD56 ]
+- [ CD4, CD14 ]
+- [ CD64, CD14 ] # mono
+- [ CD64, CD45 ]
+- [ CD4, CD7 ]
+
+# MF
+- [ CD26, CD3 ]
+- [ TRBC1, CD4 ]
+- [ TRBC1, CD30 ]
+
+# T-LL
+- [ CD7, CD1a ]
+- [ CD34, CD1a ]
+
+# AML/MDS tube
+- [ CD34, HLA-DR ]
+- [ CD15, CD34 ]
+- [ CD15, CD33 ]
+- [ CD33, CD117 ]
+- [ CD34, CD33 ]
+- [ CD123, CD33 ]
+- [ CD33, HLA-DR ]
+- [ CD123, HLA-DR ]
+- [ CD117, HLA-DR ]
+
+# AML tube
+- [ CD36, CD64 ]
+- [ CD7, CD13 ]
+
+# BMD tube
+- [ CD56, CD45 ]
+- [ CD16, CD11b ]
+- [ CD64, CD16 ]
+- [ CD11b, CD13 ]
+- [ CD11b, CD38 ]
+- [ CD16, CD13 ]
+# row 3
+- [ CD38, CD45 ]
+
+# Hairy Cell
+- [ CD11c, CD20 ]
+- [ CD25, CD103 ]
+- [ CD22, CD200 ]
+
+# MM
+- [ CD38, CD56 ]
+
+# MPO
+- [ MPO, CD34 ]
+- [ MPO, CD79a ]
+
+# TdT
+- [ TdT, CD34 ]
+- [ TDT, CD34 ]
+- [ TdT, CD22 ]
+- [ TDT, CD22 ]
+- [ TdT, CD3 ]
+- [ TDT, CD3 ]

@@ -11,3 +11,7 @@ dependencies = [
     "pyside6>=6.11.0",
     "pytest>=9.0.3",
 ]
+
+
+[tool.ruff.format]
+quote-style = "single"
