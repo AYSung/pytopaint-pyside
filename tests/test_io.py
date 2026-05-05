@@ -80,13 +80,23 @@ def get_biplot_config(channels: list[str]) -> list[list[str, str]]:
 
 @pytest.fixture
 def test_df_1():
-    return pd.DataFrame({'FSC-A': [-1, 100], 'SSC-A': [-1, 100], 'CD45': [4, 10]})
+    return pd.DataFrame({
+        'FSC-A': [-1, 100],
+        'SSC-A': [-1, 100],
+        'CD45': [4, 10],
+        'Time': [0, 100],
+    })
 
 
 def test_clip(test_df_1):
     pd.testing.assert_frame_equal(
         clip_df(test_df_1),
-        pd.DataFrame({'FSC-A': [0, 100], 'SSC-A': [0, 100], 'CD45': [4, 8]}),
+        pd.DataFrame({
+            'FSC-A': [0, 100],
+            'SSC-A': [0, 100],
+            'CD45': [4, 8],
+            'Time': [0, 100],
+        }),
     )
 
 
@@ -94,7 +104,12 @@ def test_bin(test_df_1):
     binned_df = bin_df(clip_df(test_df_1), n_bins=256)
     pd.testing.assert_frame_equal(
         binned_df,
-        pd.DataFrame({'FSC-A': [0, 0], 'SSC-A': [0, 0], 'CD45': [142, 255]}),
+        pd.DataFrame({
+            'FSC-A': [0, 0],
+            'SSC-A': [0, 0],
+            'CD45': [142, 255],
+            'Time': [0, 255],
+        }),
     )
 
 
@@ -141,3 +156,6 @@ def test_get_compensation():
     assert _get_compensation(metadata_1) == 'spill matrix'
     assert _get_compensation(metadata_2) == 'spillover matrix'
     assert _get_compensation(metadata_3) is None
+
+
+def test_sort_channels(): ...

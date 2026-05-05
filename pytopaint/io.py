@@ -8,7 +8,7 @@ import flowkit
 import pandas as pd
 
 
-LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
+LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 LOWER_ASINH = -1
 UPPER_ASINH = 8
 UPPER_LINEAR = 255_000
@@ -85,7 +85,9 @@ def _get_compensation(metadata: dict[str, str]) -> str | None:
 
 def clip_df(df: pd.DataFrame) -> pd.DataFrame:
     def clip_series(s: pd.DataFrame) -> pd.Series:
-        if s.name in LINEAR_PARAMETERS:
+        if s.name == 'Time':
+            return s
+        elif s.name in LINEAR_PARAMETERS:
             return s.clip(lower=0, upper=UPPER_LINEAR)
         else:
             return s.clip(lower=LOWER_ASINH, upper=UPPER_ASINH)
@@ -95,8 +97,16 @@ def clip_df(df: pd.DataFrame) -> pd.DataFrame:
 
 def bin_df(df: pd.DataFrame, n_bins: int) -> pd.DataFrame:
     def bin_series(s: pd.Series) -> pd.Series:
-        lower_limit = 0 if s.name in LINEAR_PARAMETERS else LOWER_ASINH
-        upper_limit = UPPER_LINEAR if s.name in LINEAR_PARAMETERS else UPPER_ASINH
+        if s.name == 'Time':
+            lower_limit = 0
+            upper_limit = s.max()
+        elif s.name in LINEAR_PARAMETERS:
+            lower_limit = 0
+            upper_limit = UPPER_LINEAR
+        else:
+            lower_limit = LOWER_ASINH
+            upper_limit = UPPER_ASINH
+
         bin_borders = [lower_limit] + [
             lower_limit + (((n + 1) / n_bins) * (upper_limit - lower_limit))
             for n in range(n_bins)

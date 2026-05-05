@@ -331,7 +331,7 @@ class Biplot(QWidget):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        channels = [col for col in df.columns if col not in ['Time', 'color']]
+        channels = [col for col in df.columns if col not in ['color']]
 
         self.plot = DotPlot(df, x_label, y_label)
         self.plot.pointsSelected.connect(self.pointsSelected)
@@ -365,7 +365,7 @@ class Biplot(QWidget):
     def set_data(self, df: pd.DataFrame):
         self.plot.update_data(df)
 
-        channels = [col for col in df.columns if col not in ['Time', 'color']]
+        channels = [col for col in df.columns if col not in ['color']]
         self.x_axis.channels = channels
         self.y_axis.channels = channels
 
