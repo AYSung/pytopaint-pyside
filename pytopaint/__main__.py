@@ -48,11 +48,11 @@ class MainWindow(QMainWindow):
 
         # self.setStyleSheet("QMainWindow { background-color: #121010; }")
 
-        red_shortcut = QShortcut(QKeySequence('S'), self)
+        red_shortcut = QShortcut(QKeySequence('F'), self)
         red_shortcut.activated.connect(lambda: self.change_color(Color.RED))
         green_shortcut = QShortcut(QKeySequence('D'), self)
         green_shortcut.activated.connect(lambda: self.change_color(Color.GREEN))
-        blue_shortcut = QShortcut(QKeySequence('F'), self)
+        blue_shortcut = QShortcut(QKeySequence('S'), self)
         blue_shortcut.activated.connect(lambda: self.change_color(Color.BLUE))
 
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)

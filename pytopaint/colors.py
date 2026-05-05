@@ -7,7 +7,7 @@ class Color(IntEnum):
     GREY = 0
     RED = 1
     BLUE = 2
-    PURPLE = 3
+    MAGENTA = 3
     GREEN = 4
     YELLOW = 5
     CYAN = 6
@@ -16,91 +16,105 @@ class Color(IntEnum):
 
 COLOR_RGB_MAP = {
     Color.GREY: '#828282',
-    Color.RED: '#d12f2f',
-    Color.GREEN: '#46D829',
     Color.BLUE: '#4060ff',
-    Color.PURPLE: '#d24fef',
+    Color.GREEN: '#46D829',
+    Color.RED: '#d12f2f',
     Color.YELLOW: '#EBE824',
+    Color.MAGENTA: '#d24fef',
     Color.CYAN: '#43EBF7',
     Color.WHITE: '#E9E9E9',
 }
 
 COLOR_NAME_MAP = {
     Color.GREY: 'Grey',
-    Color.RED: 'Red',
-    Color.GREEN: 'Green',
     Color.BLUE: 'Blue',
-    Color.PURPLE: 'Purple',
+    Color.GREEN: 'Green',
+    Color.RED: 'Red',
     Color.YELLOW: 'Yellow',
+    Color.MAGENTA: 'MAGENTA',
     Color.CYAN: 'Cyan',
     Color.WHITE: 'White',
 }
 
 BACKGROUND = '#121010'
 
+ADDITION_COLOR_MAPS = {
+    Color.RED: {
+        Color.GREY: Color.RED,
+        Color.RED: Color.RED,
+        Color.BLUE: Color.MAGENTA,
+        Color.MAGENTA: Color.MAGENTA,
+        Color.GREEN: Color.YELLOW,
+        Color.YELLOW: Color.YELLOW,
+        Color.CYAN: Color.WHITE,
+        Color.WHITE: Color.WHITE,
+    },
+    Color.BLUE: {
+        Color.GREY: Color.BLUE,
+        Color.RED: Color.MAGENTA,
+        Color.BLUE: Color.BLUE,
+        Color.MAGENTA: Color.MAGENTA,
+        Color.GREEN: Color.CYAN,
+        Color.YELLOW: Color.WHITE,
+        Color.CYAN: Color.CYAN,
+        Color.WHITE: Color.WHITE,
+    },
+    Color.GREEN: {
+        Color.GREY: Color.GREEN,
+        Color.RED: Color.YELLOW,
+        Color.BLUE: Color.CYAN,
+        Color.MAGENTA: Color.WHITE,
+        Color.GREEN: Color.GREEN,
+        Color.YELLOW: Color.YELLOW,
+        Color.CYAN: Color.CYAN,
+        Color.WHITE: Color.WHITE,
+    },
+}
 
-def _add_red(current_color: Color) -> Color:
-    if current_color in {Color.RED, Color.PURPLE, Color.YELLOW, Color.WHITE}:
-        return current_color
-    else:
-        return current_color + Color.RED
-
-
-def _add_blue(current_color: Color) -> Color:
-    if current_color in {Color.BLUE, Color.PURPLE, Color.CYAN, Color.WHITE}:
-        return current_color
-    else:
-        return current_color + Color.BLUE
-
-
-def _add_green(current_color: Color) -> Color:
-    if current_color in {Color.GREEN, Color.YELLOW, Color.CYAN, Color.WHITE}:
-        return current_color
-    else:
-        return current_color + Color.GREEN
-
-
-def _subtract_red(current_color: Color) -> Color:
-    if current_color in {Color.GREY, Color.BLUE, Color.GREEN, Color.CYAN}:
-        return current_color
-    else:
-        return current_color - Color.RED
-
-
-def _subtract_blue(current_color: Color) -> Color:
-    if current_color in {Color.GREY, Color.RED, Color.GREEN, Color.YELLOW}:
-        return current_color
-    else:
-        return current_color - Color.BLUE
-
-
-def _subtract_green(current_color: Color) -> Color:
-    if current_color in {Color.GREY, Color.RED, Color.BLUE, Color.PURPLE}:
-        return current_color
-    else:
-        return current_color - Color.GREEN
+SUBTRACTION_COLOR_MAPS = {
+    Color.RED: {
+        Color.GREY: Color.GREY,
+        Color.RED: Color.GREY,
+        Color.BLUE: Color.BLUE,
+        Color.MAGENTA: Color.BLUE,
+        Color.GREEN: Color.GREEN,
+        Color.YELLOW: Color.GREEN,
+        Color.CYAN: Color.CYAN,
+        Color.WHITE: Color.CYAN,
+    },
+    Color.BLUE: {
+        Color.GREY: Color.GREY,
+        Color.RED: Color.RED,
+        Color.BLUE: Color.GREY,
+        Color.MAGENTA: Color.RED,
+        Color.GREEN: Color.GREEN,
+        Color.YELLOW: Color.YELLOW,
+        Color.CYAN: Color.GREEN,
+        Color.WHITE: Color.YELLOW,
+    },
+    Color.GREEN: {
+        Color.GREY: Color.GREY,
+        Color.RED: Color.RED,
+        Color.BLUE: Color.BLUE,
+        Color.MAGENTA: Color.MAGENTA,
+        Color.GREEN: Color.GREY,
+        Color.YELLOW: Color.RED,
+        Color.CYAN: Color.BLUE,
+        Color.WHITE: Color.MAGENTA,
+    },
+}
 
 
 def _add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
-    map_func = {
-        Color.RED: _add_red,
-        Color.BLUE: _add_blue,
-        Color.GREEN: _add_green,
-    }
-    return s.map(map_func[color])
+    return s.map(ADDITION_COLOR_MAPS[color])
 
 
 def _subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
-    map_func = {
-        Color.RED: _subtract_red,
-        Color.BLUE: _subtract_blue,
-        Color.GREEN: _subtract_green,
-    }
-    return s.map(map_func[color])
+    return s.map(SUBTRACTION_COLOR_MAPS[color])
 
 
 def add_color_to_selection(
-    df: pd.DataFrame, selection: pd.Index, color: Color
+    df: pd.DataFrame, color: Color, selection: pd.Index
 ) -> pd.DataFrame:
     return df.assign(
         color=df.color.where(
@@ -110,7 +124,7 @@ def add_color_to_selection(
 
 
 def subtract_color_from_selection(
-    df: pd.DataFrame, selection: pd.Index, color: Color
+    df: pd.DataFrame, color: Color, selection: pd.Index
 ) -> pd.DataFrame:
     return df.assign(
         color=df.color.where(
@@ -121,7 +135,7 @@ def subtract_color_from_selection(
 
 
 def merge_colors(
-    df: pd.DataFrame, source_colors: list[Color], target_color: Color
+    df: pd.DataFrame, source_colors: Color | list[Color], target_color: Color
 ) -> pd.DataFrame:
     return df.assign(color=df.color.replace(source_colors, target_color))
 
