@@ -99,7 +99,7 @@ class MainWindow(QMainWindow):
             ('CD5', 'CD19'): (0, 1),
             ('CD10', 'CD19'): (0, 2),
             ('CD10', 'CD20'): (0, 3),
-            ('lambda', 'kappa'): (0, 4),
+            ('Lambda', 'Kappa'): (0, 4),
             ('CD20', 'CD38'): (1, 1),
             ('CD45', 'CD38'): (1, 2),
             ('CD34', 'CD38'): (1, 3),

@@ -19,7 +19,7 @@ from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 # import polars as pl
 import pandas as pd
 
-from pytopaint.io import LINEAR_PARAMETERS
+from pytopaint.io import LINEAR_PARAMETERS, sort_channels
 from pytopaint.colors import Color, COLOR_RGB_MAP, BACKGROUND
 
 RESOLUTION = 256
@@ -331,7 +331,7 @@ class Biplot(QWidget):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
-        channels = [col for col in df.columns if col not in ['color']]
+        channels = sort_channels([col for col in df.columns if col not in ['color']])
 
         self.plot = DotPlot(df, x_label, y_label)
         self.plot.pointsSelected.connect(self.pointsSelected)

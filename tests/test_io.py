@@ -9,6 +9,7 @@ import pandas as pd
 from pytopaint.io import (
     bin_df,
     clip_df,
+    sort_channels,
     _clean_marker_name,
     _get_channels,
     _get_compensation,
@@ -17,12 +18,12 @@ from pytopaint.io import (
 
 
 def test_clean_marker_name():
-    assert _clean_marker_name('KAPPA') == 'kappa'
-    assert _clean_marker_name('m Kappa') == 'kappa'
-    assert _clean_marker_name('mKAPPA') == 'kappa'
-    assert _clean_marker_name('LAMBDA') == 'lambda'
-    assert _clean_marker_name('m Lambda') == 'lambda'
-    assert _clean_marker_name('mLAMBDA') == 'lambda'
+    assert _clean_marker_name('KAPPA') == 'Kappa'
+    assert _clean_marker_name('m Kappa') == 'Kappa'
+    assert _clean_marker_name('mKAPPA') == 'Kappa'
+    assert _clean_marker_name('LAMBDA') == 'Lambda'
+    assert _clean_marker_name('m Lambda') == 'Lambda'
+    assert _clean_marker_name('mLAMBDA') == 'Lambda'
     assert _clean_marker_name('TDT') == 'TdT'
     assert _clean_marker_name('TdT') == 'TdT'
     assert _clean_marker_name('mpo') == 'MPO'
@@ -141,8 +142,8 @@ def test_get_channels():
         'CD11b',
         'HLA-DR',
         'CD45',
-        'kappa',
-        'lambda',
+        'Kappa',
+        'Lambda',
         'fluor7',
         'Time',
     ]
@@ -158,4 +159,47 @@ def test_get_compensation():
     assert _get_compensation(metadata_3) is None
 
 
-def test_sort_channels(): ...
+def test_sort_channels():
+    test_channels = [
+        'CD12',
+        'CD45',
+        'CD32',
+        'CD123',
+        'FSC-A',
+        'FSC-H',
+        'Time',
+        'Lambda',
+        'Kappa',
+        'HLA-DR',
+        'SSC-H',
+        'SSC-A',
+    ]
+
+    assert sort_channels(test_channels) == [
+        'FSC-A',
+        'FSC-H',
+        'SSC-A',
+        'SSC-H',
+        'CD12',
+        'CD32',
+        'CD45',
+        'CD123',
+        'HLA-DR',
+        'Kappa',
+        'Lambda',
+        'Time',
+    ]
+
+    # marker_channels = [
+    #     channel for channel in channels if channel not in LINEAR_PARAMETERS
+    # ]
+    # cd_channels = sorted(
+    #     [channel for channel in marker_channels if channel.startswith('CD')],
+    #     key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
+    # )
+    # non_cd_channels = sorted([
+    #     channel for channel in marker_channels if not channel.startswith('CD')
+    # ])
+
+    # dims = [[channel, 'SSC-A'] for channel in cd_channels + non_cd_channels]
+    # return dims

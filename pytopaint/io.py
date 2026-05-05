@@ -48,6 +48,26 @@ def to_df(self, source: str, subsample: bool = None, indices: list[int] = list()
     )
 
 
+def sort_channels(channels: list[str]) -> list[str]:
+    LIGHT_SCATTER_CHANNELS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
+    light_scatter_channels = sorted([
+        channel for channel in channels if channel in LIGHT_SCATTER_CHANNELS
+    ])
+    cd_channels = sorted(
+        [channel for channel in channels if channel.startswith('CD')],
+        key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
+    )
+    non_cd_channels = sorted([
+        channel
+        for channel in channels
+        if not channel.startswith('CD')
+        and channel not in LIGHT_SCATTER_CHANNELS + ['Time']
+    ])
+    time_channel = ['Time'] if 'Time' in channels else []
+
+    return light_scatter_channels + cd_channels + non_cd_channels + time_channel
+
+
 def _clean_marker_name(marker: str) -> str:
     if marker.startswith('CD'):
         if marker == 'CD45 RA' or marker == 'CD45 RO':
@@ -58,9 +78,9 @@ def _clean_marker_name(marker: str) -> str:
             return re.match(r'(CD\d+\w*) ?', marker).group(1)
     else:
         if 'lambda' in marker.lower():
-            return 'lambda'
+            return 'Lambda'
         elif 'kappa' in marker.lower():
-            return 'kappa'
+            return 'Kappa'
         elif marker.lower() == 'tdt':
             return 'TdT'
         elif marker.lower() == 'mpo':
