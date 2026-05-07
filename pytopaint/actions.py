@@ -9,3 +9,6 @@ class MenuAction(IntEnum):
     MERGE = auto()
     HIDE = auto()
     ISOLATE = auto()
+    UNDO = auto()
+    REDO = auto()
+    RESET = auto()
