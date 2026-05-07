@@ -31,7 +31,7 @@ COLOR_NAME_MAP = {
     Color.GREEN: 'Green',
     Color.RED: 'Red',
     Color.YELLOW: 'Yellow',
-    Color.MAGENTA: 'MAGENTA',
+    Color.MAGENTA: 'Magenta',
     Color.CYAN: 'Cyan',
     Color.WHITE: 'White',
 }
