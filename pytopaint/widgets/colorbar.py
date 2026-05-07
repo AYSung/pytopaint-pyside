@@ -51,10 +51,16 @@ class ColorLabel(QWidget):
         self.percent_label.setText(f'{self.percent:.{decimal_places}%}')
 
     def mouseReleaseEvent(self, e: QMouseEvent):
+        modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             self.emit_highlight()
-        # elif e.button() == Qt.MouseButton.RightButton:
-        #     ...  # hide color
+        elif (self.percent > 0) and e.button() == Qt.MouseButton.MiddleButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
+            # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+            #     self.menuActionTriggered.emit(
+            #         MenuAction.EXACT_ZAP, dict(color=self.color)
+            #     )
 
     def emit_highlight(self):
         self.highlight = not self.highlight

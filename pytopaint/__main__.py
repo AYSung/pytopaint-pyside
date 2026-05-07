@@ -118,7 +118,7 @@ class MainWindow(QMainWindow):
 
             painter = Painter(df)
 
-            self.painter_tabs.addTab(painter, file_path.stem)
+            self.painter_tabs.addTab(painter, file_path.name)
         except ValueError as e:
             raise e
 
