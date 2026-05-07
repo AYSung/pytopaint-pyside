@@ -15,6 +15,8 @@ from PySide6.QtGui import (
     QKeySequence,
     QGuiApplication,
     QKeyEvent,
+    QDragEnterEvent,
+    QDropEvent,
 )
 from PySide6.QtCore import Slot, Qt, Signal
 
@@ -45,6 +47,8 @@ class MainWindow(QMainWindow):
         file_menu.addAction(exit_action)
 
         self.painter_tabs = QTabWidget()
+        self.painter_tabs.setTabsClosable(True)
+        self.painter_tabs.tabCloseRequested.connect(self.handle_tab_close)
 
         central_widget = QWidget()
         central_layout = QGridLayout()
@@ -55,6 +59,7 @@ class MainWindow(QMainWindow):
         self.setCentralWidget(central_widget)
         self.resize(1920, 1080)
 
+        self.setAcceptDrops(True)
         open_files = QShortcut(QKeySequence.StandardKey.Open, self)
         open_files.activated.connect(self.open_files)
 
@@ -104,20 +109,40 @@ class MainWindow(QMainWindow):
         )
 
         for file in files:
-            try:
-                file_path = Path(file)
-                df = bin_df(read_fcs(file), n_bins=self.resolution).assign(
-                    color=Color.GREY
-                )
+            self.open_file(file)
 
-                painter = Painter(df)
+    def open_file(self, file: Path):
+        try:
+            file_path = Path(file)
+            df = bin_df(read_fcs(file), n_bins=self.resolution).assign(color=Color.GREY)
 
-                self.painter_tabs.addTab(painter, file_path.stem)
-            except ValueError as e:
-                raise e
+            painter = Painter(df)
+
+            self.painter_tabs.addTab(painter, file_path.stem)
+        except ValueError as e:
+            raise e
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
+
+    @Slot(int)
+    def handle_tab_close(self, index: int):
+        widget = self.painter_tabs.widget(index)
+        self.painter_tabs.removeTab(index)
+        if widget is not None:
+            widget.deleteLater()
+
+    def dragEnterEvent(self, event: QDragEnterEvent):
+        if event.mimeData().hasUrls():
+            event.acceptProposedAction()
+        else:
+            event.ignore()
+
+    def dropEvent(self, event: QDropEvent):
+        urls = event.mimeData().urls()
+
+        for url in urls:
+            self.open_file(url.toLocalFile())
 
 
 app = QApplication(sys.argv)
