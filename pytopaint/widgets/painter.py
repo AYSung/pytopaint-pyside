@@ -151,9 +151,9 @@ class Painter(QWidget):
             if not self.df.loc[self.df.color == self.active_color].empty:
                 self.record_current_state()
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.exact_zap_color(self.active_color)
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.zap_color(self.active_color)
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 self.zap_all()
 
@@ -188,10 +188,10 @@ class Painter(QWidget):
         self.activeColorChanged.emit(self.active_color)
 
     def zap_color(self, color: Color):
-        self.df.loc[self.df.color == color, 'color'] = Color.GREY
+        self.df = subtract_color_from_selection(self.df, color, self.df.index)
 
     def exact_zap_color(self, color: Color):
-        self.df = subtract_color_from_selection(self.df, color, self.df.index)
+        self.df.loc[self.df.color == color, 'color'] = Color.GREY
 
     def zap_all(self):
         self.df['color'] = Color.GREY
