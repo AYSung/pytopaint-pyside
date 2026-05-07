@@ -5,11 +5,11 @@ import pandas as pd
 
 class Color(IntEnum):
     GREY = 0
-    RED = 1
-    BLUE = 2
-    MAGENTA = 3
-    GREEN = 4
-    YELLOW = 5
+    BLUE = 1
+    GREEN = 2
+    RED = 3
+    YELLOW = 4
+    MAGENTA = 5
     CYAN = 6
     WHITE = 7
 

@@ -94,7 +94,9 @@ class DotPlot(QLabel):
         if self.x_label is None or self.y_label is None:
             return
 
-        self.working_df = self.df[[self.x_label, self.y_label]].drop_duplicates()
+        self.working_df = self.df[
+            [self.x_label, self.y_label, 'color']
+        ].drop_duplicates()
 
         if not self.selections:
             self.selections = {Color.GREY: self.working_df.index}

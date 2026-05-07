@@ -202,17 +202,14 @@ class Painter(QWidget):
 
     def hide_color(self, color: Color):
         self.df = self.df.loc[self.df.color != color]
-        self.data_updated.emit(self.df)
 
     def isolate_color(self, color: Color):
         self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
-        self.data_updated.emit(self.df)
 
     @Slot()
     def reset_df(self):
         self.record_current_state()
         self.df = self.original_df
-        self.data_updated.emit(self.df)
         self.emit_changes()
 
     def record_current_state(self):
@@ -252,6 +249,7 @@ class Painter(QWidget):
         self.emit_changes()
 
     def emit_changes(self):
+        self.data_updated.emit(self.df)
         self.selection_updated.emit(indices_by_color(self.df))
         self.percent_selected.emit(percents_by_colors(self.df))
 

@@ -57,7 +57,7 @@ class MainWindow(QMainWindow):
         central_widget.setLayout(central_layout)
 
         self.setCentralWidget(central_widget)
-        self.resize(1920, 1080)
+        self.resize(600, 400)
 
         self.setAcceptDrops(True)
         open_files = QShortcut(QKeySequence.StandardKey.Open, self)
