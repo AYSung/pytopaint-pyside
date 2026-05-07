@@ -22,6 +22,7 @@ from pytopaint.colors import (
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
 from pytopaint.actions import MenuAction
+from pytopaint.layout import get_best_layout, import_layouts
 
 
 class Painter(QWidget):
@@ -43,21 +44,9 @@ class Painter(QWidget):
         biplot_layout = QGridLayout()
         biplot_layout.setSpacing(5)
 
-        biplots = {
-            (0, 0): ('FSC-A', 'SSC-A'),
-            (1, 0): ('SSC-A', 'CD45'),
-            (2, 0): ('FSC-A', 'FSC-H'),
-            (3, 0): ('CD56', 'CD64'),
-            (0, 1): ('CD5', 'CD19'),
-            (0, 2): ('CD10', 'CD19'),
-            (0, 3): ('CD10', 'CD20'),
-            (0, 4): ('Lambda', 'Kappa'),
-            (1, 1): ('CD20', 'CD38'),
-            (1, 2): ('CD45', 'CD38'),
-            (1, 3): ('CD34', 'CD38'),
-            (1, 4): ('CD22', 'CD34'),
-            (1, 5): ('CD22', 'CD34'),
-        }
+        biplots = get_best_layout(
+            channels=self.df.columns, layouts=import_layouts()
+        ).to_grid()
 
         for coords, label in biplots.items():
             x_label, y_label = label

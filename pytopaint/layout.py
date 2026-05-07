@@ -47,7 +47,7 @@ def _import_layouts(anchor: str) -> list[LayoutConfig]:
     return [
         _read_panel(item)
         for item in dir.iterdir()
-        if item.is_file() and item.name != 'example'
+        if item.is_file() and item.name != 'example.yml'
     ]
 
 
