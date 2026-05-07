@@ -47,6 +47,9 @@ class DotPlot(QLabel):
         self.update_working_data()
 
     def mouseMoveEvent(self, e: QMouseEvent):
+        if self.x_label is None or self.y_label is None:
+            return
+
         if e.buttons() == Qt.MouseButton.MiddleButton:
             return
 
@@ -73,6 +76,9 @@ class DotPlot(QLabel):
         self.last_y = pos.y()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.x_label is None or self.y_label is None:
+            return
+
         self.pointsSelected.emit(
             self.selection_geometry,
             self.x_label,
@@ -85,6 +91,9 @@ class DotPlot(QLabel):
         self.selection_geometry = []
 
     def update_working_data(self):
+        if self.x_label is None or self.y_label is None:
+            return
+
         self.working_df = self.df[[self.x_label, self.y_label]].drop_duplicates()
 
         if not self.selections:
@@ -132,6 +141,9 @@ class DotPlot(QLabel):
     def render_plot(
         self, selections: dict[Color, pd.Index] = None, priority_color: Color = None
     ):
+        if self.x_label is None or self.y_label is None:
+            return
+
         canvas = self.pixmap()
         canvas.fill(BACKGROUND)
         painter = QPainter(canvas)
@@ -165,7 +177,7 @@ class XAxis(QLabel):
         self.label = label
         self.channels = channels
 
-        canvas = QPixmap(RESOLUTION, 50)
+        canvas = QPixmap(RESOLUTION, 45)
         canvas.fill('#00000000')
         self.setPixmap(canvas)
 
@@ -217,15 +229,15 @@ class XAxis(QLabel):
                     label_text,
                     Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
                 )
-
-        font = QFont()
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(
-            canvas.rect(),
-            self.label,
-            Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
-        )
+        if self.label is not None:
+            font = QFont()
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(
+                canvas.rect(),
+                self.label,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
+            )
         painter.end()
         self.setPixmap(canvas)
         self.update()
@@ -250,7 +262,7 @@ class YAxis(QLabel):
         self.label = label
         self.channels = channels
 
-        canvas = QPixmap(50, RESOLUTION)
+        canvas = QPixmap(45, RESOLUTION)
         canvas.fill('#00000000')
 
         self.setPixmap(canvas)
@@ -267,11 +279,11 @@ class YAxis(QLabel):
         pen.setColor('#bababa')
         painter.setPen(pen)
 
-        label_x = -2
-        tick_x0 = 41
+        label_x = -7
+        tick_x0 = 36
         tick_x1 = tick_x0 + 4
 
-        painter.drawLine(QPoint(45, 0), QPoint(45, RESOLUTION - 1))
+        painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, RESOLUTION - 1))
         if self.label in LINEAR_PARAMETERS:
             y_ticks = [255, 205, 155, 105, 55, 5]
             for y_tick in y_ticks:
@@ -297,16 +309,17 @@ class YAxis(QLabel):
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
                 )
 
-        painter.translate(0, RESOLUTION)
-        painter.rotate(-90)
-        font = QFont()
-        font.setBold(True)
-        painter.setFont(font)
-        painter.drawText(
-            QRect(0, 0, 255, 20),
-            self.label,
-            Qt.AlignmentFlag.AlignLeft,
-        )
+        if self.label is not None:
+            painter.translate(0, RESOLUTION)
+            painter.rotate(-90)
+            font = QFont()
+            font.setBold(True)
+            painter.setFont(font)
+            painter.drawText(
+                QRect(0, 0, 255, 20),
+                self.label,
+                Qt.AlignmentFlag.AlignLeft,
+            )
         painter.end()
 
         self.setPixmap(canvas)
@@ -332,6 +345,8 @@ class Biplot(QWidget):
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
         channels = sort_channels([col for col in df.columns if col not in ['color']])
+        x_label = x_label if x_label in channels else None
+        y_label = y_label if y_label in channels else None
 
         self.plot = DotPlot(df, x_label, y_label)
         self.plot.pointsSelected.connect(self.pointsSelected)
@@ -343,12 +358,12 @@ class Biplot(QWidget):
         self.y_axis.label_changed.connect(self.update_title)
 
         self.title_label = QLabel()
-        self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 8px')
+        self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
         self.update_title()
 
         layout = QGridLayout()
         layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(5, 0, 5, 0)
         layout.addWidget(
             self.title_label,
             0,
@@ -365,13 +380,18 @@ class Biplot(QWidget):
     def set_data(self, df: pd.DataFrame):
         self.plot.update_data(df)
 
-        channels = [col for col in df.columns if col not in ['color']]
+        channels = sort_channels([col for col in df.columns if col not in ['color']])
         self.x_axis.channels = channels
         self.y_axis.channels = channels
 
     @Slot(str)
     def update_title(self, _: str = None):
-        self.title_label.setText(f'{self.y_axis.label} vs {self.x_axis.label}')
+        if self.x_axis.label is None or self.y_axis.label is None:
+            title = ''
+        else:
+            title = f'{self.y_axis.label} vs {self.x_axis.label}'
+
+        self.title_label.setText(title)
 
     def paintEvent(self, pe):
         o = QStyleOption()

@@ -82,6 +82,7 @@ class MainWindow(QMainWindow):
         central_widget = QWidget()
         layout = QGridLayout()
         layout.setSpacing(0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
@@ -91,22 +92,25 @@ class MainWindow(QMainWindow):
 
         biplot_container = QWidget()
         biplot_layout = QGridLayout()
+        biplot_layout.setSpacing(5)
 
         biplots = {
-            ('FSC-A', 'SSC-A'): (0, 0),
-            ('SSC-A', 'CD45'): (1, 0),
-            ('FSC-A', 'FSC-H'): (2, 0),
-            ('CD5', 'CD19'): (0, 1),
-            ('CD10', 'CD19'): (0, 2),
-            ('CD10', 'CD20'): (0, 3),
-            ('Lambda', 'Kappa'): (0, 4),
-            ('CD20', 'CD38'): (1, 1),
-            ('CD45', 'CD38'): (1, 2),
-            ('CD34', 'CD38'): (1, 3),
-            ('CD22', 'CD34'): (1, 4),
+            (0, 0): ('FSC-A', 'SSC-A'),
+            (1, 0): ('SSC-A', 'CD45'),
+            (2, 0): ('FSC-A', 'FSC-H'),
+            (3, 0): ('CD56', 'CD64'),
+            (0, 1): ('CD5', 'CD19'),
+            (0, 2): ('CD10', 'CD19'),
+            (0, 3): ('CD10', 'CD20'),
+            (0, 4): ('Lambda', 'Kappa'),
+            (1, 1): ('CD20', 'CD38'),
+            (1, 2): ('CD45', 'CD38'),
+            (1, 3): ('CD34', 'CD38'),
+            (1, 4): ('CD22', 'CD34'),
+            (1, 5): ('CD22', 'CD34'),
         }
 
-        for label, coords in biplots.items():
+        for coords, label in biplots.items():
             x_label, y_label = label
             row, col = coords
 
