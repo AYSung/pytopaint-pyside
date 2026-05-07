@@ -165,8 +165,10 @@ def test_layout_config(
         ('CD34', 'CD38'),
         ('CD22', 'CD34'),
     ]
-    assert layout_1.score_match(test_channels_1) == 1
-    assert layout_1.score_match(test_channels_2) == 0
+    assert layout_1.biplot_score(test_channels_1) == 1
+    assert layout_1.biplot_score(test_channels_2) == 0
+    assert layout_1.channel_score(test_channels_1) == 10 / 15
+    assert layout_1.channel_score(test_channels_2) == 2 / 15
     assert layout_1.to_grid() == {
         (0, 0): ('CD5', 'CD19'),
         (0, 1): ('CD10', 'CD19'),
@@ -209,8 +211,10 @@ def test_layout_config(
         ('CD4', 'CD7'),
         (None, None),
     ]
-    assert layout_2.score_match(test_channels_1) == 0
-    assert layout_2.score_match(test_channels_2) == 1
+    assert layout_2.biplot_score(test_channels_1) == 0
+    assert layout_2.biplot_score(test_channels_2) == 1
+    assert layout_2.channel_score(test_channels_1) == 2 / 15
+    assert layout_2.channel_score(test_channels_2) == 10 / 15
     assert layout_2.to_grid() == {
         (0, 0): ('CD7', 'CD3'),
         (0, 1): ('CD2', 'CD3'),

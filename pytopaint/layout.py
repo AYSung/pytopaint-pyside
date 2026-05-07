@@ -28,12 +28,17 @@ class LayoutConfig:
     def to_grid(self) -> dict[tuple[int, int], tuple[str, str]]:
         return dict(zip(_to_grid_coordinates(self.rows, self.cols), self.flattened()))
 
-    def score_match(self, panel: list[str]) -> float:
+    def biplot_score(self, panel: list[str]) -> float:
         return len([
             (x, y) for x, y in self.flattened() if x in panel and y in panel
         ]) / len([
             (x, y) for x, y in self.flattened() if x is not None and y is not None
         ])
+
+    def channel_score(self, panel: list[str]) -> float:
+        return len([channel for channel in self.channels if channel in panel]) / len(
+            panel
+        )
 
 
 def _import_layouts(anchor: str) -> list[LayoutConfig]:
@@ -63,7 +68,9 @@ def _to_grid_coordinates(
 
 
 def get_best_layout(channels: list[str], layouts: list[LayoutConfig]) -> LayoutConfig:
-    return sorted(layouts, key=lambda x: x.score_match(channels))[-1]
+    return sorted(
+        layouts, key=lambda x: x.biplot_score(channels) * x.channel_score(channels)
+    )[-1]
 
 
 def _extend_list(list_: list[tuple[str, str]], target_length: int):
