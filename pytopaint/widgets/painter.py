@@ -31,15 +31,13 @@ class Painter(QWidget):
     data_updated = Signal(object)
     percent_selected = Signal(object)
     activeColorChanged = Signal(int)
-    menuActionTriggered = Signal(int, dict)
 
     def __init__(self, df: pd.DataFrame):
         super().__init__()
         self.load_data(df)
 
         color_bar = ColorBar()
-        color_bar.menuActionTriggered.connect(self.menuActionTriggered)
-        self.menuActionTriggered.connect(self.handle_menu_action)
+        color_bar.menuActionTriggered.connect(self.handle_menu_action)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.percent_selected.connect(color_bar.update_percent)
 

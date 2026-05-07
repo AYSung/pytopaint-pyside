@@ -60,58 +60,61 @@ class MainWindow(QMainWindow):
 
         red_shortcut = QShortcut(QKeySequence('F'), self)
         red_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.SET_ACTIVE, dict(color=Color.RED)
             )
         )
         green_shortcut = QShortcut(QKeySequence('D'), self)
         green_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.SET_ACTIVE, dict(color=Color.GREEN)
             )
         )
         blue_shortcut = QShortcut(QKeySequence('S'), self)
         blue_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.SET_ACTIVE, dict(color=Color.BLUE)
             )
         )
 
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.UNDO, dict()
             )
         )
         redo_shortcut = QShortcut(QKeySequence('Ctrl+Shift+Z'), self)
         redo_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.REDO, dict()
             )
         )
 
         reset_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
         reset_shortcut.activated.connect(
-            lambda: self.get_active_painter().menuActionTriggered.emit(
+            lambda: self.get_active_painter().handle_menu_action(
                 MenuAction.RESET, dict()
             )
         )
 
     @Slot()
     def open_files(self):
-        # files, _ = QFileDialog.getOpenFileNames(
-        #     None, "Select FCS Files", "", "FCS (*.fcs)"
-        # )
-        file, _ = QFileDialog.getOpenFileName(
-            None, 'Select FCS File', '', 'FCS (*.fcs)'
+        files, _ = QFileDialog.getOpenFileNames(
+            None, 'Select FCS Files', '', 'FCS (*.fcs)'
         )
 
-        file_path = Path(file)
-        df = bin_df(read_fcs(file), n_bins=self.resolution).assign(color=Color.GREY)
+        for file in files:
+            try:
+                file_path = Path(file)
+                df = bin_df(read_fcs(file), n_bins=self.resolution).assign(
+                    color=Color.GREY
+                )
 
-        painter = Painter(df)
+                painter = Painter(df)
 
-        self.painter_tabs.addTab(painter, file_path.stem)
+                self.painter_tabs.addTab(painter, file_path.stem)
+            except ValueError as e:
+                raise e
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
