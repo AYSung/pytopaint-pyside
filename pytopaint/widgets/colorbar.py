@@ -93,7 +93,7 @@ class ColorLabel(QWidget):
 
         menu = QMenu()
         # set active color
-        if self.color in [Color.RED, Color.BLUE, Color.GREEN]:
+        if self.color != Color.GREY:
             set_active_color = QAction('Set Active Color')
             set_active_color.triggered.connect(
                 lambda: self.menuActionTriggered.emit(

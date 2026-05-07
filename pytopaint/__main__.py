@@ -81,6 +81,30 @@ class MainWindow(QMainWindow):
                 MenuAction.SET_ACTIVE, dict(color=Color.BLUE)
             )
         )
+        cyan_shortcut = QShortcut(QKeySequence('Shift+F'), self)
+        cyan_shortcut.activated.connect(
+            lambda: self.get_active_painter().handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.CYAN)
+            )
+        )
+        magenta_shortcut = QShortcut(QKeySequence('Shift+D'), self)
+        magenta_shortcut.activated.connect(
+            lambda: self.get_active_painter().handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.MAGENTA)
+            )
+        )
+        yellow_shortcut = QShortcut(QKeySequence('Shift+S'), self)
+        yellow_shortcut.activated.connect(
+            lambda: self.get_active_painter().handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.YELLOW)
+            )
+        )
+        white_shortcut = QShortcut(QKeySequence('A'), self)
+        white_shortcut.activated.connect(
+            lambda: self.get_active_painter().handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.WHITE)
+            )
+        )
 
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(
