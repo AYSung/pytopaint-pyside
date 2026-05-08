@@ -10,7 +10,7 @@ from pytopaint.colors import (
     subtract_color_from_selection,
     merge_colors,
     indices_by_color,
-    percents_by_colors,
+    events_by_colors,
 )
 
 
@@ -255,21 +255,27 @@ def test_indices_by_color(test_df_1, test_df_2):
 
 
 def test_percents_by_colors(test_df_1, test_df_2):
-    assert percents_by_colors(test_df_1) == {
-        Color.GREY: 1 / 8,
-        Color.RED: 1 / 8,
-        Color.BLUE: 1 / 8,
-        Color.MAGENTA: 1 / 8,
-        Color.GREEN: 1 / 8,
-        Color.YELLOW: 1 / 8,
-        Color.CYAN: 1 / 8,
-        Color.WHITE: 1 / 8,
-    }
-    assert percents_by_colors(test_df_2) == {
-        Color.GREY: 1 / 8,
-        Color.RED: 3 / 8,
-        Color.GREEN: 1 / 8,
-        Color.YELLOW: 1 / 8,
-        Color.CYAN: 1 / 8,
-        Color.WHITE: 1 / 8,
-    }
+    assert events_by_colors(test_df_1) == (
+        {
+            Color.GREY: 1,
+            Color.RED: 1,
+            Color.BLUE: 1,
+            Color.MAGENTA: 1,
+            Color.GREEN: 1,
+            Color.YELLOW: 1,
+            Color.CYAN: 1,
+            Color.WHITE: 1,
+        },
+        8,
+    )
+    assert events_by_colors(test_df_2) == (
+        {
+            Color.GREY: 1,
+            Color.RED: 3,
+            Color.GREEN: 1,
+            Color.YELLOW: 1,
+            Color.CYAN: 1,
+            Color.WHITE: 1,
+        },
+        8,
+    )
