@@ -18,7 +18,7 @@ from pytopaint.colors import (
     subtract_color_from_selection,
     merge_colors,
     indices_by_color,
-    percents_by_colors,
+    events_by_colors,
 )
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
@@ -29,7 +29,7 @@ from pytopaint.layout import get_best_layout, import_layouts
 class Painter(QWidget):
     selection_updated = Signal(object)
     data_updated = Signal(object)
-    percent_selected = Signal(object)
+    percent_selected = Signal(object, int)
     activeColorChanged = Signal(int)
 
     def __init__(self, df: pd.DataFrame):
@@ -39,7 +39,7 @@ class Painter(QWidget):
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
-        self.percent_selected.connect(color_bar.update_percent)
+        self.percent_selected.connect(color_bar.selectionChanged)
 
         biplot_container = QWidget()
         biplot_layout = QGridLayout()
@@ -251,7 +251,7 @@ class Painter(QWidget):
     def emit_changes(self):
         self.data_updated.emit(self.df)
         self.selection_updated.emit(indices_by_color(self.df))
-        self.percent_selected.emit(percents_by_colors(self.df))
+        self.percent_selected.emit(*events_by_colors(self.df))
 
     def load_data(self, df: pd.DataFrame):
         self.original_df = df

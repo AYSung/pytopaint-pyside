@@ -226,8 +226,8 @@ def indices_by_color(df: pd.DataFrame) -> dict[Color, pd.Index]:
     }
 
 
-def percents_by_colors(df: pd.DataFrame) -> dict[Color, float]:
-    return {
-        color: count / df.shape[0]
-        for color, count in df.color.value_counts().to_dict().items()
-    }
+def events_by_colors(df: pd.DataFrame) -> tuple[dict[Color, int], int]:
+    return (
+        {color: count for color, count in df.color.value_counts().to_dict().items()},
+        df.shape[0],
+    )

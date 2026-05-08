@@ -26,10 +26,11 @@ class ColorLabel(QWidget):
         super().__init__(parent)
         self.color = color
         self.highlight = False
-        self.percent = 0
+        self.events = 0
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
+        self.setFixedWidth(150)
 
         layout = QHBoxLayout()
 
@@ -37,24 +38,28 @@ class ColorLabel(QWidget):
         self.box.setFixedSize(12, 12)
         self.box.setStyleSheet(f'background-color: {COLOR_RGB_MAP[color]}')
 
-        self.percent_label = QLabel()
+        self.label = QLabel()
 
         layout.addWidget(self.box)
-        layout.addWidget(self.percent_label)
+        layout.addWidget(self.label)
 
         self.setLayout(layout)
 
-    @Slot(object)
-    def update_percent(self, percents: dict[Color:float]):
-        self.percent = percents.get(self.color, 0)
-        decimal_places = 1 if (self.percent == 0) or (self.percent >= 0.01) else 2
-        self.percent_label.setText(f'{self.percent:.{decimal_places}%}')
+    @Slot(object, int)
+    def update_label(self, events: dict[Color, int], total_events: int):
+        self.events = events.get(self.color, 0)
+        percent = self.events / total_events
+        decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
+        if (self.events >= 100) or (self.events == 0):
+            self.label.setText(f'{percent:.{decimal_places}%}')
+        else:
+            self.label.setText(f'{percent:.{decimal_places}%} ({self.events})')
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             self.emit_highlight()
-        elif (self.percent > 0) and e.button() == Qt.MouseButton.MiddleButton:
+        elif (self.events > 0) and e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
             # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
@@ -72,7 +77,7 @@ class ColorLabel(QWidget):
 
     @Slot(int)
     def update_active_color(self, color: Color):
-        self.percent_label.setStyleSheet(
+        self.label.setStyleSheet(
             f'font-weight: {"bold" if self.color == color else "normal"};'
         )
 
@@ -110,7 +115,7 @@ class ColorLabel(QWidget):
         menu.addAction(self.toggle_highlight)
 
         if self.color != Color.GREY:
-            zap = QAction('Zap', enabled=self.percent > 0)
+            zap = QAction('Zap', enabled=self.events > 0)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.ZAP, dict(color=self.color)
@@ -118,7 +123,7 @@ class ColorLabel(QWidget):
             )
             menu.addAction(zap)
 
-            exact_zap = QAction('Exact Zap', enabled=self.percent > 0)
+            exact_zap = QAction('Exact Zap', enabled=self.events > 0)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, dict(color=self.color)
@@ -128,7 +133,7 @@ class ColorLabel(QWidget):
 
             menu.addSeparator()
             merge_menu = QMenu('Merge with...')
-            merge_menu.setEnabled(self.percent > 0)
+            merge_menu.setEnabled(self.events > 0)
 
             merge_actions = [
                 _merge_action(color, name)
@@ -142,14 +147,14 @@ class ColorLabel(QWidget):
 
         menu.addSeparator()
         menu.addSection('Filter')
-        hide = QAction('Hide Color', enabled=self.percent > 0)
+        hide = QAction('Hide Color', enabled=self.events > 0)
         hide.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.HIDE, dict(color=self.color)
             )
         )
         menu.addAction(hide)
-        isolate = QAction('Isolate Color', enabled=self.percent > 0)
+        isolate = QAction('Isolate Color', enabled=self.events > 0)
         isolate.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.ISOLATE, dict(color=self.color)
@@ -164,6 +169,7 @@ class ColorBar(QWidget):
     highlight_color = Signal(int, bool)
     activeColorChanged = Signal(int)
     menuActionTriggered = Signal(int, dict)
+    selectionChanged = Signal(object, int)
 
     def __init__(self):
         super().__init__()
@@ -176,17 +182,17 @@ class ColorBar(QWidget):
         for color_label in self.color_labels:
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
-            # color_label.set_active_color.connect(self.set_active_color)
             color_label.highlight_color.connect(self.highlight_color)
-            # color_label.zap_color.connect(self.zap_color)
-            # color_label.exact_zap_color.connect(self.exact_zap_color)
-            # color_label.hide_color.connect(self.hide_color)
-            # color_label.isolate_color.connect(self.isolate_color)
             self.activeColorChanged.connect(color_label.update_active_color)
+            self.selectionChanged.connect(color_label.update_label)
+
+        self.total_events_label = QLabel()
+        self.selectionChanged.connect(self.update_total_events)
+        layout.addWidget(self.total_events_label)
+        layout.addStretch()
 
         self.setLayout(layout)
 
-    @Slot(object)
-    def update_percent(self, percents: dict[Color, float]):
-        for color_label in self.color_labels:
-            color_label.update_percent(percents)
+    @Slot(dict, int)
+    def update_total_events(self, events: dict[Color, int], total_events: int):
+        self.total_events_label.setText(f'Total Events: {total_events:,}')
