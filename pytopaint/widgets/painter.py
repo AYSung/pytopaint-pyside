@@ -94,8 +94,7 @@ class Painter(QWidget):
         )
 
         if e.button() == Qt.MouseButton.LeftButton:
-            if not selection.empty:
-                self.record_current_state()
+            # if not selection.empty:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
                 self.df = add_color_to_selection(self.df, self.active_color, selection)
@@ -124,10 +123,8 @@ class Painter(QWidget):
                     self.df.index.isin(selection) & (self.df.color != Color.GREY),
                     'color',
                 ] = self.active_color
-
         elif e.button() == Qt.MouseButton.RightButton:
-            if not selection.empty:
-                self.record_current_state()
+            # if not selection.empty:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # zap color from selection
                 self.df = subtract_color_from_selection(
@@ -146,10 +143,7 @@ class Painter(QWidget):
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # subtract all
                 self.df.loc[selection, 'color'] = Color.GREY
-
         elif e.button() == Qt.MouseButton.MiddleButton:
-            if not self.df.loc[self.df.color == self.active_color].empty:
-                self.record_current_state()
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.exact_zap_color(self.active_color)
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
@@ -157,6 +151,7 @@ class Painter(QWidget):
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 self.zap_all()
 
+        self.record_current_state()
         self.emit_changes()
 
     @Slot(int, dict)
@@ -179,8 +174,8 @@ class Painter(QWidget):
         elif action in [MenuAction.UNDO, MenuAction.REDO, MenuAction.RESET]:
             FUNCTION_MAP[action]()
         else:
-            self.record_current_state()
             FUNCTION_MAP[action](**kwargs)
+            self.record_current_state()
             self.emit_changes()
 
     def change_color(self, color: Color):
@@ -208,26 +203,29 @@ class Painter(QWidget):
 
     @Slot()
     def reset_df(self):
-        self.record_current_state()
         self.df = self.original_df
+        self.record_current_state()
         self.emit_changes()
 
     def record_current_state(self):
+        if self.undo_history and self.df.color.equals(self.undo_history[-1]):
+            return
+
         self.undo_history += [self.df.color.copy()]
         self.redo_history = []
 
     @Slot()
     def undo_action(self):
-        if not self.undo_history:
+        if len(self.undo_history) <= 1:
             return
 
-        previous_state = self.undo_history.pop()
-        self.redo_history += [self.df['color'].copy()]
+        current_state = self.undo_history.pop()
+        previous_state = self.undo_history[-1]
+        self.redo_history += [current_state]
         if len(self.df.index) != len(previous_state):
             self.df = self.original_df.loc[previous_state.index].assign(
                 color=previous_state
             )
-            self.data_updated.emit(self.df)
         else:
             self.df['color'] = previous_state
 
@@ -238,23 +236,26 @@ class Painter(QWidget):
         if not self.redo_history:
             return
 
-        next_state = self.redo_history.pop()
-        self.undo_history += [self.df['color'].copy()]
-        if len(self.df.index) != len(next_state):
-            self.df = self.original_df.loc[next_state.index].assign(color=next_state)
-            self.data_updated.emit(self.df)
+        previous_state = self.redo_history.pop()
+        self.undo_history += [previous_state]
+        if len(self.df.index) != len(previous_state):
+            self.df = self.original_df.loc[previous_state.index].assign(
+                color=previous_state
+            )
         else:
-            self.df['color'] = next_state
+            self.df['color'] = previous_state
 
         self.emit_changes()
 
     def emit_changes(self):
         self.data_updated.emit(self.df)
         self.selection_updated.emit(indices_by_color(self.df))
-        self.percent_selected.emit(*events_by_colors(self.df))
+        self.percent_selected.emit(
+            *events_by_colors(self.df)
+        )  # combine with data updated
 
     def load_data(self, df: pd.DataFrame):
         self.original_df = df
         self.df = df
-        self.undo_history = []
+        self.undo_history = [self.df.color.copy()]
         self.redo_history = []
