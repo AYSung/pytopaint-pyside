@@ -17,7 +17,7 @@ RESOLUTION = 256
 
 
 class ColorLabel(QWidget):
-    highlight_color = Signal(int, bool)
+    highlight_color = Signal(int)
     menuActionTriggered = Signal(int, dict)
 
     def __init__(self, color: Color, parent=None):
@@ -69,7 +69,7 @@ class ColorLabel(QWidget):
 
     def emit_highlight(self):
         self.highlight = not self.highlight
-        self.highlight_color.emit(self.color, self.highlight)
+        self.highlight_color.emit(self.color)
         if self.highlight:
             self.box.setFixedSize(16, 16)
         else:
@@ -166,10 +166,9 @@ class ColorLabel(QWidget):
 
 
 class ColorBar(QWidget):
-    highlight_color = Signal(int, bool)
+    highlight_color = Signal(int)
     activeColorChanged = Signal(int)
     menuActionTriggered = Signal(int, dict)
-    # selectionChanged = Signal(object, int)
     eventsUpdated = Signal(object, int)
 
     def __init__(self):
@@ -177,7 +176,11 @@ class ColorBar(QWidget):
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setContentsMargins(20, 0, 0, 0)
+
+        self.total_events_label = QLabel()
+        self.total_events_label.setFixedWidth(150)
+        layout.addWidget(self.total_events_label)
 
         self.color_labels = [ColorLabel(c) for c in COLOR_RGB_MAP.keys()]
         for color_label in self.color_labels:
@@ -185,19 +188,11 @@ class ColorBar(QWidget):
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
             color_label.highlight_color.connect(self.highlight_color)
             self.activeColorChanged.connect(color_label.update_active_color)
-            # self.selectionChanged.connect(color_label.update_label)
             self.eventsUpdated.connect(color_label.update_label)
 
-        self.total_events_label = QLabel()
-        # self.selectionChanged.connect(self.update_total_events)
-        layout.addWidget(self.total_events_label)
         layout.addStretch()
 
         self.setLayout(layout)
-
-    # @Slot(dict, int)
-    # def update_total_events(self, events: dict[Color, int], total_events: int):
-    #     self.total_events_label.setText(f'Total Events: {total_events:,}')
 
     @Slot(object)
     def update_labels(self, df: pd.DataFrame):

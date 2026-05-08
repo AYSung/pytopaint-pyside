@@ -233,7 +233,7 @@ def test_merge_color(test_df_1, test_df_2):
 
 
 def test_indices_by_color(test_df_1, test_df_2):
-    assert indices_by_color(test_df_1) == {
+    assert indices_by_color(test_df_1.color) == {
         Color.GREY: pd.Index([0]),
         Color.RED: pd.Index([1]),
         Color.BLUE: pd.Index([2]),
@@ -244,14 +244,14 @@ def test_indices_by_color(test_df_1, test_df_2):
         Color.WHITE: pd.Index([7]),
     }
 
-    assert indices_by_color(test_df_2)[Color.GREY] == [0]
-    assert (indices_by_color(test_df_2)[Color.RED] == [1, 6, 7]).all()
-    assert indices_by_color(test_df_2).get(Color.BLUE) is None
-    assert indices_by_color(test_df_2).get(Color.MAGENTA) is None
-    assert indices_by_color(test_df_2)[Color.GREEN] == [2]
-    assert indices_by_color(test_df_2)[Color.YELLOW] == [3]
-    assert indices_by_color(test_df_2)[Color.CYAN] == [4]
-    assert indices_by_color(test_df_2)[Color.WHITE] == [5]
+    assert indices_by_color(test_df_2.color)[Color.GREY] == [0]
+    assert (indices_by_color(test_df_2.color)[Color.RED] == [1, 6, 7]).all()
+    assert indices_by_color(test_df_2.color).get(Color.BLUE) is None
+    assert indices_by_color(test_df_2.color).get(Color.MAGENTA) is None
+    assert indices_by_color(test_df_2.color)[Color.GREEN] == [2]
+    assert indices_by_color(test_df_2.color)[Color.YELLOW] == [3]
+    assert indices_by_color(test_df_2.color)[Color.CYAN] == [4]
+    assert indices_by_color(test_df_2.color)[Color.WHITE] == [5]
 
 
 def test_percents_by_colors(test_df_1, test_df_2):

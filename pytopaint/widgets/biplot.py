@@ -32,18 +32,21 @@ class Biplot(QWidget):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
+        self.df = df
         channels = sort_channels([col for col in df.columns if col not in ['color']])
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.plot = DotPlot(df, x_label, y_label)
-        self.plot.pointsSelected.connect(self.pointsSelected)
         self.x_axis = XAxis(x_label, channels)
-        self.x_axis.label_changed.connect(self.plot.update_x_label)
-        self.x_axis.label_changed.connect(self.update_title)
+        self.x_axis.labelChanged.connect(self.update_plot_data)
+        self.x_axis.labelChanged.connect(self.update_title)
         self.y_axis = YAxis(y_label, channels)
-        self.y_axis.label_changed.connect(self.plot.update_y_label)
-        self.y_axis.label_changed.connect(self.update_title)
+        self.y_axis.labelChanged.connect(self.update_plot_data)
+        self.y_axis.labelChanged.connect(self.update_title)
+
+        self.plot = DotPlot()
+        self.update_plot_data()
+        self.plot.pointsSelected.connect(self.points_selected)
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
@@ -66,7 +69,22 @@ class Biplot(QWidget):
 
     @Slot(object)
     def set_data(self, df: pd.DataFrame):
-        self.plot.update_data(df)
+        if self.df.equals(df):
+            return
+
+        self.df = df
+        self.update_plot_data()
+
+    def update_plot_data(self):
+        if self.x_axis.label is None or self.y_axis.label is None:
+            return
+
+        df = self.df[[self.x_axis.label, self.y_axis.label, 'color']].drop_duplicates()
+        self.plot.update_working_data(
+            x_data=df[self.x_axis.label],
+            y_data=df[self.y_axis.label],
+            color_data=df['color'],
+        )
 
     @Slot(str)
     def update_title(self, _: str = None):
@@ -77,6 +95,14 @@ class Biplot(QWidget):
 
         self.title_label.setText(title)
 
+    @Slot(object, QMouseEvent)
+    def points_selected(
+        self, selection_geometry: list[tuple[int, int]], e: QMouseEvent
+    ):
+        self.pointsSelected.emit(
+            selection_geometry, self.x_axis.label, self.y_axis.label, e
+        )
+
     def paintEvent(self, pe):
         o = QStyleOption()
         o.initFrom(self)
@@ -85,34 +111,29 @@ class Biplot(QWidget):
 
 
 class DotPlot(QLabel):
-    pointsSelected = Signal(object, str, str, QMouseEvent)
+    pointsSelected = Signal(object, QMouseEvent)
 
-    def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
+    def __init__(self):
         super().__init__()
         canvas = QPixmap(RESOLUTION, RESOLUTION)
         canvas.fill(BACKGROUND)
         self.setPixmap(canvas)
         self.setCursor(Qt.CursorShape.CrossCursor)
 
-        self.df = df
-        self.x_label = x_label
-        self.y_label = y_label
-
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
-        self.highlight_color = {c.value: False for c in Color}
-
-        self.update_working_data()
+        self.highlight_colors = []
+        self.color_indices = None
 
     def mouseMoveEvent(self, e: QMouseEvent):
-        if self.x_label is None or self.y_label is None:
+        if self.color_indices is None:
             return
 
         if e.buttons() == Qt.MouseButton.MiddleButton:
             return
 
         pos = e.position()
-        self.selection_geometry += [[pos.x(), RESOLUTION - pos.y()]]
+        self.selection_geometry += [(pos.x(), RESOLUTION - pos.y())]
         if self.last_x is None:  # First event.
             self.last_x = pos.x()
             self.last_y = pos.y()
@@ -134,13 +155,11 @@ class DotPlot(QLabel):
         self.last_y = pos.y()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if self.x_label is None or self.y_label is None:
+        if self.color_indices is None:
             return
 
         self.pointsSelected.emit(
             self.selection_geometry,
-            self.x_label,
-            self.y_label,
             e,
         )
 
@@ -148,63 +167,46 @@ class DotPlot(QLabel):
         self.last_y = None
         self.selection_geometry = []
 
-    def update_working_data(self):
-        if self.x_label is None or self.y_label is None:
-            return
-
-        self.working_df = self.df[
-            [self.x_label, self.y_label, 'color']
-        ].drop_duplicates()
-
         self.render_plot()
 
-    @Slot(object)
-    def update_data(self, df: pd.DataFrame):
-        self.df = df
-        self.update_working_data()
+    def update_working_data(
+        self, x_data: pd.Series, y_data: pd.Series, color_data: pd.Series
+    ):
+        self.x_data = x_data
+        self.y_data = y_data
+        self.color_indices = indices_by_color(color_data)
 
-    @Slot(str)
-    def update_x_label(self, new_label: str):
-        if self.x_label == new_label:
-            return
-
-        self.x_label = new_label
-        self.update_working_data()
-
-    @Slot(str)
-    def update_y_label(self, new_label: str):
-        if self.y_label == new_label:
-            return
-
-        self.y_label = new_label
-        self.update_working_data()
+        self.render_plot()
 
     @Slot(int)
     def set_active_color(self, color: Color):
         self.active_color = color
 
-    @Slot(int, bool)
-    def update_highlight(self, color: Color, is_highlight: bool):
-        self.highlight_color[color] = is_highlight
-        if is_highlight:
-            self.render_plot(priority_color=color)
+    @Slot(int)
+    def update_highlight(self, color: Color):
+        if color in self.highlight_colors:
+            self.highlight_colors.remove(color)
         else:
-            self.render_plot()
+            self.highlight_colors += [color]
 
-    def draw_color(self, color: Color, index: pd.Index, painter: QPainter) -> None:
+        self.render_plot()
+
+    def draw_color(self, color: Color, painter: QPainter) -> None:
         pen = QPen()
         pen.setColor(COLOR_RGB_MAP[color])
-        pen.setWidth(2 if self.highlight_color[color] else 1)
+        pen.setWidth(2 if color in self.highlight_colors else 1)
         painter.setPen(pen)
 
-        df = self.working_df.loc[self.working_df.index.intersection(index)]
-        painter.drawPointsNp(df[self.x_label].to_numpy(), df[self.y_label].to_numpy())
+        index = self.color_indices.get(color, pd.Index([]))
+        painter.drawPointsNp(
+            self.x_data.loc[index].to_numpy(),
+            self.y_data.loc[index].to_numpy(),
+        )
 
     def render_plot(
         self,
-        priority_color: Color = None,
     ):
-        if self.x_label is None or self.y_label is None:
+        if self.color_indices is None:
             return
 
         canvas = self.pixmap()
@@ -213,28 +215,14 @@ class DotPlot(QLabel):
         painter.translate(0, 255)
         painter.scale(1, -1)
 
-        color_indices = indices_by_color(self.working_df)
+        non_highlight_colors = [
+            color
+            for color in self.color_indices.keys()
+            if color not in self.highlight_colors
+        ]
 
-        non_highlight_colors = {
-            color: indices
-            for color, indices in color_indices.items()
-            if not self.highlight_color.get(color)
-        }
-        highlight_colors = {
-            color: indices
-            for color, indices in color_indices.items()
-            if self.highlight_color.get(color) and (color != priority_color)
-        }
-
-        for color, index in (non_highlight_colors | highlight_colors).items():
-            self.draw_color(color, index, painter)
-
-        if priority_color:
-            self.draw_color(
-                priority_color,
-                color_indices.get(priority_color, pd.Index([])),
-                painter,
-            )
+        for color in non_highlight_colors + self.highlight_colors:
+            self.draw_color(color, painter)
 
         painter.end()
         self.setPixmap(canvas)
@@ -242,7 +230,7 @@ class DotPlot(QLabel):
 
 
 class XAxis(QLabel):
-    label_changed = Signal(str)
+    labelChanged = Signal()
 
     def __init__(self, label: str, channels: list[str]):
         super().__init__()
@@ -327,11 +315,11 @@ class XAxis(QLabel):
         if action and (action != self.label):
             self.label = action.text()
             self.draw_axis()
-            self.label_changed.emit(self.label)
+            self.labelChanged.emit()
 
 
 class YAxis(QLabel):
-    label_changed = Signal(str)
+    labelChanged = Signal()
 
     def __init__(self, label: str, channels: list[str]):
         super().__init__()
@@ -415,4 +403,4 @@ class YAxis(QLabel):
         if action and (action != self.label):
             self.label = action.text()
             self.draw_axis()
-            self.label_changed.emit(self.label)
+            self.labelChanged.emit()

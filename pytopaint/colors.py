@@ -220,10 +220,8 @@ def merge_colors(
     return df.assign(color=df.color.replace(source_colors, target_color))
 
 
-def indices_by_color(df: pd.DataFrame) -> dict[Color, pd.Index]:
-    return {
-        color: pd.Index(index) for color, index in df.groupby('color').groups.items()
-    }
+def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:
+    return {color: pd.Index(index) for color, index in s.groupby(s).groups.items()}
 
 
 def events_by_colors(df: pd.DataFrame) -> tuple[dict[Color, int], int]:
