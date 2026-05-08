@@ -215,9 +215,19 @@ class DotPlot(QLabel):
 
         color_indices = indices_by_color(self.working_df)
 
-        for color, index in color_indices.items():
+        non_highlight_colors = {
+            color: indices
+            for color, indices in color_indices.items()
+            if not self.highlight_color.get(color)
+        }
+        highlight_colors = {
+            color: indices
+            for color, indices in color_indices.items()
+            if self.highlight_color.get(color) and (color != priority_color)
+        }
+
+        for color, index in (non_highlight_colors | highlight_colors).items():
             self.draw_color(color, index, painter)
-        # TODO: draw highlighted colors last
 
         if priority_color:
             self.draw_color(
