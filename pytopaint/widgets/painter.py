@@ -17,8 +17,6 @@ from pytopaint.colors import (
     add_color_to_selection,
     subtract_color_from_selection,
     merge_colors,
-    indices_by_color,
-    events_by_colors,
 )
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
@@ -27,10 +25,8 @@ from pytopaint.layout import get_best_layout, import_layouts
 
 
 class Painter(QWidget):
-    selection_updated = Signal(object)
-    data_updated = Signal(object)
-    percent_selected = Signal(object, int)
     activeColorChanged = Signal(int)
+    dataUpdated = Signal(object)
 
     def __init__(self, df: pd.DataFrame):
         super().__init__()
@@ -39,7 +35,7 @@ class Painter(QWidget):
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
-        self.percent_selected.connect(color_bar.selectionChanged)
+        self.dataUpdated.connect(color_bar.update_labels)
 
         biplot_container = QWidget()
         biplot_layout = QGridLayout()
@@ -56,8 +52,7 @@ class Painter(QWidget):
             biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
             biplot.pointsSelected.connect(self.handle_selection)
             color_bar.highlight_color.connect(biplot.plot.update_highlight)
-            self.data_updated.connect(biplot.set_data)
-            self.selection_updated.connect(biplot.plot.render_plot)
+            self.dataUpdated.connect(biplot.set_data)
             self.activeColorChanged.connect(biplot.plot.set_active_color)
             biplot_layout.addWidget(biplot, row, col)
 
@@ -208,7 +203,7 @@ class Painter(QWidget):
         self.emit_changes()
 
     def record_current_state(self):
-        if self.undo_history and self.df.color.equals(self.undo_history[-1]):
+        if self.df.color.equals(self.undo_history[-1]):
             return
 
         self.undo_history += [self.df.color.copy()]
@@ -248,11 +243,7 @@ class Painter(QWidget):
         self.emit_changes()
 
     def emit_changes(self):
-        self.data_updated.emit(self.df)
-        self.selection_updated.emit(indices_by_color(self.df))
-        self.percent_selected.emit(
-            *events_by_colors(self.df)
-        )  # combine with data updated
+        self.dataUpdated.emit(self.df)
 
     def load_data(self, df: pd.DataFrame):
         self.original_df = df

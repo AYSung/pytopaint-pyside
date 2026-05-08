@@ -20,9 +20,68 @@ from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 import pandas as pd
 
 from pytopaint.io import LINEAR_PARAMETERS, sort_channels
-from pytopaint.colors import Color, COLOR_RGB_MAP, BACKGROUND
+from pytopaint.colors import Color, COLOR_RGB_MAP, BACKGROUND, indices_by_color
 
 RESOLUTION = 256
+
+
+class Biplot(QWidget):
+    pointsSelected = Signal(object, str, str, QMouseEvent)
+
+    def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
+        super().__init__()
+        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+
+        channels = sort_channels([col for col in df.columns if col not in ['color']])
+        x_label = x_label if x_label in channels else None
+        y_label = y_label if y_label in channels else None
+
+        self.plot = DotPlot(df, x_label, y_label)
+        self.plot.pointsSelected.connect(self.pointsSelected)
+        self.x_axis = XAxis(x_label, channels)
+        self.x_axis.label_changed.connect(self.plot.update_x_label)
+        self.x_axis.label_changed.connect(self.update_title)
+        self.y_axis = YAxis(y_label, channels)
+        self.y_axis.label_changed.connect(self.plot.update_y_label)
+        self.y_axis.label_changed.connect(self.update_title)
+
+        self.title_label = QLabel()
+        self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
+        self.update_title()
+
+        layout = QGridLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(5, 0, 5, 0)
+        layout.addWidget(
+            self.title_label,
+            0,
+            1,
+            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom,
+        )
+        layout.addWidget(self.y_axis, 1, 0, Qt.AlignmentFlag.AlignRight)
+        layout.addWidget(self.plot, 1, 1)
+        layout.addWidget(self.x_axis, 2, 1, Qt.AlignmentFlag.AlignTop)
+
+        self.setLayout(layout)
+
+    @Slot(object)
+    def set_data(self, df: pd.DataFrame):
+        self.plot.update_data(df)
+
+    @Slot(str)
+    def update_title(self, _: str = None):
+        if self.x_axis.label is None or self.y_axis.label is None:
+            title = ''
+        else:
+            title = f'{self.y_axis.label} vs {self.x_axis.label}'
+
+        self.title_label.setText(title)
+
+    def paintEvent(self, pe):
+        o = QStyleOption()
+        o.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PE_Widget, o, p, self)
 
 
 class DotPlot(QLabel):
@@ -41,7 +100,6 @@ class DotPlot(QLabel):
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
-        self.selections = {}
         self.highlight_color = {c.value: False for c in Color}
 
         self.update_working_data()
@@ -98,9 +156,6 @@ class DotPlot(QLabel):
             [self.x_label, self.y_label, 'color']
         ].drop_duplicates()
 
-        if not self.selections:
-            self.selections = {Color.GREY: self.working_df.index}
-
         self.render_plot()
 
     @Slot(object)
@@ -110,11 +165,17 @@ class DotPlot(QLabel):
 
     @Slot(str)
     def update_x_label(self, new_label: str):
+        if self.x_label == new_label:
+            return
+
         self.x_label = new_label
         self.update_working_data()
 
     @Slot(str)
     def update_y_label(self, new_label: str):
+        if self.y_label == new_label:
+            return
+
         self.y_label = new_label
         self.update_working_data()
 
@@ -139,9 +200,9 @@ class DotPlot(QLabel):
         df = self.working_df.loc[self.working_df.index.intersection(index)]
         painter.drawPointsNp(df[self.x_label].to_numpy(), df[self.y_label].to_numpy())
 
-    @Slot(object)
     def render_plot(
-        self, selections: dict[Color, pd.Index] = None, priority_color: Color = None
+        self,
+        priority_color: Color = None,
     ):
         if self.x_label is None or self.y_label is None:
             return
@@ -152,17 +213,16 @@ class DotPlot(QLabel):
         painter.translate(0, 255)
         painter.scale(1, -1)
 
-        if selections is not None:
-            self.selections = selections
+        color_indices = indices_by_color(self.working_df)
 
-        for color, index in self.selections.items():
+        for color, index in color_indices.items():
             self.draw_color(color, index, painter)
         # TODO: draw highlighted colors last
 
         if priority_color:
             self.draw_color(
                 priority_color,
-                self.selections.get(priority_color, pd.Index([])),
+                color_indices.get(priority_color, pd.Index([])),
                 painter,
             )
 
@@ -346,66 +406,3 @@ class YAxis(QLabel):
             self.label = action.text()
             self.draw_axis()
             self.label_changed.emit(self.label)
-
-
-class Biplot(QWidget):
-    pointsSelected = Signal(object, str, str, QMouseEvent)
-
-    def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
-        super().__init__()
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-        channels = sort_channels([col for col in df.columns if col not in ['color']])
-        x_label = x_label if x_label in channels else None
-        y_label = y_label if y_label in channels else None
-
-        self.plot = DotPlot(df, x_label, y_label)
-        self.plot.pointsSelected.connect(self.pointsSelected)
-        self.x_axis = XAxis(x_label, channels)
-        self.x_axis.label_changed.connect(self.plot.update_x_label)
-        self.x_axis.label_changed.connect(self.update_title)
-        self.y_axis = YAxis(y_label, channels)
-        self.y_axis.label_changed.connect(self.plot.update_y_label)
-        self.y_axis.label_changed.connect(self.update_title)
-
-        self.title_label = QLabel()
-        self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
-        self.update_title()
-
-        layout = QGridLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(5, 0, 5, 0)
-        layout.addWidget(
-            self.title_label,
-            0,
-            1,
-            Qt.AlignmentFlag.AlignCenter | Qt.AlignmentFlag.AlignBottom,
-        )
-        layout.addWidget(self.y_axis, 1, 0, Qt.AlignmentFlag.AlignRight)
-        layout.addWidget(self.plot, 1, 1)
-        layout.addWidget(self.x_axis, 2, 1, Qt.AlignmentFlag.AlignTop)
-
-        self.setLayout(layout)
-
-    @Slot(object)
-    def set_data(self, df: pd.DataFrame):
-        self.plot.update_data(df)
-
-        channels = sort_channels([col for col in df.columns if col not in ['color']])
-        self.x_axis.channels = channels
-        self.y_axis.channels = channels
-
-    @Slot(str)
-    def update_title(self, _: str = None):
-        if self.x_axis.label is None or self.y_axis.label is None:
-            title = ''
-        else:
-            title = f'{self.y_axis.label} vs {self.x_axis.label}'
-
-        self.title_label.setText(title)
-
-    def paintEvent(self, pe):
-        o = QStyleOption()
-        o.initFrom(self)
-        p = QPainter(self)
-        self.style().drawPrimitive(QStyle.PE_Widget, o, p, self)
