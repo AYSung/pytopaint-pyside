@@ -3,8 +3,10 @@ from PySide6.QtWidgets import (
     QLabel,
     QWidget,
     QMenu,
+    QStyle,
+    QStyleOption,
 )
-from PySide6.QtGui import QMouseEvent, QAction, QPixmap, QIcon
+from PySide6.QtGui import QMouseEvent, QAction, QPixmap, QIcon, QPainter
 from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
@@ -51,6 +53,12 @@ class ColorBar(QWidget):
         events, total_events = events_by_colors(df)
         self.eventsUpdated.emit(events, total_events)
         self.total_events_label.setText(f'Total Events: {total_events:,}')
+
+    def paintEvent(self, pe):
+        o = QStyleOption()
+        o.initFrom(self)
+        p = QPainter(self)
+        self.style().drawPrimitive(QStyle.PE_Widget, o, p, self)
 
 
 class ColorLabel(QWidget):
