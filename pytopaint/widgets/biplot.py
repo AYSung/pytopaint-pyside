@@ -219,6 +219,10 @@ class XAxis(QLabel):
                     label_text,
                     Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
                 )
+        elif self.label == 'Time':
+            x_ticks = [0, 63, 127, 191, 255]
+            for x_tick in x_ticks:
+                painter.drawLine(QPoint(x_tick, tick_y0), QPoint(x_tick, tick_y1))
         else:
             x_ticks = [10, 28, 46, 102, 167, 233]
             for x_tick in x_ticks:
@@ -298,6 +302,11 @@ class YAxis(QLabel):
                     label_text,
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
                 )
+        elif self.label == 'Time':
+            y_ticks = [0, 63, 127, 191, 255]
+            for y_tick in y_ticks:
+                painter.drawLine(QPoint(tick_x0, y_tick), QPoint(tick_x1, y_tick))
+
         else:
             y_ticks = [22, 88, 153, 209, 227, 245]
             for y_tick in y_ticks:
