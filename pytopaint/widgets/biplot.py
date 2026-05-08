@@ -69,9 +69,6 @@ class Biplot(QWidget):
 
     @Slot(object)
     def set_data(self, df: pd.DataFrame):
-        if self.df.equals(df):
-            return
-
         self.df = df
         self.update_plot_data()
 
@@ -122,7 +119,7 @@ class DotPlot(QLabel):
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
-        self.highlight_colors = []
+        self.highlighted_colors = []
         self.color_indices = None
 
     def mouseMoveEvent(self, e: QMouseEvent):
@@ -178,23 +175,19 @@ class DotPlot(QLabel):
 
         self.render_plot()
 
+    @Slot(list)
+    def update_highlighted_colors(self, highlighted_colors: list[Color]):
+        self.highlighted_colors = highlighted_colors
+        self.render_plot()
+
     @Slot(int)
     def set_active_color(self, color: Color):
         self.active_color = color
 
-    @Slot(int)
-    def update_highlight(self, color: Color):
-        if color in self.highlight_colors:
-            self.highlight_colors.remove(color)
-        else:
-            self.highlight_colors += [color]
-
-        self.render_plot()
-
     def draw_color(self, color: Color, painter: QPainter) -> None:
         pen = QPen()
         pen.setColor(COLOR_RGB_MAP[color])
-        pen.setWidth(2 if color in self.highlight_colors else 1)
+        pen.setWidth(2 if color in self.highlighted_colors else 1)
         painter.setPen(pen)
 
         index = self.color_indices.get(color, pd.Index([]))
@@ -218,10 +211,10 @@ class DotPlot(QLabel):
         non_highlight_colors = [
             color
             for color in self.color_indices.keys()
-            if color not in self.highlight_colors
+            if color not in self.highlighted_colors
         ]
 
-        for color in non_highlight_colors + self.highlight_colors:
+        for color in non_highlight_colors + self.highlighted_colors:
             self.draw_color(color, painter)
 
         painter.end()

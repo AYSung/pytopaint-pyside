@@ -9,15 +9,52 @@ from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
 
-# import polars as pl
 from pytopaint.colors import Color, COLOR_RGB_MAP, COLOR_NAME_MAP, events_by_colors
 from pytopaint.actions import MenuAction
 
 RESOLUTION = 256
 
 
+class ColorBar(QWidget):
+    colorClicked = Signal(int)
+    activeColorChanged = Signal(int)
+    menuActionTriggered = Signal(int, dict)
+    eventsUpdated = Signal(object, int)
+    highlightsUpdated = Signal(list)
+
+    def __init__(self):
+        super().__init__()
+
+        layout = QHBoxLayout()
+        layout.setSpacing(0)
+        layout.setContentsMargins(20, 0, 0, 0)
+
+        self.total_events_label = QLabel()
+        self.total_events_label.setFixedWidth(150)
+        layout.addWidget(self.total_events_label)
+
+        self.color_labels = [ColorLabel(c) for c in COLOR_RGB_MAP.keys()]
+        for color_label in self.color_labels:
+            layout.addWidget(color_label)
+            color_label.menuActionTriggered.connect(self.menuActionTriggered)
+            color_label.clicked.connect(self.colorClicked)
+            self.highlightsUpdated.connect(color_label.update_highlight)
+            self.activeColorChanged.connect(color_label.update_active_color)
+            self.eventsUpdated.connect(color_label.update_label)
+
+        layout.addStretch()
+
+        self.setLayout(layout)
+
+    @Slot(object)
+    def update_labels(self, df: pd.DataFrame):
+        events, total_events = events_by_colors(df)
+        self.eventsUpdated.emit(events, total_events)
+        self.total_events_label.setText(f'Total Events: {total_events:,}')
+
+
 class ColorLabel(QWidget):
-    highlight_color = Signal(int)
+    clicked = Signal(int)
     menuActionTriggered = Signal(int, dict)
 
     def __init__(self, color: Color, parent=None):
@@ -56,7 +93,7 @@ class ColorLabel(QWidget):
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
-            self.emit_highlight()
+            self.clicked.emit(self.color)
         elif (self.events > 0) and e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(
@@ -67,9 +104,9 @@ class ColorLabel(QWidget):
             #         MenuAction.EXACT_ZAP, dict(color=self.color)
             #     )
 
-    def emit_highlight(self):
-        self.highlight = not self.highlight
-        self.highlight_color.emit(self.color)
+    @Slot(list)
+    def update_highlight(self, highlighted_colors: list[Color]):
+        self.highlight = self.color in highlighted_colors
         if self.highlight:
             self.box.setFixedSize(16, 16)
         else:
@@ -111,7 +148,7 @@ class ColorLabel(QWidget):
         self.toggle_highlight = QAction('Highlight')
         self.toggle_highlight.setCheckable(True)
         self.toggle_highlight.setChecked(self.highlight)
-        self.toggle_highlight.triggered.connect(self.emit_highlight)
+        self.toggle_highlight.triggered.connect(lambda: self.clicked.emit(self.color))
         menu.addAction(self.toggle_highlight)
 
         if self.color != Color.GREY:
@@ -163,39 +200,3 @@ class ColorLabel(QWidget):
         menu.addAction(isolate)
 
         menu.exec(self.mapToGlobal(pos))
-
-
-class ColorBar(QWidget):
-    highlight_color = Signal(int)
-    activeColorChanged = Signal(int)
-    menuActionTriggered = Signal(int, dict)
-    eventsUpdated = Signal(object, int)
-
-    def __init__(self):
-        super().__init__()
-
-        layout = QHBoxLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(20, 0, 0, 0)
-
-        self.total_events_label = QLabel()
-        self.total_events_label.setFixedWidth(150)
-        layout.addWidget(self.total_events_label)
-
-        self.color_labels = [ColorLabel(c) for c in COLOR_RGB_MAP.keys()]
-        for color_label in self.color_labels:
-            layout.addWidget(color_label)
-            color_label.menuActionTriggered.connect(self.menuActionTriggered)
-            color_label.highlight_color.connect(self.highlight_color)
-            self.activeColorChanged.connect(color_label.update_active_color)
-            self.eventsUpdated.connect(color_label.update_label)
-
-        layout.addStretch()
-
-        self.setLayout(layout)
-
-    @Slot(object)
-    def update_labels(self, df: pd.DataFrame):
-        events, total_events = events_by_colors(df)
-        self.eventsUpdated.emit(events, total_events)
-        self.total_events_label.setText(f'Total Events: {total_events:,}')

@@ -27,15 +27,20 @@ from pytopaint.layout import get_best_layout, import_layouts
 class Painter(QWidget):
     activeColorChanged = Signal(int)
     dataUpdated = Signal(object)
+    highlightsUpdated = Signal(list)
 
     def __init__(self, df: pd.DataFrame):
         super().__init__()
         self.load_data(df)
 
+        self.highlighted_colors = []
+
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
+        color_bar.colorClicked.connect(self.handle_highlights)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.dataUpdated.connect(color_bar.update_labels)
+        self.highlightsUpdated.connect(color_bar.highlightsUpdated)
 
         biplot_container = QWidget()
         biplot_layout = QGridLayout()
@@ -51,7 +56,7 @@ class Painter(QWidget):
 
             biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
             biplot.pointsSelected.connect(self.handle_selection)
-            color_bar.highlight_color.connect(biplot.plot.update_highlight)
+            self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
             self.dataUpdated.connect(biplot.set_data)
             self.activeColorChanged.connect(biplot.plot.set_active_color)
             biplot_layout.addWidget(biplot, row, col)
@@ -250,3 +255,12 @@ class Painter(QWidget):
         self.df = df
         self.undo_history = [self.df.color.copy()]
         self.redo_history = []
+
+    @Slot(int)
+    def handle_highlights(self, color: Color):
+        if color not in self.highlighted_colors:
+            self.highlighted_colors += [color]
+        else:
+            self.highlighted_colors.remove(color)
+
+        self.highlightsUpdated.emit(self.highlighted_colors)
