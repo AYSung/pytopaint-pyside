@@ -29,7 +29,7 @@ class FlowData:
         }
         self.n_bins = 256
 
-        self.binned_df = bin_df(xform_df, self.n_bins, self.clip_limits)
+        self.binned_df = bin_df(xform_df, self.n_bins, self.clip_limits).astype('uint8')
         self.axis_ticks = {
             channel: get_axis_ticks(
                 channel, n_bins=self.n_bins, clip_limits=self.clip_limits

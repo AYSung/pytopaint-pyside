@@ -198,8 +198,8 @@ class DotPlot(QLabel):
 
         index = self.color_indices.get(color, pd.Index([]))
         painter.drawPointsNp(
-            self.x_data.loc[index].to_numpy(),
-            self.y_data.loc[index].to_numpy(),
+            self.x_data.loc[index].to_numpy(dtype='uint16'),
+            self.y_data.loc[index].to_numpy(dtype='uint16'),
         )
 
     def render_plot(
