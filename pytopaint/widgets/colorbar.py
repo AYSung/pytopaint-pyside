@@ -160,6 +160,8 @@ class ColorLabel(QWidget):
         menu.addAction(self.toggle_highlight)
 
         if self.color != Color.GREY:
+            menu.addSeparator()
+
             zap = QAction('Zap', enabled=self.events > 0)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
@@ -176,7 +178,6 @@ class ColorLabel(QWidget):
             )
             menu.addAction(exact_zap)
 
-            menu.addSeparator()
             merge_menu = QMenu('Merge with...')
             merge_menu.setEnabled(self.events > 0)
 
