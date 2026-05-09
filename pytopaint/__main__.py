@@ -170,3 +170,4 @@ window = MainWindow()
 window.show()
 
 app.exec()
+app.clipboard().clear()
