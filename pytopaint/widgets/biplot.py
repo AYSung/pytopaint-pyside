@@ -28,7 +28,13 @@ RESOLUTION = 256
 class Biplot(QWidget):
     pointsSelected = Signal(object, str, str, QMouseEvent)
 
-    def __init__(self, df: pd.DataFrame, x_label: str, y_label: str):
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        x_label: str,
+        y_label: str,
+        axis_ticks: dict[str, tuple[int, str]],
+    ):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
 
@@ -37,10 +43,10 @@ class Biplot(QWidget):
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.x_axis = XAxis(x_label, channels)
+        self.x_axis = XAxis(x_label, channels, axis_ticks)
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.update_title)
-        self.y_axis = YAxis(y_label, channels)
+        self.y_axis = YAxis(y_label, channels, axis_ticks)
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
 
@@ -225,10 +231,13 @@ class DotPlot(QLabel):
 class XAxis(QLabel):
     labelChanged = Signal()
 
-    def __init__(self, label: str, channels: list[str]):
+    def __init__(
+        self, label: str, channels: list[str], axis_ticks: dict[str, tuple[int, str]]
+    ):
         super().__init__()
         self.label = label
         self.channels = channels
+        self.axis_ticks = axis_ticks
 
         canvas = QPixmap(RESOLUTION, 45)
         canvas.fill('#00000000')
@@ -250,43 +259,29 @@ class XAxis(QLabel):
         label_y = 11
         tick_y0 = 4
         tick_y1 = tick_y0 + 4
+        X_MAX = 255
 
-        painter.drawLine(QPoint(0, tick_y0), QPoint(RESOLUTION - 1, tick_y0))
+        painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
-        if self.label in LINEAR_PARAMETERS:
-            x_ticks = [0, 50, 100, 150, 200, 250]
-            for x_tick in x_ticks:
-                painter.drawLine(QPoint(x_tick, tick_y0), QPoint(x_tick, tick_y1))
-
-            painter.drawText(
-                QRect(0, label_y, 40, 20),
-                '0',
-                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
-            )
-            x_labels = [(100, '1e6'), (200, '2e6')]
-            for label_x, label_text in x_labels:
-                painter.drawText(
-                    QRect(label_x - 20, label_y, 40, 20),
-                    label_text,
-                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-                )
-        elif self.label == 'Time':
-            x_ticks = [0, 63, 127, 191, 255]
-            for x_tick in x_ticks:
-                painter.drawLine(QPoint(x_tick, tick_y0), QPoint(x_tick, tick_y1))
-        else:
-            x_ticks = [10, 28, 46, 102, 167, 233]
-            for x_tick in x_ticks:
-                painter.drawLine(QPoint(x_tick, tick_y0), QPoint(x_tick, tick_y1))
-
-            x_labels = [(28, '0'), (102, '1e3'), (167, '1e4'), (233, '1e5')]
-            for label_x, label_text in x_labels:
-                painter.drawText(
-                    QRect(label_x - 20, label_y, 40, 20),
-                    label_text,
-                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
-                )
         if self.label is not None:
+            axis_ticks = self.axis_ticks[self.label]
+
+            for tick, _ in axis_ticks:
+                painter.drawLine(QPoint(tick, tick_y0), QPoint(tick, tick_y1))
+
+            axis_labels = (
+                [(4, '0')] + axis_ticks[1:]
+                if self.label in LINEAR_PARAMETERS
+                else axis_ticks
+            )
+
+            for tick, label in filter(lambda x: x is not None, axis_labels):
+                painter.drawText(
+                    QRect(tick - 20, label_y, 40, 20),
+                    label,
+                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignTop,
+                )
+
             font = QFont()
             font.setBold(True)
             painter.setFont(font)
@@ -295,6 +290,7 @@ class XAxis(QLabel):
                 self.label,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
             )
+
         painter.end()
         self.setPixmap(canvas)
         self.update()
@@ -314,10 +310,13 @@ class XAxis(QLabel):
 class YAxis(QLabel):
     labelChanged = Signal()
 
-    def __init__(self, label: str, channels: list[str]):
+    def __init__(
+        self, label: str, channels: list[str], axis_ticks: dict[str, tuple[int, str]]
+    ):
         super().__init__()
         self.label = label
         self.channels = channels
+        self.axis_ticks = axis_ticks
 
         canvas = QPixmap(45, RESOLUTION)
         canvas.fill('#00000000')
@@ -339,39 +338,32 @@ class YAxis(QLabel):
         label_x = -7
         tick_x0 = 36
         tick_x1 = tick_x0 + 4
+        Y_MAX = 255
 
-        painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, RESOLUTION - 1))
-        if self.label in LINEAR_PARAMETERS:
-            y_ticks = [255, 205, 155, 105, 55, 5]
-            for y_tick in y_ticks:
-                painter.drawLine(QPoint(tick_x0, y_tick), QPoint(tick_x1, y_tick))
-
-            y_labels = [(250, '0'), (155, '1e6'), (55, '2e6')]
-            for label_y, label_text in y_labels:
-                painter.drawText(
-                    QRect(label_x, label_y - 12, 40, 20),
-                    label_text,
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
-                )
-        elif self.label == 'Time':
-            y_ticks = [0, 63, 127, 191, 255]
-            for y_tick in y_ticks:
-                painter.drawLine(QPoint(tick_x0, y_tick), QPoint(tick_x1, y_tick))
-
-        else:
-            y_ticks = [22, 88, 153, 209, 227, 245]
-            for y_tick in y_ticks:
-                painter.drawLine(QPoint(tick_x0, y_tick), QPoint(tick_x1, y_tick))
-
-            y_labels = [(227, '0'), (153, '1e3'), (88, '1e4'), (22, '1e5')]
-            for label_y, label_text in y_labels:
-                painter.drawText(
-                    QRect(label_x, label_y - 12, 40, 20),
-                    label_text,
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
-                )
+        painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, Y_MAX))
 
         if self.label is not None:
+            axis_ticks = self.axis_ticks[self.label]
+
+            for tick, _ in axis_ticks:
+                painter.drawLine(
+                    QPoint(tick_x0, Y_MAX - tick),
+                    QPoint(tick_x1, Y_MAX - tick),
+                )
+
+            axis_labels = (
+                [(4, '0')] + axis_ticks[1:]
+                if self.label in LINEAR_PARAMETERS
+                else axis_ticks
+            )
+
+            for tick, label in filter(lambda x: x is not None, axis_labels):
+                painter.drawText(
+                    QRect(label_x, Y_MAX - tick - 12, 40, 20),
+                    label,
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
+                )
+
             painter.translate(0, RESOLUTION)
             painter.rotate(-90)
             font = QFont()
@@ -383,7 +375,6 @@ class YAxis(QLabel):
                 Qt.AlignmentFlag.AlignLeft,
             )
         painter.end()
-
         self.setPixmap(canvas)
         self.update()
 

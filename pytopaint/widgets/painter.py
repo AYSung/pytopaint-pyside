@@ -22,6 +22,7 @@ from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
 from pytopaint.actions import MenuAction
 from pytopaint.layout import get_best_layout, import_layouts
+from pytopaint.io import FlowData
 
 
 class Painter(QWidget):
@@ -29,9 +30,10 @@ class Painter(QWidget):
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
 
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, data: FlowData):
         super().__init__()
-        self.load_data(df)
+        self.data = data
+        self.load_data(self.data.binned_df.assign(color=Color.GREY))
 
         self.highlighted_colors = []
 
@@ -54,7 +56,12 @@ class Painter(QWidget):
             x_label, y_label = label
             row, col = coords
 
-            biplot = Biplot(self.df, x_label=x_label, y_label=y_label)
+            biplot = Biplot(
+                self.df,
+                x_label=x_label,
+                y_label=y_label,
+                axis_ticks=self.data.axis_ticks,
+            )
             biplot.pointsSelected.connect(self.handle_selection)
             self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
             self.dataUpdated.connect(biplot.set_data)

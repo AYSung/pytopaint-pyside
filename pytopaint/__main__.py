@@ -22,7 +22,7 @@ from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
 
-from pytopaint.io import bin_df, read_fcs
+from pytopaint.io import FlowData
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
@@ -68,11 +68,12 @@ class MainWindow(QMainWindow):
     def open_file(self, file: Path):
         try:
             file_path = Path(file)
-            df = bin_df(read_fcs(file), n_bins=self.resolution).assign(color=Color.GREY)
+            flowdata = FlowData.from_path(file_path)
 
-            painter = Painter(df)
+            painter = Painter(flowdata)
 
             self.painter_tabs.addTab(painter, file_path.name)
+            self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e
 
