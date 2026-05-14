@@ -191,8 +191,23 @@ class Biplot(QWidget):
         clipboard = QApplication.clipboard()
         clipboard.setPixmap(canvas)
 
+    def transpose_axes(self):
+        x_label = self.x_axis.label
+        y_label = self.y_axis.label
+        self.x_axis.label = y_label
+        self.y_axis.label = x_label
+        self.update_plot_data()
+        self.update_title()
+
     def title_context_menu(self, pos):
         menu = QMenu()
+        transpose = QAction(
+            'Transpose Axes',
+            enabled=self.x_axis.label is not None and self.y_axis.label is not None,
+        )
+        transpose.triggered.connect(self.transpose_axes)
+        menu.addAction(transpose)
+        menu.addSeparator()
         copy = QAction(
             'Copy to Clipboard',
             enabled=self.x_axis.label is not None and self.y_axis.label is not None,
@@ -419,9 +434,12 @@ class XAxis(QLabel):
 
         action = menu.exec(self.mapToGlobal(pos))
         if action and (action != self.label):
-            self.label = action.text()
-            self.draw_axis()
-            self.labelChanged.emit()
+            self.update_axis_label(action.text())
+
+    def update_axis_label(self, label: str):
+        self.label = label
+        self.draw_axis
+        self.labelChanged.emit()
 
 
 class YAxis(QLabel):
@@ -502,6 +520,9 @@ class YAxis(QLabel):
 
         action = menu.exec(self.mapToGlobal(pos))
         if action and (action != self.label):
-            self.label = action.text()
-            self.draw_axis()
-            self.labelChanged.emit()
+            self.update_axis_label(action.text())
+
+    def update_axis_label(self, label: str):
+        self.label = label
+        self.draw_axis
+        self.labelChanged.emit()
