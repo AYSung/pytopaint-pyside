@@ -22,7 +22,7 @@ from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
 
-from pytopaint.io import FlowData
+from pytopaint.flowdata import FlowData
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
@@ -164,10 +164,15 @@ class MainWindow(QMainWindow):
         file_menu.addAction(open_file_action)
 
 
-app = QApplication(sys.argv)
-QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
-window = MainWindow()
-window.show()
+def main():
+    app = QApplication(sys.argv)
+    QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
+    window = MainWindow()
+    window.show()
 
-app.exec()
-app.clipboard().clear()
+    app.exec()
+    app.clipboard().clear()
+
+
+if __name__ == '__main__':
+    main()

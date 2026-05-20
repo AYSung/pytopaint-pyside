@@ -22,7 +22,7 @@ from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
 from pytopaint.actions import MenuAction
 from pytopaint.layout import get_best_layout, import_layouts
-from pytopaint.io import FlowData
+from pytopaint.flowdata import FlowData
 
 
 class Painter(QWidget):

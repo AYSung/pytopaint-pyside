@@ -11,3 +11,6 @@ wheels/
 
 *.ipynb
 todo.md
+
+*.dist
+*.build

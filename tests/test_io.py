@@ -4,7 +4,7 @@ import yaml
 import pandas as pd
 
 
-from pytopaint.io import (
+from pytopaint.flowdata import (
     bin_df,
     sort_channels,
     _clean_marker_name,

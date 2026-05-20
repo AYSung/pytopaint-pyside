@@ -14,7 +14,7 @@ from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 # import polars as pl
 import pandas as pd
 
-from pytopaint.io import LINEAR_PARAMETERS, sort_channels
+from pytopaint.flowdata import LINEAR_PARAMETERS, sort_channels
 from pytopaint.colors import Color, COLOR_RGB_MAP, BACKGROUND, indices_by_color
 
 RESOLUTION = 256
