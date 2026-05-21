@@ -40,6 +40,7 @@ class MainWindow(QMainWindow):
 
         self.painter_tabs = QTabWidget()
         self.painter_tabs.setTabsClosable(True)
+        self.painter_tabs.setTabBarAutoHide(True)
         self.painter_tabs.tabCloseRequested.connect(self.handle_tab_close)
 
         self.configure_menu_bar()
