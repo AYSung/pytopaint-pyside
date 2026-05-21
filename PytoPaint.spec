@@ -3,14 +3,14 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('./pytopaint/resources', './pytopaint/resources')]
 binaries = []
-hiddenimports = ['flowkit']
+hiddenimports = []
 tmp_ret = collect_all('flowkit')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
 
 
 a = Analysis(
     ['pytopaint/main.py'],
-    pathex=['./pytopaint'],
+    pathex=[],
     binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
