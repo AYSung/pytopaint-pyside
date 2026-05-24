@@ -32,7 +32,7 @@ from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
 
-from pytopaint.flowdata import FlowData
+from pytopaint.flowdata import FlowData, sort_channels
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
@@ -135,7 +135,7 @@ class MainWindow(QMainWindow):
             f'{marker} ({fluor})' if marker else fluor
             for fluor, marker in sample.channels[['pnn', 'pns']].to_records(index=False)
         ]
-        channels_label = QLabel(f'Channels: \n{"\n".join(channels)}')
+        channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
 
         button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
         button_box.accepted.connect(dialog.accept)
