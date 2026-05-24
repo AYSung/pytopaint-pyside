@@ -1,6 +1,9 @@
 import sys
 from pathlib import Path
 
+from io import BytesIO
+import flowio
+
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
@@ -77,6 +80,38 @@ class MainWindow(QMainWindow):
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e
+
+    @Slot()
+    def export_fcs(self) -> None:
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save File',
+            dir='.',
+            filter='FCS (*.fcs)',
+        )
+        if not file_path:
+            return
+
+        painter: Painter = self.painter_tabs.widget(self.painter_tabs.currentIndex())
+        sample = painter.data.sample
+        metadata = sample._get_metadata_for_export(source='raw', include_all=False) | {
+            k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
+        }
+        index = painter.df.index
+        df = sample.as_dataframe(source='raw').loc[index]
+
+        stream = BytesIO()
+        flowio.create_fcs(
+            stream,
+            df.to_numpy().flatten().tolist(),
+            sample.pnn_labels,
+            opt_channel_names=sample.pns_labels,
+            metadata_dict=metadata,
+        )
+        stream.seek(0)
+
+        with open(file_path, 'wb') as f:
+            f.write(stream.getbuffer())
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
@@ -159,10 +194,17 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
-        open_file_action = QAction('&Open FCS file', self)
+        open_file_action = QAction('&Open FCS File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
         open_file_action.triggered.connect(self.open_files)
         file_menu.addAction(open_file_action)
+
+        export_fcs_action = QAction('&Export FCS File', self, enabled=False)
+        export_fcs_action.triggered.connect(self.export_fcs)
+        self.painter_tabs.currentChanged.connect(
+            lambda: export_fcs_action.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(export_fcs_action)
 
 
 def main():
