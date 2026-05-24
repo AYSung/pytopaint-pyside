@@ -174,6 +174,7 @@ class Painter(QWidget):
             MenuAction.UNDO: self.undo_action,
             MenuAction.REDO: self.redo_action,
             MenuAction.RESET: self.reset_df,
+            MenuAction.SUBSAMPLE: self.subsample_df,
         }
 
         if action == MenuAction.SET_ACTIVE:
@@ -207,6 +208,9 @@ class Painter(QWidget):
 
     def isolate_color(self, color: Color):
         self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
+
+    def subsample_df(self, n: int):
+        self.df = self.df.sample(n)
 
     @Slot()
     def reset_df(self):

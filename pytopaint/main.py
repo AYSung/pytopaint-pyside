@@ -17,6 +17,7 @@ from PySide6.QtWidgets import (
     QDialogButtonBox,
     QLabel,
     QLayout,
+    QInputDialog,
 )
 from PySide6.QtGui import (
     QAction,
@@ -63,6 +64,7 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(central_widget)
         self.resize(600, 400)
+        self.move(20, 40)
 
         self.setAcceptDrops(True)
 
@@ -148,6 +150,21 @@ class MainWindow(QMainWindow):
         dialog.setLayout(layout)
 
         dialog.exec()
+
+    def subsample(self) -> None:
+        n, ok = QInputDialog.getInt(
+            self,
+            'Subsample Events',
+            'Events to subsample (min. 1000):',
+            value=min(10_000, self.get_active_painter().data.sample.event_count),
+            minValue=1_000,
+            maxValue=self.get_active_painter().data.sample.event_count,
+            step=1_000,
+        )
+        if not ok:
+            return
+
+        self.handle_action(MenuAction.SUBSAMPLE, dict(n=n))
 
     def handle_action(self, action: MenuAction, kwargs: dict):
         if self.get_active_painter() is None:
@@ -248,6 +265,17 @@ class MainWindow(QMainWindow):
             lambda: file_info_action.setEnabled(self.painter_tabs.count())
         )
         file_menu.addAction(file_info_action)
+
+        file_menu.addSeparator()
+
+        subsample_action = QAction('Subsample Data...', self, enabled=False)
+        subsample_action.triggered.connect(self.subsample)
+        self.painter_tabs.currentChanged.connect(
+            lambda: subsample_action.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(subsample_action)
+
+        file_menu.addSeparator()
 
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')

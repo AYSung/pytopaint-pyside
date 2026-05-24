@@ -12,3 +12,4 @@ class MenuAction(IntEnum):
     UNDO = auto()
     REDO = auto()
     RESET = auto()
+    SUBSAMPLE = auto()
