@@ -3,6 +3,7 @@ from pathlib import Path
 
 from io import BytesIO
 import flowio
+import numpy as np
 
 from PySide6.QtWidgets import (
     QApplication,
@@ -86,7 +87,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save File',
-            dir='.',
+            dir='',
             filter='FCS (*.fcs)',
         )
         if not file_path:
@@ -97,8 +98,8 @@ class MainWindow(QMainWindow):
         metadata = sample._get_metadata_for_export(source='raw', include_all=False) | {
             k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
         }
-        index = painter.df.index
-        df = sample.as_dataframe(source='raw').loc[index]
+        event_mask = np.isin(np.arange(sample.event_count), painter.df.index)
+        df = sample.as_dataframe(source='raw', event_mask=event_mask)
 
         stream = BytesIO()
         flowio.create_fcs(
