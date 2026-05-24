@@ -438,7 +438,7 @@ class XAxis(QLabel):
 
     def update_axis_label(self, label: str):
         self.label = label
-        self.draw_axis
+        self.draw_axis()
         self.labelChanged.emit()
 
 
@@ -524,5 +524,5 @@ class YAxis(QLabel):
 
     def update_axis_label(self, label: str):
         self.label = label
-        self.draw_axis
+        self.draw_axis()
         self.labelChanged.emit()
