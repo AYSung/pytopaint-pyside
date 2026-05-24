@@ -12,6 +12,11 @@ from PySide6.QtWidgets import (
     QTabWidget,
     QWidget,
     QGridLayout,
+    QDialog,
+    QVBoxLayout,
+    QDialogButtonBox,
+    QLabel,
+    QLayout,
 )
 from PySide6.QtGui import (
     QAction,
@@ -93,7 +98,7 @@ class MainWindow(QMainWindow):
         if not file_path:
             return
 
-        painter: Painter = self.painter_tabs.widget(self.painter_tabs.currentIndex())
+        painter = self.get_active_painter()
         sample = painter.data.sample
         metadata = sample._get_metadata_for_export(source='raw', include_all=False) | {
             k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
@@ -116,6 +121,33 @@ class MainWindow(QMainWindow):
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
+
+    def file_info_dialog(self) -> None:
+        dialog = QDialog(parent=self)
+        dialog.setWindowTitle('File Info')
+
+        sample = self.get_active_painter().data.sample
+        file_name = QLabel(f'File Name: {sample.current_filename}')
+        event_count = QLabel(f'Event Count: {sample.event_count:,}')
+        channels = [
+            f'{marker} ({fluor})' if marker else fluor
+            for fluor, marker in sample.channels[['pnn', 'pns']].to_records(index=False)
+        ]
+        channels_label = QLabel(f'Channels: \n{"\n".join(channels)}')
+
+        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
+        button_box.accepted.connect(dialog.accept)
+
+        layout = QVBoxLayout()
+        layout.addWidget(file_name)
+        layout.addWidget(event_count)
+        layout.addWidget(channels_label)
+        layout.addWidget(button_box)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+
+        dialog.setLayout(layout)
+
+        dialog.exec()
 
     def handle_action(self, action: MenuAction, kwargs: dict):
         if self.get_active_painter() is None:
@@ -197,10 +229,6 @@ class MainWindow(QMainWindow):
         menu_bar = self.menuBar()
         # menu_bar.setNativeMenuBar(False)
         file_menu = menu_bar.addMenu('&File')
-        exit_action = QAction('E&xit', self)
-        exit_action.setShortcut('Ctrl+Q')
-        exit_action.triggered.connect(self.close)
-        file_menu.addAction(exit_action)
 
         open_file_action = QAction('&Open FCS File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
@@ -213,6 +241,18 @@ class MainWindow(QMainWindow):
             lambda: export_fcs_action.setEnabled(self.painter_tabs.count())
         )
         file_menu.addAction(export_fcs_action)
+
+        file_info_action = QAction('File Info', self, enabled=False)
+        file_info_action.triggered.connect(self.file_info_dialog)
+        self.painter_tabs.currentChanged.connect(
+            lambda: file_info_action.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(file_info_action)
+
+        exit_action = QAction('E&xit', self)
+        exit_action.setShortcut('Ctrl+Q')
+        exit_action.triggered.connect(self.close)
+        file_menu.addAction(exit_action)
 
 
 def main():
