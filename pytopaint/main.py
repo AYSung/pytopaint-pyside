@@ -185,6 +185,13 @@ class MainWindow(QMainWindow):
             lambda: self.handle_action(MenuAction.RESET, dict())
         )
 
+        close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
+        close_tab_shortcut.activated.connect(
+            lambda: self.painter_tabs.tabCloseRequested.emit(
+                self.painter_tabs.currentIndex()
+            )
+        )
+
     def configure_menu_bar(self):
         menu_bar = self.menuBar()
         # menu_bar.setNativeMenuBar(False)
