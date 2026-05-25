@@ -156,9 +156,9 @@ class MainWindow(QMainWindow):
             self,
             'Subsample Events',
             'Events to subsample (min. 1000):',
-            value=min(10_000, self.get_active_painter().data.sample.event_count),
+            value=min(10_000, self.get_active_painter().df.shape[0]),
             minValue=1_000,
-            maxValue=self.get_active_painter().data.sample.event_count,
+            maxValue=self.get_active_painter().df.shape[0],
             step=1_000,
         )
         if not ok:
