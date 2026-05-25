@@ -210,7 +210,7 @@ class Painter(QWidget):
         self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
 
     def subsample_df(self, n: int):
-        self.df = self.df.sample(n)
+        self.df = self.df.sample(n, random_state=42)
 
     @Slot()
     def reset_df(self):
