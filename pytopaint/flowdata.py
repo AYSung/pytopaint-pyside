@@ -142,12 +142,9 @@ def _clean_marker_name(marker: str) -> str:
 
 
 def _get_channels(df: pd.DataFrame) -> list[str]:
-    PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
-
-    channels = df.pns.mask(lambda x: x == '').fillna(df.pnn).to_list()
     return [
-        channel if channel in PHYSICAL_PARAMETERS else _clean_marker_name(channel)
-        for channel in channels
+        f'{_clean_marker_name(marker)}' if marker else fluor
+        for fluor, marker in df[['pnn', 'pns']].to_records(index=False)
     ]
 
 
