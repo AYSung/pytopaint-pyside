@@ -18,6 +18,8 @@ from PySide6.QtWidgets import (
     QLabel,
     QLayout,
     QInputDialog,
+    QMessageBox,
+    QFrame,
 )
 from PySide6.QtGui import (
     QAction,
@@ -151,6 +153,81 @@ class MainWindow(QMainWindow):
 
         dialog.exec()
 
+    def about_dialog(self):
+        QMessageBox.about(
+            self,
+            'About PytoPaint',
+            'PytoPaint v0.1\n\n\nCreated by Andrew Y. Sung\n\nLast updated May 2026',
+        )
+
+    def shortcut_dialog(self):
+        def _shortcut_table(shortcuts: list[tuple[str, str]]) -> QWidget:
+            table = QWidget()
+            grid = QGridLayout()
+            grid.setColumnMinimumWidth(0, 200)
+            for row, (function, shortcut) in enumerate(shortcuts):
+                grid.addWidget(QLabel(function), row, 0)
+                grid.addWidget(QLabel(shortcut), row, 1)
+            table.setLayout(grid)
+            return table
+
+        def _hline() -> QFrame():
+            hline = QFrame()
+            hline.setFrameShape(QFrame.Shape.HLine)
+            return hline
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle('Shortcuts')
+
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel('<b>Mouse Controls (within biplots):</b>'))
+        layout.addWidget(
+            _shortcut_table([
+                ('Paint events', 'Left-Click'),
+                ('Paint non-grey events', 'Shift + Left-Click'),
+                ('Override paint colors', 'Ctrl+Left-Click'),
+                ('Override non-grey events', 'Ctrl+Shift+Left-Click'),
+            ])
+        )
+        layout.addWidget(
+            _shortcut_table([
+                ('Exact zap from selection', 'Right-Click'),
+                ('Zap from selection', 'Shift + Right-Click'),
+                ('Paint grey', 'Ctrl+Right-Click'),
+            ])
+        )
+        layout.addWidget(
+            _shortcut_table([
+                ('Exact zap color', 'Middle-Click'),
+                ('Zap color', 'Shift + Middle-Click'),
+            ])
+        )
+        layout.addWidget(_hline())
+
+        layout.addWidget(QLabel('<b>Keyboard Controls:</b>'))
+        layout.addWidget(
+            _shortcut_table([
+                ('Undo', 'Ctrl + Z'),
+                ('Redo', 'Ctrl + Shift + Z'),
+                ('Paint Red', 'F'),
+                ('Paint Green', 'D'),
+                ('Paint Blue', 'S'),
+                ('Paint Cyan', 'Shift + F'),
+                ('Paint Magenta', 'Shift + D'),
+                ('Paint Yellow', 'Shift + S'),
+                ('Paint White', 'A'),
+                ('Reset Events', 'Ctrl + R'),
+                ('Open File(s)', 'Ctrl + O'),
+                ('Close Tab', 'Ctrl + W'),
+                ('Close Application', 'Ctrl + Q'),
+            ])
+        )
+
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+
+        dialog.setLayout(layout)
+        dialog.exec()
+
     def subsample(self) -> None:
         n, ok = QInputDialog.getInt(
             self,
@@ -268,19 +345,36 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
-        subsample_action = QAction('Subsample Data...', self, enabled=False)
-        subsample_action.triggered.connect(self.subsample)
-        self.painter_tabs.currentChanged.connect(
-            lambda: subsample_action.setEnabled(self.painter_tabs.count())
-        )
-        file_menu.addAction(subsample_action)
-
-        file_menu.addSeparator()
-
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
+
+        paint_menu = menu_bar.addMenu('&Paint')
+        paint_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: paint_menu.setEnabled(self.painter_tabs.count())
+        )
+        subsample_action = QAction('Subsample Data...', self)
+        subsample_action.triggered.connect(self.subsample)
+        paint_menu.addAction(subsample_action)
+
+        layout_menu = menu_bar.addMenu('&Layout')
+        layout_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: layout_menu.setEnabled(self.painter_tabs.count())
+        )
+        # TODO
+
+        help_menu = menu_bar.addMenu('&Help')
+
+        shortcut_help_action = QAction('Shortcuts', self)
+        shortcut_help_action.triggered.connect(self.shortcut_dialog)
+        help_menu.addAction(shortcut_help_action)
+
+        about_action = QAction('About PytoPaint', self)
+        about_action.triggered.connect(self.about_dialog)
+        help_menu.addAction(about_action)
 
 
 def main():
