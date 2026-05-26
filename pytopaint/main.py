@@ -38,15 +38,14 @@ from pytopaint.flowdata import FlowData, sort_channels
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
-
-RESOLUTION = 256
+from pytopaint.config import import_config
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle('PytoPaint')
-        self.resolution = 256
+        # self.resolution = 256
 
         # self.setStyleSheet('QMainWindow { background-color: #121010; }')
 
@@ -171,7 +170,7 @@ class MainWindow(QMainWindow):
             table.setLayout(grid)
             return table
 
-        def _hline() -> QFrame():
+        def _hline() -> QFrame:
             hline = QFrame()
             hline.setFrameShape(QFrame.Shape.HLine)
             return hline

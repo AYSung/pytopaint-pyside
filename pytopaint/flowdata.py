@@ -7,6 +7,8 @@ import flowkit
 # import polars as pl
 import pandas as pd
 
+from pytopaint.config import appconfig
+
 
 LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 LOWER_ASINH = -1
@@ -27,12 +29,12 @@ class FlowData:
             )
             for channel in self.channels
         }
-        self.n_bins = 256
-
-        self.binned_df = bin_df(xform_df, self.n_bins, self.clip_limits).astype('uint8')
+        self.binned_df = bin_df(
+            xform_df, appconfig.resolution, self.clip_limits
+        ).astype('uint8')
         self.axis_ticks = {
             channel: get_axis_ticks(
-                channel, n_bins=self.n_bins, clip_limits=self.clip_limits
+                channel, n_bins=appconfig.resolution, clip_limits=self.clip_limits
             )
             for channel in self.channels
         }
@@ -63,10 +65,15 @@ def get_axis_ticks(
     lower_limit, upper_limit = clip_limits[channel]
 
     if channel == 'Time':
-        return [(0, None), (63, None), (127, None), (191, None), (255, None)]
+        quarter = appconfig.resolution / 4
+        ticks = [(i * quarter) for i in range(5)]
+        return [(tick, None) for tick in ticks]
     if channel in LINEAR_PARAMETERS:
-        ticks = [0, 50, 100, 150, 200, 250]
-        return list(zip(ticks, ['0', None, '1e5', None, '2e5', None, '3e5']))
+        ticks = [0, 50_000, 100_000, 150_000, 200_000, 250_000]
+        scaled_ticks = bin_series(
+            pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
+        )
+        return list(zip(scaled_ticks, ['0', None, '1e5', None, '2e5', None, '3e5']))
     else:
         ticks = list(
             filter(
