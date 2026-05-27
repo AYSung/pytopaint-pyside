@@ -23,17 +23,19 @@ from pytopaint.widgets.colorbar import ColorBar
 from pytopaint.actions import MenuAction
 from pytopaint.layout import get_best_layout, import_layouts
 from pytopaint.flowdata import FlowData
+from pytopaint.config import appconfig
 
 
 class Painter(QWidget):
     activeColorChanged = Signal(int)
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
+    resizeTriggered = Signal(int, dict)
 
     def __init__(self, data: FlowData):
         super().__init__()
         self.data = data
-        self.load_data(self.data.binned_df.assign(color=Color.GREY))
+        self.load_data(data)
 
         self.highlighted_colors = []
 
@@ -67,6 +69,7 @@ class Painter(QWidget):
             self.dataUpdated.connect(biplot.set_data)
             self.activeColorChanged.connect(biplot.plot.set_active_color)
             biplot_layout.addWidget(biplot, row, col)
+            self.resizeTriggered.connect(biplot.resizeTriggered)
 
         biplot_container.setLayout(biplot_layout)
         biplot_container.setSizePolicy(
@@ -261,9 +264,9 @@ class Painter(QWidget):
     def emit_changes(self):
         self.dataUpdated.emit(self.df)
 
-    def load_data(self, df: pd.DataFrame):
-        self.original_df = df
-        self.df = df
+    def load_data(self, data: FlowData):
+        self.original_df = data.binned_df.assign(color=Color.GREY)
+        self.df = self.original_df.copy()
         self.undo_history = [self.df.color.copy()]
         self.redo_history = []
 

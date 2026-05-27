@@ -20,21 +20,26 @@ class FlowData:
     def __init__(self, sample: flowkit.Sample):
         self.sample = sample
         self.channels = _get_channels(self.sample.channels)
-        xform_df = to_xform_df(self.sample, channels=self.channels)
+        self.xform_df = to_xform_df(self.sample, channels=self.channels)
 
         self.clip_limits = {
             channel: (
-                lower_clip_limit(xform_df[channel]),
-                upper_clip_limit(xform_df[channel]),
+                lower_clip_limit(self.xform_df[channel]),
+                upper_clip_limit(self.xform_df[channel]),
             )
             for channel in self.channels
         }
+
+        self.update_bins(appconfig.resolution)
+
+    def update_bins(self, n_bins: int):
         self.binned_df = bin_df(
-            xform_df, appconfig.resolution, self.clip_limits
+            self.xform_df, n_bins=n_bins, clip_limits=self.clip_limits
         ).astype('uint8')
+
         self.axis_ticks = {
             channel: get_axis_ticks(
-                channel, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+                channel, n_bins=n_bins, clip_limits=self.clip_limits
             )
             for channel in self.channels
         }

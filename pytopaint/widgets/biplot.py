@@ -21,6 +21,7 @@ from pytopaint.config import appconfig
 
 class Biplot(QWidget):
     pointsSelected = Signal(object, str, str, QMouseEvent)
+    resizeTriggered = Signal(int, dict)
 
     def __init__(
         self,
@@ -40,13 +41,16 @@ class Biplot(QWidget):
         self.x_axis = XAxis(x_label, channels, axis_ticks)
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.update_title)
+        self.resizeTriggered.connect(self.x_axis.resize)
         self.y_axis = YAxis(y_label, channels, axis_ticks)
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
+        self.resizeTriggered.connect(self.y_axis.resize)
 
         self.plot = DotPlot()
         self.update_plot_data()
         self.plot.pointsSelected.connect(self.points_selected)
+        self.resizeTriggered.connect(self.plot.resize)
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
@@ -363,12 +367,20 @@ class DotPlot(QLabel):
         self.setPixmap(canvas)
         self.update()
 
+    @Slot(int, dict)
+    def resize(self, pixels: int, _: dict[str, list[tuple[int, str]]]):
+        self.setPixmap(QPixmap(pixels, pixels))
+        self.render_plot()
+
 
 class XAxis(QLabel):
     labelChanged = Signal()
 
     def __init__(
-        self, label: str, channels: list[str], axis_ticks: dict[str, tuple[int, str]]
+        self,
+        label: str,
+        channels: list[str],
+        axis_ticks: dict[str, list[tuple[int, str]]],
     ):
         super().__init__()
         self.label = label
@@ -382,6 +394,11 @@ class XAxis(QLabel):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
+        self.draw_axis()
+
+    def resize(self, pixels: int, axis_ticks: dict[str, list[tuple[int, str]]]) -> None:
+        self.setPixmap(QPixmap(pixels, 45))
+        self.axis_ticks = axis_ticks
         self.draw_axis()
 
     def draw_axis(self):
@@ -464,6 +481,11 @@ class YAxis(QLabel):
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
+        self.draw_axis()
+
+    def resize(self, pixels: int, axis_ticks: dict[str, list[tuple[int, str]]]) -> None:
+        self.setPixmap(QPixmap(45, pixels))
+        self.axis_ticks = axis_ticks
         self.draw_axis()
 
     def draw_axis(self) -> None:

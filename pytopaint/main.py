@@ -38,7 +38,7 @@ from pytopaint.flowdata import FlowData, sort_channels
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
-from pytopaint.config import import_config
+from pytopaint.config import appconfig
 
 
 class MainWindow(QMainWindow):
@@ -242,6 +242,27 @@ class MainWindow(QMainWindow):
 
         self.handle_action(MenuAction.SUBSAMPLE, dict(n=n))
 
+    def configure_plot_size(self) -> None:
+        pixels, ok = QInputDialog.getInt(
+            self,
+            'Change Plot Size',
+            'Pixels per dimension (128-256)',
+            value=256,
+            minValue=128,
+            maxValue=256,
+            step=16,
+        )
+        if not ok:
+            return
+
+        appconfig.resolution = pixels
+        for i in range(self.painter_tabs.count()):
+            painter: Painter = self.painter_tabs.widget(i)
+            painter.data.update_bins(pixels)
+            painter.load_data(painter.data)
+            painter.resizeTriggered.emit(pixels, painter.data.axis_ticks)
+            painter.emit_changes()
+
     def handle_action(self, action: MenuAction, kwargs: dict):
         if self.get_active_painter() is None:
             return
@@ -335,14 +356,20 @@ class MainWindow(QMainWindow):
         )
         file_menu.addAction(export_fcs_action)
 
+        file_menu.addSeparator()
+
+        settings_action = QAction('Plot Size', self)
+        settings_action.triggered.connect(self.configure_plot_size)
+        file_menu.addAction(settings_action)
+
+        file_menu.addSeparator()
+
         file_info_action = QAction('File Info', self, enabled=False)
         file_info_action.triggered.connect(self.file_info_dialog)
         self.painter_tabs.currentChanged.connect(
             lambda: file_info_action.setEnabled(self.painter_tabs.count())
         )
         file_menu.addAction(file_info_action)
-
-        file_menu.addSeparator()
 
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')
