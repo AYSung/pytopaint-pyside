@@ -3,6 +3,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QSizePolicy,
     QVBoxLayout,
+    QLayout,
 )
 from PySide6.QtGui import (
     QMouseEvent,
@@ -49,6 +50,7 @@ class Painter(QWidget):
         biplot_container = QWidget()
         biplot_layout = QGridLayout()
         biplot_layout.setSpacing(5)
+        biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
         biplots = get_best_layout(
             channels=self.df.columns, layouts=import_layouts()
