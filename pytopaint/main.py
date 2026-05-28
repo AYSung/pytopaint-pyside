@@ -38,7 +38,7 @@ from pytopaint.flowdata import FlowData, sort_channels
 from pytopaint.colors import Color
 from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
-from pytopaint.config import appconfig
+from pytopaint.config import appconfig, save_config
 
 
 class MainWindow(QMainWindow):
@@ -409,6 +409,7 @@ def main():
 
     app.exec()
     app.clipboard().clear()
+    save_config()
 
 
 if __name__ == '__main__':

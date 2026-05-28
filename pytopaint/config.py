@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import yaml
 from importlib import resources
 
@@ -19,4 +19,7 @@ def import_config() -> AppConfig:
 appconfig = import_config()
 
 
-# TODO: save_config
+def save_config() -> None:
+    file = resources.files('pytopaint.resources').joinpath('config.yml')
+    with open(file, 'w') as handle:
+        yaml.dump(asdict(appconfig), handle, default_flow_style=False, sort_keys=False)
