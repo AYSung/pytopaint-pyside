@@ -217,6 +217,8 @@ class MainWindow(QMainWindow):
                 ('Paint Magenta', 'Shift + D'),
                 ('Paint Yellow', 'Shift + S'),
                 ('Paint White', 'A'),
+                ('Hide Current Color', 'Ctrl+X'),
+                ('Isolate Current Color', 'Ctrl+Shift+X'),
                 ('Reset Events', 'Ctrl + R'),
                 ('Open File(s)', 'Ctrl + O'),
                 ('Close Tab', 'Ctrl + W'),

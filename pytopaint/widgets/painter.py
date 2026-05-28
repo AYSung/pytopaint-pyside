@@ -155,6 +155,20 @@ class Painter(QWidget):
             lambda: self.handle_menu_action(MenuAction.RESET, dict())
         )
 
+        hide_events_shortcut = QShortcut(QKeySequence('Ctrl+X'), self)
+        hide_events_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.HIDE, dict(color=self.active_color)
+            )
+        )
+
+        isolate_events_shortcut = QShortcut(QKeySequence('Ctrl+Shift+X'), self)
+        isolate_events_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.ISOLATE, dict(color=self.active_color)
+            )
+        )
+
     @Slot(object, str, str, QMouseEvent)
     def handle_selection(
         self,
