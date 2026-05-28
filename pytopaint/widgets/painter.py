@@ -50,7 +50,6 @@ class Painter(QWidget):
 
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
-        color_bar.colorClicked.connect(self.handle_highlights)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.dataUpdated.connect(color_bar.update_labels)
         self.highlightsUpdated.connect(color_bar.highlightsUpdated)
@@ -260,14 +259,17 @@ class Painter(QWidget):
             MenuAction.REDO: self.redo_action,
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
+            MenuAction.HIGHLIGHT: self.handle_highlights,
         }
 
-        if action == MenuAction.SET_ACTIVE:
-            self.change_color(**kwargs)
-        elif action in [MenuAction.UNDO, MenuAction.REDO, MenuAction.RESET]:
-            FUNCTION_MAP[action]()
-        else:
-            FUNCTION_MAP[action](**kwargs)
+        FUNCTION_MAP[action](**kwargs)
+        if action not in [
+            MenuAction.SET_ACTIVE,
+            MenuAction.HIGHLIGHT,
+            MenuAction.UNDO,
+            MenuAction.REDO,
+            MenuAction.RESET,
+        ]:
             self.record_current_state()
             self.emit_changes()
 

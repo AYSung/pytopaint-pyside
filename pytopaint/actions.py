@@ -13,3 +13,4 @@ class MenuAction(IntEnum):
     REDO = auto()
     RESET = auto()
     SUBSAMPLE = auto()
+    HIGHLIGHT = auto()

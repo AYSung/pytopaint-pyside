@@ -24,7 +24,6 @@ RESOLUTION = 256
 
 
 class ColorBar(QWidget):
-    colorClicked = Signal(int)
     activeColorChanged = Signal(int)
     menuActionTriggered = Signal(int, dict)
     eventsUpdated = Signal(object, int)
@@ -45,7 +44,6 @@ class ColorBar(QWidget):
         for color_label in self.color_labels:
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
-            color_label.clicked.connect(self.colorClicked)
             self.highlightsUpdated.connect(color_label.update_highlight)
             self.activeColorChanged.connect(color_label.update_active_color)
             self.eventsUpdated.connect(color_label.update_label)
@@ -68,7 +66,6 @@ class ColorBar(QWidget):
 
 
 class ColorLabel(QWidget):
-    clicked = Signal(int)
     menuActionTriggered = Signal(int, dict)
 
     def __init__(self, color: Color, parent=None):
@@ -98,7 +95,6 @@ class ColorLabel(QWidget):
     def update_label(self, events: dict[Color, int], total_events: int):
         self.events = events.get(self.color, 0)
         self.ratios = ratios_by_color(self.color, events)
-        print(self.ratios)
         percent = self.events / total_events
         decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
         if (self.events >= 100) or (self.events == 0):
@@ -109,16 +105,21 @@ class ColorLabel(QWidget):
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
-            self.clicked.emit(self.color)
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.SET_ACTIVE, dict(color=self.color)
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.HIGHLIGHT, dict(color=self.color)
+                )
         elif (self.events > 0) and e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, dict(color=self.color)
                 )
             # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-            #     self.menuActionTriggered.emit(
-            #         MenuAction.EXACT_ZAP, dict(color=self.color)
-            #     )
+            #     self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
 
     @Slot(list)
     def update_highlight(self, highlighted_colors: list[Color]):
@@ -164,7 +165,11 @@ class ColorLabel(QWidget):
         self.toggle_highlight = QAction('Highlight')
         self.toggle_highlight.setCheckable(True)
         self.toggle_highlight.setChecked(self.highlight)
-        self.toggle_highlight.triggered.connect(lambda: self.clicked.emit(self.color))
+        self.toggle_highlight.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.HIGHLIGHT, dict(color=self.color)
+            )
+        )
         menu.addAction(self.toggle_highlight)
 
         if self.color != Color.GREY:
