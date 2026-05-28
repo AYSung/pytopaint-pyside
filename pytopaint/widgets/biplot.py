@@ -1,21 +1,20 @@
+import pandas as pd
+from PySide6.QtCore import QPoint, QRect, Qt, Signal, Slot
+from PySide6.QtGui import QAction, QFont, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
+    QGridLayout,
     QLabel,
     QMenu,
-    QGridLayout,
-    QWidget,
     QSizePolicy,
-    QStyleOption,
     QStyle,
-    QApplication,
+    QStyleOption,
+    QWidget,
 )
-from PySide6.QtGui import QPixmap, QPainter, QPen, QFont, QMouseEvent, QAction
-from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 
-import pandas as pd
-
-from pytopaint.flowdata import LINEAR_PARAMETERS, sort_channels
-from pytopaint.colors import Color, COLOR_RGB_MAP, BACKGROUND, indices_by_color
+from pytopaint.colors import BACKGROUND, COLOR_RGB_MAP, Color, indices_by_color
 from pytopaint.config import appconfig
+from pytopaint.flowdata import LINEAR_PARAMETERS, sort_channels
 
 
 class Biplot(QWidget):

@@ -1,6 +1,7 @@
-from dataclasses import dataclass, asdict
-import yaml
+from dataclasses import asdict, dataclass
 from importlib import resources
+
+import yaml
 
 
 @dataclass

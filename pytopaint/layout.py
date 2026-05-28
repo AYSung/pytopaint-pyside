@@ -1,9 +1,8 @@
-from itertools import chain
-from importlib import resources
-import yaml
-
-
 from dataclasses import dataclass
+from importlib import resources
+from itertools import chain
+
+import yaml
 
 
 @dataclass

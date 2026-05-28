@@ -1,13 +1,11 @@
 import math
-from functools import partial
 import re
+from functools import partial
 
 import flowkit
-
 import pandas as pd
 
 from pytopaint.config import appconfig
-
 
 LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 UPPER_LINEAR = 255_000

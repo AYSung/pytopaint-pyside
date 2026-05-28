@@ -1,24 +1,23 @@
+import pandas as pd
+from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtGui import QAction, QIcon, QMouseEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
-    QWidget,
     QMenu,
     QStyle,
     QStyleOption,
+    QWidget,
 )
-from PySide6.QtGui import QMouseEvent, QAction, QPixmap, QIcon, QPainter
-from PySide6.QtCore import Slot, Qt, Signal
 
-import pandas as pd
-
+from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    Color,
-    COLOR_RGB_MAP,
     COLOR_NAME_MAP,
+    COLOR_RGB_MAP,
+    Color,
     events_by_colors,
     ratios_by_color,
 )
-from pytopaint.actions import MenuAction
 
 RESOLUTION = 256
 
