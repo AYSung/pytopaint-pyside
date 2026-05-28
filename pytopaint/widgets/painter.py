@@ -39,8 +39,7 @@ class Painter(QWidget):
 
         self.data = data
 
-        self.original_df = self.data.binned_df.assign(color=Color.GREY)
-        self.df = self.original_df.copy()
+        self.df = self.data.binned_df.assign(color=Color.GREY)
         self.undo_history = [self.df.color.copy()]
         self.redo_history = []
 
@@ -299,7 +298,7 @@ class Painter(QWidget):
 
     @Slot()
     def reset_df(self):
-        self.df = self.original_df
+        self.df = self.data.binned_df.assign(color=Color.GREY)
         self.record_current_state()
         self.emit_changes()
 
@@ -319,7 +318,7 @@ class Painter(QWidget):
         previous_state = self.undo_history[-1]
         self.redo_history += [current_state]
         if len(self.df.index) != len(previous_state):
-            self.df = self.original_df.loc[previous_state.index].assign(
+            self.df = self.data.binned_df.loc[previous_state.index].assign(
                 color=previous_state
             )
         else:
@@ -335,7 +334,7 @@ class Painter(QWidget):
         previous_state = self.redo_history.pop()
         self.undo_history += [previous_state]
         if len(self.df.index) != len(previous_state):
-            self.df = self.original_df.loc[previous_state.index].assign(
+            self.df = self.data.binned_df.loc[previous_state.index].assign(
                 color=previous_state
             )
         else:
@@ -357,14 +356,12 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
-        self.original_df = self.data.binned_df.assign(color=Color.GREY)
-        self.df = self.original_df.loc[self.df.index].assign(color=self.df['color'])
+        self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
         self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
         self.emit_changes()
 
     @Slot()
     def handle_rescale(self) -> None:
-        self.data.rescale()
-        self.original_df = self.data.binned_df.assign(color=Color.GREY)
-        self.df = self.original_df.loc[self.df.index].assign(color=self.df['color'])
+        self.data.update_scale()
+        self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
         self.emit_changes()

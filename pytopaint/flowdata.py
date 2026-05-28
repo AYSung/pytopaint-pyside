@@ -16,7 +16,7 @@ class FlowData:
         self.sample = sample
         self.channels = _get_channels(self.sample.channels)
 
-        self.rescale()
+        self.update_scale()
 
     @classmethod
     def from_path(cls, filepath: str):
@@ -28,12 +28,6 @@ class FlowData:
         return sort_channels(self.channels)
 
     @property
-    def binned_df(self) -> pd.DataFrame:
-        return bin_df(
-            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
-        ).astype('uint8')
-
-    @property
     def axis_ticks(self) -> dict[str, list[tuple[int, str]]]:
         return {
             channel: get_axis_ticks(
@@ -42,7 +36,13 @@ class FlowData:
             for channel in self.channels
         }
 
-    def rescale(self) -> None:
+    @property
+    def binned_df(self) -> pd.DataFrame:
+        return bin_df(
+            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+        ).astype('uint8')
+
+    def update_scale(self) -> None:
         self.xform_df = to_xform_df(
             self.sample, channels=self.channels, scaling_factor=appconfig.scaling_factor
         )
