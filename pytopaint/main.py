@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
             self,
             'Change Plot Size',
             'Pixels per dimension (128-256)',
-            value=256,
+            value=appconfig.resolution,
             minValue=128,
             maxValue=256,
             step=16,
