@@ -36,7 +36,7 @@ class Painter(QWidget):
     def __init__(self, data: FlowData):
         super().__init__()
         self.data = data
-        self.load_data(data)
+        self.load_data()
 
         self.highlighted_colors = []
 
@@ -266,8 +266,8 @@ class Painter(QWidget):
     def emit_changes(self):
         self.dataUpdated.emit(self.df)
 
-    def load_data(self, data: FlowData):
-        self.original_df = data.binned_df.assign(color=Color.GREY)
+    def load_data(self):
+        self.original_df = self.data.binned_df.assign(color=Color.GREY)
         self.df = self.original_df.copy()
         self.undo_history = [self.df.color.copy()]
         self.redo_history = []
@@ -280,3 +280,9 @@ class Painter(QWidget):
             self.highlighted_colors.remove(color)
 
         self.highlightsUpdated.emit(self.highlighted_colors)
+
+    @Slot()
+    def handle_resize(self) -> None:
+        self.load_data()
+        self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
+        self.emit_changes()

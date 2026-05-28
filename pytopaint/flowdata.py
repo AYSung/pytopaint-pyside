@@ -4,7 +4,6 @@ import re
 
 import flowkit
 
-# import polars as pl
 import pandas as pd
 
 from pytopaint.config import appconfig
@@ -30,20 +29,6 @@ class FlowData:
             for channel in self.channels
         }
 
-        self.update_bins(appconfig.resolution)
-
-    def update_bins(self, n_bins: int):
-        self.binned_df = bin_df(
-            self.xform_df, n_bins=n_bins, clip_limits=self.clip_limits
-        ).astype('uint8')
-
-        self.axis_ticks = {
-            channel: get_axis_ticks(
-                channel, n_bins=n_bins, clip_limits=self.clip_limits
-            )
-            for channel in self.channels
-        }
-
     @classmethod
     def from_path(cls, filepath: str):
         sample = flowkit.Sample(filepath)
@@ -52,6 +37,21 @@ class FlowData:
     @property
     def sorted_channels(self) -> list[str]:
         return sort_channels(self.channels)
+
+    @property
+    def binned_df(self):
+        return bin_df(
+            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+        ).astype('uint8')
+
+    @property
+    def axis_ticks(self) -> dict[str, list[tuple[int, str]]]:
+        return {
+            channel: get_axis_ticks(
+                channel, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+            )
+            for channel in self.channels
+        }
 
 
 def bin_df(

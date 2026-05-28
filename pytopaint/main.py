@@ -42,10 +42,11 @@ from pytopaint.config import appconfig
 
 
 class MainWindow(QMainWindow):
+    resizeTriggered = Signal()
+
     def __init__(self):
         super().__init__()
         self.setWindowTitle('PytoPaint')
-        # self.resolution = 256
 
         # self.setStyleSheet('QMainWindow { background-color: #121010; }')
 
@@ -85,6 +86,7 @@ class MainWindow(QMainWindow):
 
             painter = Painter(flowdata)
 
+            self.resizeTriggered.connect(painter.handle_resize)
             self.painter_tabs.addTab(painter, file_path.name)
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
@@ -242,7 +244,7 @@ class MainWindow(QMainWindow):
 
         self.handle_action(MenuAction.SUBSAMPLE, dict(n=n))
 
-    def configure_plot_size(self) -> None:
+    def resize_plots(self) -> None:
         pixels, ok = QInputDialog.getInt(
             self,
             'Change Plot Size',
@@ -256,12 +258,7 @@ class MainWindow(QMainWindow):
             return
 
         appconfig.resolution = pixels
-        for i in range(self.painter_tabs.count()):
-            painter: Painter = self.painter_tabs.widget(i)
-            painter.data.update_bins(pixels)
-            painter.load_data(painter.data)
-            painter.resizeTriggered.emit(pixels, painter.data.axis_ticks)
-            painter.emit_changes()
+        self.resizeTriggered.emit()
 
     def handle_action(self, action: MenuAction, kwargs: dict):
         if self.get_active_painter() is None:
@@ -359,7 +356,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         settings_action = QAction('Plot Size', self)
-        settings_action.triggered.connect(self.configure_plot_size)
+        settings_action.triggered.connect(self.resize_plots)
         file_menu.addAction(settings_action)
 
         file_menu.addSeparator()
@@ -407,6 +404,7 @@ def main():
     app = QApplication(sys.argv)
     QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
     window = MainWindow()
+    # window.showMaximized()
     window.show()
 
     app.exec()

@@ -11,7 +11,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtGui import QPixmap, QPainter, QPen, QFont, QMouseEvent, QAction
 from PySide6.QtCore import Slot, Qt, QPoint, QRect, Signal
 
-# import polars as pl
 import pandas as pd
 
 from pytopaint.flowdata import LINEAR_PARAMETERS, sort_channels
