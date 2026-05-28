@@ -19,15 +19,8 @@ class FlowData:
     def __init__(self, sample: flowkit.Sample):
         self.sample = sample
         self.channels = _get_channels(self.sample.channels)
-        self.xform_df = to_xform_df(self.sample, channels=self.channels)
 
-        self.clip_limits = {
-            channel: (
-                lower_clip_limit(self.xform_df[channel]),
-                upper_clip_limit(self.xform_df[channel]),
-            )
-            for channel in self.channels
-        }
+        self.rescale()
 
     @classmethod
     def from_path(cls, filepath: str):
@@ -39,7 +32,7 @@ class FlowData:
         return sort_channels(self.channels)
 
     @property
-    def binned_df(self):
+    def binned_df(self) -> pd.DataFrame:
         return bin_df(
             self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
         ).astype('uint8')
@@ -49,6 +42,19 @@ class FlowData:
         return {
             channel: get_axis_ticks(
                 channel, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+            )
+            for channel in self.channels
+        }
+
+    def rescale(self) -> None:
+        self.xform_df = to_xform_df(
+            self.sample, channels=self.channels, scaling_factor=appconfig.scaling_factor
+        )
+
+        self.clip_limits = {
+            channel: (
+                lower_clip_limit(self.xform_df[channel]),
+                upper_clip_limit(self.xform_df[channel]),
             )
             for channel in self.channels
         }

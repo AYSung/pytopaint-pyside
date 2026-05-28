@@ -20,6 +20,8 @@ from PySide6.QtWidgets import (
     QInputDialog,
     QMessageBox,
     QFrame,
+    QSpinBox,
+    QFormLayout,
 )
 from PySide6.QtGui import (
     QAction,
@@ -43,6 +45,7 @@ from pytopaint.config import appconfig, save_config
 
 class MainWindow(QMainWindow):
     resizeTriggered = Signal()
+    rescaleTriggered = Signal()
 
     def __init__(self):
         super().__init__()
@@ -87,6 +90,7 @@ class MainWindow(QMainWindow):
             painter = Painter(flowdata)
 
             self.resizeTriggered.connect(painter.handle_resize)
+            self.rescaleTriggered.connect(painter.handle_rescale)
             self.painter_tabs.addTab(painter, file_path.name)
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
@@ -262,6 +266,27 @@ class MainWindow(QMainWindow):
         appconfig.resolution = pixels
         self.resizeTriggered.emit()
 
+    def rescale_plots(self) -> None:
+        dialog = QDialog()
+
+        layout = QFormLayout()
+        scaling_factor_input = QSpinBox(singleStep=10)
+        scaling_factor_input.setRange(20, 1200)
+        scaling_factor_input.setValue(appconfig.scaling_factor)
+        layout.addRow('Scaling Factor:', scaling_factor_input)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+        layout.addWidget(button_box)
+
+        dialog.setLayout(layout)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            appconfig.scaling_factor = scaling_factor_input.value()
+            self.rescaleTriggered.emit()
+
     @Slot(int)
     def handle_tab_close(self, index: int):
         widget = self.painter_tabs.widget(index)
@@ -308,12 +333,6 @@ class MainWindow(QMainWindow):
 
         file_menu.addSeparator()
 
-        settings_action = QAction('Plot Size', self)
-        settings_action.triggered.connect(self.resize_plots)
-        file_menu.addAction(settings_action)
-
-        file_menu.addSeparator()
-
         file_info_action = QAction('File Info', self, enabled=False)
         file_info_action.triggered.connect(self.file_info_dialog)
         self.painter_tabs.currentChanged.connect(
@@ -342,6 +361,16 @@ class MainWindow(QMainWindow):
         )
         # TODO
 
+        plot_menu = menu_bar.addMenu('&Plot')
+
+        resize_action = QAction('Plot Size', self)
+        resize_action.triggered.connect(self.resize_plots)
+        plot_menu.addAction(resize_action)
+
+        rescale_action = QAction('Adjust Scaling', self)
+        rescale_action.triggered.connect(self.rescale_plots)
+        plot_menu.addAction(rescale_action)
+
         help_menu = menu_bar.addMenu('&Help')
 
         shortcut_help_action = QAction('Shortcuts', self)
@@ -362,7 +391,7 @@ def main():
 
     app.exec()
     app.clipboard().clear()
-    save_config()
+    # save_config()
 
 
 if __name__ == '__main__':

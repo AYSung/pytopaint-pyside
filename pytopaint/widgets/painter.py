@@ -363,3 +363,10 @@ class Painter(QWidget):
         self.df = self.original_df.loc[self.df.index].assign(color=self.df['color'])
         self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
         self.emit_changes()
+
+    @Slot()
+    def handle_rescale(self) -> None:
+        self.data.rescale()
+        self.original_df = self.data.binned_df.assign(color=Color.GREY)
+        self.df = self.original_df.loc[self.df.index].assign(color=self.df['color'])
+        self.emit_changes()
