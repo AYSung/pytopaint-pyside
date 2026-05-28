@@ -10,8 +10,6 @@ from pytopaint.config import appconfig
 
 
 LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
-LOWER_ASINH = -1
-UPPER_ASINH = 8
 UPPER_LINEAR = 255_000
 
 
@@ -174,7 +172,7 @@ def lower_clip_limit(s: pd.Series):
     if s.name in LINEAR_PARAMETERS + ['Time']:
         return 0
     else:
-        return min(LOWER_ASINH, s.quantile(0.05) - 0.5)
+        return min(appconfig.lower_arcsinh_limit, s.quantile(0.05) - 0.5)
 
 
 def upper_clip_limit(s: pd.Series):
@@ -183,7 +181,7 @@ def upper_clip_limit(s: pd.Series):
     if s.name in LINEAR_PARAMETERS:
         return UPPER_LINEAR
     else:
-        return max(UPPER_ASINH, s.quantile(0.95) + 0.5)
+        return max(appconfig.upper_arcsinh_limit, s.quantile(0.95) + 0.5)
 
 
 def bin_series(s: pd.Series, n_bins: int, clip_limits: dict[str, tuple[float, float]]):

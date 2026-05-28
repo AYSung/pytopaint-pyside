@@ -7,6 +7,8 @@ from importlib import resources
 class AppConfig:
     resolution: int
     scaling_factor: int
+    upper_arcsinh_limit: float
+    lower_arcsinh_limit: float
 
 
 def import_config() -> AppConfig:

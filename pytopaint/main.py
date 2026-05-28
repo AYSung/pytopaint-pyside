@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QFrame,
     QSpinBox,
+    QDoubleSpinBox,
     QFormLayout,
 )
 from PySide6.QtGui import (
@@ -273,7 +274,15 @@ class MainWindow(QMainWindow):
         scaling_factor_input = QSpinBox(singleStep=10)
         scaling_factor_input.setRange(20, 1200)
         scaling_factor_input.setValue(appconfig.scaling_factor)
+        upper_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
+        upper_arcsinh_limit_input.setRange(5, 15)
+        upper_arcsinh_limit_input.setValue(appconfig.upper_arcsinh_limit)
+        lower_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
+        lower_arcsinh_limit_input.setRange(-5, 4)
+        lower_arcsinh_limit_input.setValue(appconfig.lower_arcsinh_limit)
         layout.addRow('Scaling Factor:', scaling_factor_input)
+        layout.addRow('Upper Bound:', upper_arcsinh_limit_input)
+        layout.addRow('Lower Bound:', lower_arcsinh_limit_input)
 
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
@@ -285,6 +294,8 @@ class MainWindow(QMainWindow):
         dialog.setLayout(layout)
         if dialog.exec() == QDialog.DialogCode.Accepted:
             appconfig.scaling_factor = scaling_factor_input.value()
+            appconfig.upper_arcsinh_limit = upper_arcsinh_limit_input.value()
+            appconfig.lower_arcsinh_limit = lower_arcsinh_limit_input.value()
             self.rescaleTriggered.emit()
 
     @Slot(int)
@@ -363,7 +374,7 @@ class MainWindow(QMainWindow):
 
         plot_menu = menu_bar.addMenu('&Plot')
 
-        resize_action = QAction('Plot Size', self)
+        resize_action = QAction('Adjust Size', self)
         resize_action.triggered.connect(self.resize_plots)
         plot_menu.addAction(resize_action)
 
