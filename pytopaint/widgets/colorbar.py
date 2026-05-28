@@ -17,6 +17,7 @@ from pytopaint.colors import (
     Color,
     indices_by_color,
     ratios_by_color,
+    is_zappable,
 )
 
 RESOLUTION = 256
@@ -62,7 +63,7 @@ class ColorBar(QWidget):
         o = QStyleOption()
         o.initFrom(self)
         p = QPainter(self)
-        self.style().drawPrimitive(QStyle.PE_Widget, o, p, self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, o, p, self)
 
 
 class ColorLabel(QWidget):
@@ -72,8 +73,9 @@ class ColorLabel(QWidget):
         super().__init__(parent)
         self.color = color
         self.highlight = False
-        self.events = 0
+        self.events = pd.Index([])
         self.remembered_events = pd.Index([])
+        self.zappable = False
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -104,6 +106,7 @@ class ColorLabel(QWidget):
             self.label.setText(f'{percent:.{decimal_places}%}')
         else:
             self.label.setText(f'{percent:.{decimal_places}%} ({self.events})')
+        self.zappable = is_zappable(self.color, events)
 
     @Slot(int)
     def remember_color(self) -> None:
@@ -120,6 +123,9 @@ class ColorLabel(QWidget):
         self.remembered_events = pd.Index([])
 
     def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.color == Color.GREY:
+            return
+
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
@@ -130,7 +136,7 @@ class ColorLabel(QWidget):
                 self.menuActionTriggered.emit(
                     MenuAction.HIGHLIGHT, dict(color=self.color)
                 )
-        elif (self.events > 0) and e.button() == Qt.MouseButton.MiddleButton:
+        elif not self.events.empty and (e.button() == Qt.MouseButton.MiddleButton):
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, dict(color=self.color)
@@ -178,23 +184,20 @@ class ColorLabel(QWidget):
             )
             menu.addAction(set_active_color)
 
-        # highlight points
-        self.toggle_highlight = QAction('Highlight')
-        self.toggle_highlight.setCheckable(True)
-        self.toggle_highlight.setChecked(self.highlight)
-        self.toggle_highlight.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.HIGHLIGHT, dict(color=self.color)
+            # highlight points
+            self.toggle_highlight = QAction('Highlight')
+            self.toggle_highlight.setCheckable(True)
+            self.toggle_highlight.setChecked(self.highlight)
+            self.toggle_highlight.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.HIGHLIGHT, dict(color=self.color)
+                )
             )
-        )
-        menu.addAction(self.toggle_highlight)
+            menu.addAction(self.toggle_highlight)
 
-        has_events = self.events.size > 0
-
-        if self.color != Color.GREY:
             menu.addSeparator()
 
-            zap = QAction('Zap', enabled=has_events)
+            zap = QAction('Zap', enabled=self.zappable)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.ZAP, dict(color=self.color)
@@ -203,7 +206,7 @@ class ColorLabel(QWidget):
             menu.addAction(zap)
 
             # TODO: enable if derivative colors present
-            exact_zap = QAction('Exact Zap', enabled=has_events)
+            exact_zap = QAction('Exact Zap', enabled=not self.events.empty)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, dict(color=self.color)
@@ -212,7 +215,7 @@ class ColorLabel(QWidget):
             menu.addAction(exact_zap)
 
             merge_menu = QMenu('Merge with...')
-            merge_menu.setEnabled(has_events)
+            merge_menu.setEnabled(not self.events.empty)
 
             merge_actions = [
                 _merge_action(color, name)
@@ -224,33 +227,33 @@ class ColorLabel(QWidget):
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
 
+            menu.addSeparator()
+            remember = QAction('Remember Color', enabled=not self.events.empty)
+            remember.triggered.connect(self.remember_color)
+            menu.addAction(remember)
+            recall = QAction('Recall Color', enabled=not self.remembered_events.empty)
+            recall.triggered.connect(self.recall_color)
+            menu.addAction(recall)
+            clear = QAction('Clear Memory', enabled=not self.remembered_events.empty)
+            clear.triggered.connect(self.clear_memory)
+            menu.addAction(clear)
+
         menu.addSeparator()
         menu.addSection('Filter')
-        hide = QAction('Hide Color', enabled=has_events)
+        hide = QAction('Hide Color', enabled=not self.events.empty)
         hide.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.HIDE, dict(color=self.color)
             )
         )
         menu.addAction(hide)
-        isolate = QAction('Isolate Color', enabled=has_events)
+        isolate = QAction('Isolate Color', enabled=not self.events.empty)
         isolate.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.ISOLATE, dict(color=self.color)
             )
         )
         menu.addAction(isolate)
-
-        menu.addSeparator()
-        remember = QAction('Remember Color', enabled=has_events)
-        remember.triggered.connect(self.remember_color)
-        menu.addAction(remember)
-        recall = QAction('Recall Color', enabled=self.remembered_events.size > 0)
-        recall.triggered.connect(self.recall_color)
-        menu.addAction(recall)
-        clear = QAction('Clear Memory', enabled=self.remembered_events.size > 0)
-        clear.triggered.connect(self.clear_memory)
-        menu.addAction(clear)
 
         menu.addSection('Ratios')
 

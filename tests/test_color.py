@@ -1,17 +1,17 @@
-import pytest
-
 import pandas as pd
+import pytest
 
 from pytopaint.colors import (
     Color,
     _add_color_to_series,
-    add_color_to_selection,
     _subtract_color_from_series,
-    subtract_color_from_selection,
-    merge_colors,
-    indices_by_color,
+    add_color_to_selection,
     events_by_colors,
+    indices_by_color,
+    is_zappable,
+    merge_colors,
     ratios_by_color,
+    subtract_color_from_selection,
 )
 
 
@@ -333,3 +333,44 @@ def test_ratios_by_colors():
         Color.BLUE: 4,
         Color.MAGENTA: 1,
     }
+
+
+def test_zappable():
+    assert is_zappable(
+        Color.RED,
+        {
+            Color.RED: pd.Index([1, 2, 3]),
+            Color.BLUE: pd.Index([1, 2, 3]),
+            Color.MAGENTA: pd.Index([1, 2, 3]),
+        },
+    )
+    assert is_zappable(
+        Color.BLUE,
+        {
+            Color.RED: pd.Index([1, 2, 3]),
+            Color.BLUE: pd.Index([1, 2, 3]),
+            Color.MAGENTA: pd.Index([1, 2, 3]),
+        },
+    )
+    assert is_zappable(
+        Color.BLUE,
+        {
+            Color.WHITE: pd.Index([1, 2, 3]),
+        },
+    )
+    assert not is_zappable(
+        Color.GREEN,
+        {
+            Color.RED: pd.Index([1, 2, 3]),
+            Color.BLUE: pd.Index([1, 2, 3]),
+            Color.MAGENTA: pd.Index([1, 2, 3]),
+        },
+    )
+    assert not is_zappable(
+        Color.YELLOW,
+        {
+            Color.RED: pd.Index([1, 2, 3]),
+            Color.BLUE: pd.Index([1, 2, 3]),
+            Color.MAGENTA: pd.Index([1, 2, 3]),
+        },
+    )

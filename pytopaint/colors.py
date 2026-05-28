@@ -36,6 +36,17 @@ COLOR_NAME_MAP = {
     Color.WHITE: 'White',
 }
 
+ZAPPABLE_COLORS = {
+    Color.GREY: [],
+    Color.RED: [Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE],
+    Color.BLUE: [Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE],
+    Color.GREEN: [Color.GREEN, Color.CYAN, Color.YELLOW, Color.WHITE],
+    Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
+    Color.CYAN: [Color.CYAN, Color.WHITE],
+    Color.YELLOW: [Color.YELLOW, Color.WHITE],
+    Color.WHITE: [Color.WHITE],
+}
+
 BACKGROUND = '#121010'
 
 ADDITION_COLOR_MAPS = {
@@ -246,3 +257,7 @@ def ratios_by_color(
                 }.items()
             )
         )
+
+
+def is_zappable(color: Color, events: dict[Color, pd.Index]) -> bool:
+    return any(c in ZAPPABLE_COLORS[color] for c in events.keys())
