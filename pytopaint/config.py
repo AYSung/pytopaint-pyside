@@ -16,8 +16,6 @@ def import_config() -> AppConfig:
     with open(file) as stream:
         config = yaml.safe_load(stream)
 
-    print(f'config loaded: {config}')
-
     return AppConfig(**config)
 
 

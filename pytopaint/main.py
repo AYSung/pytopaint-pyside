@@ -254,7 +254,6 @@ class MainWindow(QMainWindow):
     def resize_plots(self) -> None:
         pixels, ok = QInputDialog.getInt(
             self,
-            'Change Plot Size',
             'Pixels per dimension (128-256)',
             value=appconfig.resolution,
             minValue=128,
@@ -268,18 +267,27 @@ class MainWindow(QMainWindow):
         self.resizeTriggered.emit()
 
     def rescale_plots(self) -> None:
-        dialog = QDialog()
+        dialog = QDialog(self)
+
+        field_width = 60
 
         layout = QFormLayout()
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         scaling_factor_input = QSpinBox(singleStep=10)
         scaling_factor_input.setRange(20, 1200)
         scaling_factor_input.setValue(appconfig.scaling_factor)
+        scaling_factor_input.setFixedWidth(field_width)
+        scaling_factor_input.setToolTip('between 20 and 1200')
         upper_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
         upper_arcsinh_limit_input.setRange(5, 15)
         upper_arcsinh_limit_input.setValue(appconfig.upper_arcsinh_limit)
+        upper_arcsinh_limit_input.setFixedWidth(field_width)
+        upper_arcsinh_limit_input.setToolTip('between 5 and 15')
         lower_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
         lower_arcsinh_limit_input.setRange(-5, 4)
         lower_arcsinh_limit_input.setValue(appconfig.lower_arcsinh_limit)
+        lower_arcsinh_limit_input.setFixedWidth(field_width)
+        lower_arcsinh_limit_input.setToolTip('between -5 and 4')
         layout.addRow('Scaling Factor:', scaling_factor_input)
         layout.addRow('Upper Bound:', upper_arcsinh_limit_input)
         layout.addRow('Lower Bound:', lower_arcsinh_limit_input)
@@ -289,7 +297,7 @@ class MainWindow(QMainWindow):
         )
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
-        layout.addWidget(button_box)
+        layout.addRow(button_box)
 
         dialog.setLayout(layout)
         if dialog.exec() == QDialog.DialogCode.Accepted:
