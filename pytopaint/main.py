@@ -249,7 +249,7 @@ class MainWindow(QMainWindow):
         if not ok:
             return
 
-        self.handle_action(MenuAction.SUBSAMPLE, dict(n=n))
+        self.get_active_painter().handle_menu_action(MenuAction.SUBSAMPLE, dict(n=n))
 
     def resize_plots(self) -> None:
         pixels, ok = QInputDialog.getInt(
