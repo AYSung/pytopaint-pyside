@@ -229,3 +229,20 @@ def events_by_colors(df: pd.DataFrame) -> tuple[dict[Color, int], int]:
         {color: count for color, count in df.color.value_counts().to_dict().items()},
         df.shape[0],
     )
+
+
+def ratios_by_color(
+    current_color: Color, events: dict[Color, int]
+) -> dict[Color, float]:
+    if current_color == Color.GREY:
+        return dict()
+    else:
+        return dict(
+            sorted(
+                {
+                    color: events.get(current_color, 0) / n
+                    for color, n in events.items()
+                    if (color not in [current_color, Color.GREY]) and (n > 0)
+                }.items()
+            )
+        )

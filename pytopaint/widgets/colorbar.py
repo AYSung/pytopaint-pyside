@@ -11,7 +11,13 @@ from PySide6.QtCore import Slot, Qt, Signal
 
 import pandas as pd
 
-from pytopaint.colors import Color, COLOR_RGB_MAP, COLOR_NAME_MAP, events_by_colors
+from pytopaint.colors import (
+    Color,
+    COLOR_RGB_MAP,
+    COLOR_NAME_MAP,
+    events_by_colors,
+    ratios_by_color,
+)
 from pytopaint.actions import MenuAction
 
 RESOLUTION = 256
@@ -91,6 +97,8 @@ class ColorLabel(QWidget):
     @Slot(object, int)
     def update_label(self, events: dict[Color, int], total_events: int):
         self.events = events.get(self.color, 0)
+        self.ratios = ratios_by_color(self.color, events)
+        print(self.ratios)
         percent = self.events / total_events
         decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
         if (self.events >= 100) or (self.events == 0):
@@ -207,5 +215,18 @@ class ColorLabel(QWidget):
             )
         )
         menu.addAction(isolate)
+
+        menu.addSection('Ratios')
+
+        ratio_labels = [
+            QAction(
+                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {COLOR_NAME_MAP[color]}',
+                enabled=False,
+            )
+            for color, ratio in self.ratios.items()
+            if ratio
+        ]
+        for label in ratio_labels:
+            menu.addAction(label)
 
         menu.exec(self.mapToGlobal(pos))

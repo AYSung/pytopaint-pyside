@@ -11,6 +11,7 @@ from pytopaint.colors import (
     merge_colors,
     indices_by_color,
     events_by_colors,
+    ratios_by_color,
 )
 
 
@@ -279,3 +280,56 @@ def test_percents_by_colors(test_df_1, test_df_2):
         },
         8,
     )
+
+
+def test_ratios_by_colors():
+    assert ratios_by_color(
+        current_color=Color.RED,
+        events={
+            Color.GREY: 1,
+            Color.RED: 1,
+            Color.BLUE: 1,
+            Color.MAGENTA: 1,
+            Color.GREEN: 1,
+            Color.YELLOW: 1,
+            Color.CYAN: 1,
+            Color.WHITE: 1,
+        },
+    ) == {
+        Color.BLUE: 1,
+        Color.MAGENTA: 1,
+        Color.GREEN: 1,
+        Color.YELLOW: 1,
+        Color.CYAN: 1,
+        Color.WHITE: 1,
+    }
+
+    assert ratios_by_color(
+        current_color=Color.RED,
+        events={
+            Color.GREY: 2,
+            Color.RED: 1,
+            Color.BLUE: 3,
+            Color.MAGENTA: 4,
+            Color.GREEN: 5,
+            Color.YELLOW: 6,
+        },
+    ) == {
+        Color.BLUE: 1 / 3,
+        Color.MAGENTA: 1 / 4,
+        Color.GREEN: 1 / 5,
+        Color.YELLOW: 1 / 6,
+    }
+    assert ratios_by_color(
+        current_color=Color.RED,
+        events={
+            Color.GREY: 2,
+            Color.RED: 4,
+            Color.BLUE: 1,
+            Color.MAGENTA: 4,
+            Color.YELLOW: 0,
+        },
+    ) == {
+        Color.BLUE: 4,
+        Color.MAGENTA: 1,
+    }
