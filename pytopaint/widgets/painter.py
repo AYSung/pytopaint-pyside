@@ -1,32 +1,30 @@
-from PySide6.QtWidgets import (
-    QGridLayout,
-    QWidget,
-    QSizePolicy,
-    QVBoxLayout,
-    QLayout,
-)
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
+    QKeySequence,
     QMouseEvent,
     QShortcut,
-    QKeySequence,
 )
-from PySide6.QtCore import Slot, Qt, Signal
+from PySide6.QtWidgets import (
+    QGridLayout,
+    QLayout,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
-import pandas as pd
-
-from pytopaint.selection import get_selection_index
+from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
     add_color_to_selection,
-    subtract_color_from_selection,
     merge_colors,
+    subtract_color_from_selection,
 )
+from pytopaint.config import appconfig
+from pytopaint.flowdata import FlowData
+from pytopaint.layout import get_best_layout, import_layouts
+from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
-from pytopaint.actions import MenuAction
-from pytopaint.layout import get_best_layout, import_layouts
-from pytopaint.flowdata import FlowData
-from pytopaint.config import appconfig
 
 
 class Painter(QWidget):

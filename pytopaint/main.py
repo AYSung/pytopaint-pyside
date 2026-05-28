@@ -1,47 +1,41 @@
 import sys
+from io import BytesIO
 from pathlib import Path
 
-from io import BytesIO
 import flowio
 import numpy as np
-
-from PySide6.QtWidgets import (
-    QApplication,
-    QMainWindow,
-    QFileDialog,
-    QTabWidget,
-    QWidget,
-    QGridLayout,
-    QDialog,
-    QVBoxLayout,
-    QDialogButtonBox,
-    QLabel,
-    QLayout,
-    QInputDialog,
-    QMessageBox,
-    QFrame,
-    QSpinBox,
-    QDoubleSpinBox,
-    QFormLayout,
-)
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QAction,
-    QShortcut,
-    QKeySequence,
-    QGuiApplication,
-    QKeyEvent,
     QDragEnterEvent,
     QDropEvent,
+    QGuiApplication,
+    QKeySequence,
+    QShortcut,
 )
-from PySide6.QtCore import Slot, Qt, Signal
+from PySide6.QtWidgets import (
+    QApplication,
+    QDialog,
+    QFileDialog,
+    QGridLayout,
+    QMainWindow,
+    QTabWidget,
+    QWidget,
+)
 
-import pandas as pd
-
-from pytopaint.flowdata import FlowData, sort_channels
-from pytopaint.colors import Color
-from pytopaint.widgets.painter import Painter
 from pytopaint.actions import MenuAction
-from pytopaint.config import appconfig, save_config
+from pytopaint.config import appconfig, import_config, save_config
+from pytopaint.flowdata import FlowData
+from pytopaint.widgets.dialogs import (
+    PlotScaleDialog,
+    about_dialog,
+    file_info_dialog,
+    resize_plot_dialog,
+    save_config_dialog,
+    shortcut_dialog,
+    subsample_dialog,
+)
+from pytopaint.widgets.painter import Painter
 
 
 class MainWindow(QMainWindow):
@@ -132,178 +126,26 @@ class MainWindow(QMainWindow):
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
 
-    def file_info_dialog(self) -> None:
-        dialog = QDialog(parent=self)
-        dialog.setWindowTitle('File Info')
-
-        sample = self.get_active_painter().data.sample
-        file_name = QLabel(f'File Name: {sample.current_filename}')
-        event_count = QLabel(f'Event Count: {sample.event_count:,}')
-        channels = [
-            f'{marker} ({fluor})' if marker else fluor
-            for fluor, marker in sample.channels[['pnn', 'pns']].to_records(index=False)
-        ]
-        channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
-
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
-        button_box.accepted.connect(dialog.accept)
-
-        layout = QVBoxLayout()
-        layout.addWidget(file_name)
-        layout.addWidget(event_count)
-        layout.addWidget(channels_label)
-        layout.addWidget(button_box)
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-
-        dialog.setLayout(layout)
-
-        dialog.exec()
-
-    def about_dialog(self):
-        QMessageBox.about(
-            self,
-            'About PytoPaint',
-            'PytoPaint v0.1\n\n\nCreated by Andrew Y. Sung\n\nLast updated May 2026',
-        )
-
-    def shortcut_dialog(self):
-        def _shortcut_table(shortcuts: list[tuple[str, str]]) -> QWidget:
-            table = QWidget()
-            grid = QGridLayout()
-            grid.setColumnMinimumWidth(0, 200)
-            for row, (function, shortcut) in enumerate(shortcuts):
-                grid.addWidget(QLabel(function), row, 0)
-                grid.addWidget(QLabel(shortcut), row, 1)
-            table.setLayout(grid)
-            return table
-
-        def _hline() -> QFrame:
-            hline = QFrame()
-            hline.setFrameShape(QFrame.Shape.HLine)
-            return hline
-
-        dialog = QDialog(self)
-        dialog.setWindowTitle('Shortcuts')
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel('<b>Mouse Controls (within biplots):</b>'))
-        layout.addWidget(
-            _shortcut_table([
-                ('Paint events', 'Left-Click'),
-                ('Paint non-grey events', 'Shift + Left-Click'),
-                ('Override paint colors', 'Ctrl+Left-Click'),
-                ('Override non-grey events', 'Ctrl+Shift+Left-Click'),
-            ])
-        )
-        layout.addWidget(
-            _shortcut_table([
-                ('Exact zap from selection', 'Right-Click'),
-                ('Zap from selection', 'Shift + Right-Click'),
-                ('Paint grey', 'Ctrl+Right-Click'),
-            ])
-        )
-        layout.addWidget(
-            _shortcut_table([
-                ('Exact zap color', 'Middle-Click'),
-                ('Zap color', 'Shift + Middle-Click'),
-            ])
-        )
-        layout.addWidget(_hline())
-
-        layout.addWidget(QLabel('<b>Keyboard Controls:</b>'))
-        layout.addWidget(
-            _shortcut_table([
-                ('Undo', 'Ctrl + Z'),
-                ('Redo', 'Ctrl + Shift + Z'),
-                ('Paint Red', 'F'),
-                ('Paint Green', 'D'),
-                ('Paint Blue', 'S'),
-                ('Paint Cyan', 'Shift + F'),
-                ('Paint Magenta', 'Shift + D'),
-                ('Paint Yellow', 'Shift + S'),
-                ('Paint White', 'A'),
-                ('Hide Current Color', 'Ctrl+X'),
-                ('Isolate Current Color', 'Ctrl+Shift+X'),
-                ('Reset Events', 'Ctrl + R'),
-                ('Open File(s)', 'Ctrl + O'),
-                ('Close Tab', 'Ctrl + W'),
-                ('Close Application', 'Ctrl + Q'),
-            ])
-        )
-
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-
-        dialog.setLayout(layout)
-        dialog.exec()
-
     def subsample(self) -> None:
-        n, ok = QInputDialog.getInt(
-            self,
-            'Subsample Events',
-            'Events to subsample (min. 1000):',
-            value=min(10_000, self.get_active_painter().df.shape[0]),
-            minValue=1_000,
-            maxValue=self.get_active_painter().df.shape[0],
-            step=1_000,
-        )
-        if not ok:
-            return
-
-        self.get_active_painter().handle_menu_action(MenuAction.SUBSAMPLE, dict(n=n))
+        n, ok = subsample_dialog(self, self.get_active_painter())
+        if ok:
+            self.get_active_painter().handle_menu_action(
+                MenuAction.SUBSAMPLE, dict(n=n)
+            )
 
     def resize_plots(self) -> None:
-        pixels, ok = QInputDialog.getInt(
-            self,
-            'Pixels per dimension (128-256)',
-            value=appconfig.resolution,
-            minValue=128,
-            maxValue=256,
-            step=16,
-        )
-        if not ok:
-            return
-
-        appconfig.resolution = pixels
-        self.resizeTriggered.emit()
+        pixels, ok = resize_plot_dialog(self)
+        if ok:
+            appconfig.resolution = pixels
+            self.resizeTriggered.emit()
 
     def rescale_plots(self) -> None:
-        dialog = QDialog(self)
+        dialog = PlotScaleDialog(self)
 
-        field_width = 60
-
-        layout = QFormLayout()
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-        scaling_factor_input = QSpinBox(singleStep=10)
-        scaling_factor_input.setRange(20, 1200)
-        scaling_factor_input.setValue(appconfig.scaling_factor)
-        scaling_factor_input.setFixedWidth(field_width)
-        scaling_factor_input.setToolTip('between 20 and 1200')
-        upper_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
-        upper_arcsinh_limit_input.setRange(5, 15)
-        upper_arcsinh_limit_input.setValue(appconfig.upper_arcsinh_limit)
-        upper_arcsinh_limit_input.setFixedWidth(field_width)
-        upper_arcsinh_limit_input.setToolTip('between 5 and 15')
-        lower_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
-        lower_arcsinh_limit_input.setRange(-5, 4)
-        lower_arcsinh_limit_input.setValue(appconfig.lower_arcsinh_limit)
-        lower_arcsinh_limit_input.setFixedWidth(field_width)
-        lower_arcsinh_limit_input.setToolTip('between -5 and 4')
-        layout.addRow('Scaling Factor:', scaling_factor_input)
-        layout.addRow('Upper Bound:', upper_arcsinh_limit_input)
-        layout.addRow('Lower Bound:', lower_arcsinh_limit_input)
-
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-        button_box.accepted.connect(dialog.accept)
-        button_box.rejected.connect(dialog.reject)
-        layout.addRow(button_box)
-
-        dialog.setLayout(layout)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            appconfig.scaling_factor = scaling_factor_input.value()
-            appconfig.upper_arcsinh_limit = upper_arcsinh_limit_input.value()
-            appconfig.lower_arcsinh_limit = lower_arcsinh_limit_input.value()
+            appconfig.scaling_factor = dialog.scaling_factor
+            appconfig.upper_arcsinh_limit = dialog.upper_arcsinh_limit
+            appconfig.lower_arcsinh_limit = dialog.lower_arcsinh_limit
             self.rescaleTriggered.emit()
 
     @Slot(int)
@@ -353,7 +195,9 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
 
         file_info_action = QAction('File Info', self, enabled=False)
-        file_info_action.triggered.connect(self.file_info_dialog)
+        file_info_action.triggered.connect(
+            lambda: file_info_dialog(self, self.get_active_painter().data.sample).exec()
+        )
         self.painter_tabs.currentChanged.connect(
             lambda: file_info_action.setEnabled(self.painter_tabs.count())
         )
@@ -393,12 +237,21 @@ class MainWindow(QMainWindow):
         help_menu = menu_bar.addMenu('&Help')
 
         shortcut_help_action = QAction('Shortcuts', self)
-        shortcut_help_action.triggered.connect(self.shortcut_dialog)
+        shortcut_help_action.triggered.connect(lambda: shortcut_dialog(self).exec())
         help_menu.addAction(shortcut_help_action)
 
         about_action = QAction('About PytoPaint', self)
-        about_action.triggered.connect(self.about_dialog)
+        about_action.triggered.connect(lambda: about_dialog(self))
         help_menu.addAction(about_action)
+
+    def closeEvent(self, event):
+        if appconfig == import_config():
+            return
+
+        if save_config_dialog(self):
+            save_config()
+
+        return super().closeEvent(event)
 
 
 def main():
@@ -410,7 +263,6 @@ def main():
 
     app.exec()
     app.clipboard().clear()
-    # save_config()
 
 
 if __name__ == '__main__':
