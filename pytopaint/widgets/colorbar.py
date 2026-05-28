@@ -15,7 +15,7 @@ from pytopaint.colors import (
     COLOR_NAME_MAP,
     COLOR_RGB_MAP,
     Color,
-    events_by_colors,
+    indices_by_color,
     ratios_by_color,
 )
 
@@ -53,8 +53,9 @@ class ColorBar(QWidget):
 
     @Slot(object)
     def update_labels(self, df: pd.DataFrame):
-        events, total_events = events_by_colors(df)
-        self.eventsUpdated.emit(events, total_events)
+        indices = indices_by_color(df.color)
+        total_events = df.shape[0]
+        self.eventsUpdated.emit(indices, total_events)
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
     def paintEvent(self, pe):
@@ -72,6 +73,7 @@ class ColorLabel(QWidget):
         self.color = color
         self.highlight = False
         self.events = 0
+        self.remembered_events = pd.Index([])
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -92,14 +94,30 @@ class ColorLabel(QWidget):
 
     @Slot(object, int)
     def update_label(self, events: dict[Color, int], total_events: int):
-        self.events = events.get(self.color, 0)
-        self.ratios = ratios_by_color(self.color, events)
-        percent = self.events / total_events
+        self.events = events.get(self.color, pd.Index([]))
+        self.ratios = ratios_by_color(
+            self.color, {color: index.size for color, index in events.items()}
+        )
+        percent = self.events.size / total_events
         decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
-        if (self.events >= 100) or (self.events == 0):
+        if (self.events.size >= 100) or (self.events.size == 0):
             self.label.setText(f'{percent:.{decimal_places}%}')
         else:
             self.label.setText(f'{percent:.{decimal_places}%} ({self.events})')
+
+    @Slot(int)
+    def remember_color(self) -> None:
+        self.remembered_events = self.events.copy()
+
+    @Slot(int)
+    def recall_color(self) -> None:
+        self.menuActionTriggered.emit(
+            MenuAction.RECALL, dict(color=self.color, index=self.remembered_events)
+        )
+
+    @Slot()
+    def clear_memory(self) -> None:
+        self.remembered_events = pd.Index([])
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
@@ -171,10 +189,12 @@ class ColorLabel(QWidget):
         )
         menu.addAction(self.toggle_highlight)
 
+        has_events = self.events.size > 0
+
         if self.color != Color.GREY:
             menu.addSeparator()
 
-            zap = QAction('Zap', enabled=self.events > 0)
+            zap = QAction('Zap', enabled=has_events)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.ZAP, dict(color=self.color)
@@ -182,7 +202,8 @@ class ColorLabel(QWidget):
             )
             menu.addAction(zap)
 
-            exact_zap = QAction('Exact Zap', enabled=self.events > 0)
+            # TODO: enable if derivative colors present
+            exact_zap = QAction('Exact Zap', enabled=has_events)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, dict(color=self.color)
@@ -191,7 +212,7 @@ class ColorLabel(QWidget):
             menu.addAction(exact_zap)
 
             merge_menu = QMenu('Merge with...')
-            merge_menu.setEnabled(self.events > 0)
+            merge_menu.setEnabled(has_events)
 
             merge_actions = [
                 _merge_action(color, name)
@@ -205,20 +226,31 @@ class ColorLabel(QWidget):
 
         menu.addSeparator()
         menu.addSection('Filter')
-        hide = QAction('Hide Color', enabled=self.events > 0)
+        hide = QAction('Hide Color', enabled=has_events)
         hide.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.HIDE, dict(color=self.color)
             )
         )
         menu.addAction(hide)
-        isolate = QAction('Isolate Color', enabled=self.events > 0)
+        isolate = QAction('Isolate Color', enabled=has_events)
         isolate.triggered.connect(
             lambda: self.menuActionTriggered.emit(
                 MenuAction.ISOLATE, dict(color=self.color)
             )
         )
         menu.addAction(isolate)
+
+        menu.addSeparator()
+        remember = QAction('Remember Color', enabled=has_events)
+        remember.triggered.connect(self.remember_color)
+        menu.addAction(remember)
+        recall = QAction('Recall Color', enabled=self.remembered_events.size > 0)
+        recall.triggered.connect(self.recall_color)
+        menu.addAction(recall)
+        clear = QAction('Clear Memory', enabled=self.remembered_events.size > 0)
+        clear.triggered.connect(self.clear_memory)
+        menu.addAction(clear)
 
         menu.addSection('Ratios')
 

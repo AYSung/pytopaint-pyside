@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-
+import pandas as pd
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
@@ -257,6 +257,7 @@ class Painter(QWidget):
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
+            MenuAction.RECALL: self.recall_color,
         }
 
         FUNCTION_MAP[action](**kwargs)
@@ -282,6 +283,9 @@ class Painter(QWidget):
 
     def zap_all(self):
         self.df['color'] = Color.GREY
+
+    def recall_color(self, color: Color, index: pd.Index):
+        self.df.loc[index, 'color'] = color
 
     @Slot(int, int)
     def merge_color(self, source_color: Color, target_color: Color):
