@@ -7,6 +7,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtGui import (
     QMouseEvent,
+    QShortcut,
+    QKeySequence,
 )
 from PySide6.QtCore import Slot, Qt, Signal
 
@@ -35,6 +37,8 @@ class Painter(QWidget):
 
     def __init__(self, data: FlowData):
         super().__init__()
+        self.configure_shortcuts()
+
         self.data = data
 
         self.original_df = self.data.binned_df.assign(color=Color.GREY)
@@ -92,6 +96,64 @@ class Painter(QWidget):
 
         self.change_color(Color.RED)
         self.emit_changes()
+
+    def configure_shortcuts(self) -> None:
+        red_shortcut = QShortcut(QKeySequence('F'), self)
+        red_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.RED)
+            )
+        )
+        green_shortcut = QShortcut(QKeySequence('D'), self)
+        green_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.GREEN)
+            )
+        )
+        blue_shortcut = QShortcut(QKeySequence('S'), self)
+        blue_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.BLUE)
+            )
+        )
+        cyan_shortcut = QShortcut(QKeySequence('Shift+F'), self)
+        cyan_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.CYAN)
+            )
+        )
+        magenta_shortcut = QShortcut(QKeySequence('Shift+D'), self)
+        magenta_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.MAGENTA)
+            )
+        )
+        yellow_shortcut = QShortcut(QKeySequence('Shift+S'), self)
+        yellow_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.YELLOW)
+            )
+        )
+        white_shortcut = QShortcut(QKeySequence('A'), self)
+        white_shortcut.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.SET_ACTIVE, dict(color=Color.WHITE)
+            )
+        )
+
+        undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
+        undo_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.UNDO, dict())
+        )
+        redo_shortcut = QShortcut(QKeySequence('Ctrl+Shift+Z'), self)
+        redo_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.REDO, dict())
+        )
+
+        reset_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
+        reset_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.RESET, dict())
+        )
 
     @Slot(object, str, str, QMouseEvent)
     def handle_selection(
