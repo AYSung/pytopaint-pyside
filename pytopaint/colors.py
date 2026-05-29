@@ -2,6 +2,8 @@ from enum import IntEnum
 
 import pandas as pd
 
+BACKGROUND = '#121010'
+
 
 class Color(IntEnum):
     GREY = 0
@@ -12,6 +14,10 @@ class Color(IntEnum):
     MAGENTA = 5
     CYAN = 6
     WHITE = 7
+
+    @property
+    def label_name(self) -> str:
+        return self.name.title()
 
 
 COLOR_RGB_MAP = {
@@ -25,17 +31,6 @@ COLOR_RGB_MAP = {
     Color.WHITE: '#E9E9E9',
 }
 
-COLOR_NAME_MAP = {
-    Color.GREY: 'Grey',
-    Color.BLUE: 'Blue',
-    Color.GREEN: 'Green',
-    Color.RED: 'Red',
-    Color.YELLOW: 'Yellow',
-    Color.MAGENTA: 'Magenta',
-    Color.CYAN: 'Cyan',
-    Color.WHITE: 'White',
-}
-
 ZAPPABLE_COLORS = {
     Color.GREY: [],
     Color.RED: [Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE],
@@ -47,7 +42,6 @@ ZAPPABLE_COLORS = {
     Color.WHITE: [Color.WHITE],
 }
 
-BACKGROUND = '#121010'
 
 ADDITION_COLOR_MAPS = {
     Color.RED: {
@@ -232,14 +226,9 @@ def merge_colors(
 
 
 def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:
-    return {color: pd.Index(index) for color, index in s.groupby(s).groups.items()}
-
-
-def events_by_colors(df: pd.DataFrame) -> tuple[dict[Color, int], int]:
-    return (
-        {color: count for color, count in df.color.value_counts().to_dict().items()},
-        df.shape[0],
-    )
+    return {
+        Color(color): pd.Index(index) for color, index in s.groupby(s).groups.items()
+    }
 
 
 def ratios_by_color(

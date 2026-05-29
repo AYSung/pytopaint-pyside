@@ -12,7 +12,6 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    COLOR_NAME_MAP,
     COLOR_RGB_MAP,
     Color,
     indices_by_color,
@@ -40,7 +39,7 @@ class ColorBar(QWidget):
         self.total_events_label.setFixedWidth(150)
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = [ColorLabel(c) for c in COLOR_RGB_MAP.keys()]
+        self.color_labels = [ColorLabel(c) for c in Color]
         for color_label in self.color_labels:
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
@@ -167,13 +166,13 @@ class ColorLabel(QWidget):
         )
 
     def context_menu(self, pos):
-        def _merge_action(color: Color, name: str) -> QAction:
+        def _merge_action(color: Color) -> QAction:
             def _color_icon(color: Color) -> QIcon:
                 pixmap = QPixmap(12, 12)
                 pixmap.fill(COLOR_RGB_MAP[color])
                 return QIcon(pixmap)
 
-            action = QAction(_color_icon(color), name)
+            action = QAction(_color_icon(color), color.label_name)
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.MERGE, dict(source_color=self.color, target_color=color)
@@ -226,9 +225,7 @@ class ColorLabel(QWidget):
             merge_menu.setEnabled(self.has_events)
 
             merge_actions = [
-                _merge_action(color, name)
-                for color, name in COLOR_NAME_MAP.items()
-                if color != self.color
+                _merge_action(color) for color in Color if color != self.color
             ]
 
             for merge_action in merge_actions:
@@ -267,7 +264,7 @@ class ColorLabel(QWidget):
 
         ratio_labels = [
             QAction(
-                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {COLOR_NAME_MAP[color]}',
+                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {color.label_name}',
                 enabled=False,
             )
             for color, ratio in self.ratios.items()
