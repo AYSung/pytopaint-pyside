@@ -56,11 +56,11 @@ class Painter(QWidget):
         biplot_layout.setSpacing(5)
         biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
-        biplots = get_best_layout(
+        self.layout_config = get_best_layout(
             channels=self.df.columns, layouts=import_layouts()
-        ).to_grid()
+        )
 
-        for coords, label in biplots.items():
+        for coords, label in self.layout_config.to_grid().items():
             x_label, y_label = label
             row, col = coords
 
@@ -151,14 +151,14 @@ class Painter(QWidget):
             lambda: self.handle_menu_action(MenuAction.RESET, dict())
         )
 
-        hide_events_shortcut = QShortcut(QKeySequence('Ctrl+X'), self)
+        hide_events_shortcut = QShortcut(QKeySequence.StandardKey.Backspace, self)
         hide_events_shortcut.activated.connect(
             lambda: self.handle_menu_action(
                 MenuAction.HIDE, dict(color=self.active_color)
             )
         )
 
-        isolate_events_shortcut = QShortcut(QKeySequence('Ctrl+Shift+X'), self)
+        isolate_events_shortcut = QShortcut(QKeySequence('Return'), self)
         isolate_events_shortcut.activated.connect(
             lambda: self.handle_menu_action(
                 MenuAction.ISOLATE, dict(color=self.active_color)
