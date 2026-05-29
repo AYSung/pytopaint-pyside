@@ -87,19 +87,33 @@ class Biplot(QWidget):
             color_data=df['color'],
         )
 
-    def copy_plot_to_clipboard(self):
+    def copy_plot_to_clipboard(self, mode: str):
+        match mode:
+            case 'dark':
+                background_color = BACKGROUND
+                color_map = COLOR_RGB_MAP
+                axis_color = '#bababa'
+            case 'light':
+                background_color = '#ffffff'
+                color_map = COLOR_RGB_MAP | {Color.WHITE: '#000000'}
+                axis_color = '#000000'
+
         canvas = QPixmap(appconfig.resolution + 45, appconfig.resolution + 45)
-        canvas.fill('#ffffff')
+        canvas.fill('#00000000')
         self.plot.draw_dots(
             canvas,
             origin=(45, appconfig.resolution - 1),
-            color_map=COLOR_RGB_MAP | {Color.WHITE: '#000000'},
+            color_map=color_map,
+            background_color=background_color,
         )
         self.y_axis.draw_axis(
-            canvas, origin=(0, appconfig.resolution - 1), pen_color='#000000', offset=0
+            canvas, origin=(0, appconfig.resolution - 1), pen_color=axis_color, offset=0
         )
         self.x_axis.draw_axis(
-            canvas, origin=(45, appconfig.resolution - 1), pen_color='#000000', offset=0
+            canvas,
+            origin=(45, appconfig.resolution - 1),
+            pen_color=axis_color,
+            offset=0,
         )
         clipboard = QApplication.clipboard()
         clipboard.setPixmap(canvas)
@@ -121,12 +135,18 @@ class Biplot(QWidget):
         transpose.triggered.connect(self.transpose_axes)
         menu.addAction(transpose)
         menu.addSeparator()
-        copy = QAction(
-            'Copy to Clipboard',
+        copy_light = QAction(
+            'Copy to Clipboard (Light)',
             enabled=self.x_axis.label is not None and self.y_axis.label is not None,
         )
-        copy.triggered.connect(self.copy_plot_to_clipboard)
-        menu.addAction(copy)
+        copy_light.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='light'))
+        menu.addAction(copy_light)
+        copy_dark = QAction(
+            'Copy to Clipboard (Dark)',
+            enabled=self.x_axis.label is not None and self.y_axis.label is not None,
+        )
+        copy_dark.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='dark'))
+        menu.addAction(copy_dark)
         menu.exec(self.mapToGlobal(pos))
 
     @Slot(str)
@@ -260,10 +280,15 @@ class DotPlot(QLabel):
         canvas: QPixmap,
         origin: tuple[int, int],
         color_map: dict[Color, str],
+        background_color: str,
     ) -> None:
         painter = QPainter(canvas)
         painter.translate(*origin)
         painter.scale(1, -1)
+
+        painter.fillRect(
+            0, 0, appconfig.resolution, appconfig.resolution, background_color
+        )
 
         for color in self.non_highlighted_colors + self.highlighted_colors:
             self.draw_color(color, painter, color_map=color_map)
@@ -275,11 +300,12 @@ class DotPlot(QLabel):
             return
 
         canvas = self.pixmap()
-        canvas.fill(BACKGROUND)
+        canvas.fill('#00000000')
         self.draw_dots(
             canvas,
             origin=(0, appconfig.resolution - 1),
             color_map=COLOR_RGB_MAP,
+            background_color=BACKGROUND,
         )
         self.setPixmap(canvas)
         self.update()
