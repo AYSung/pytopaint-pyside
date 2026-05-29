@@ -287,7 +287,6 @@ class Painter(QWidget):
     def recall_color(self, color: Color, index: pd.Index):
         self.df.loc[index, 'color'] = color
 
-    @Slot(int, int)
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
 
@@ -300,7 +299,6 @@ class Painter(QWidget):
     def subsample_df(self, n: int):
         self.df = self.df.sample(n, random_state=42)
 
-    @Slot()
     def reset_df(self):
         self.df = self.data.binned_df.assign(color=Color.GREY)
         self.record_current_state()
