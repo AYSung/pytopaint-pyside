@@ -280,15 +280,16 @@ class DotPlot(QLabel):
         canvas: QPixmap,
         origin: tuple[int, int],
         color_map: dict[Color, str],
-        background_color: str,
+        background_color: str = None,
     ) -> None:
         painter = QPainter(canvas)
         painter.translate(*origin)
         painter.scale(1, -1)
 
-        painter.fillRect(
-            0, -1, appconfig.resolution, appconfig.resolution, background_color
-        )
+        if background_color is not None:
+            painter.fillRect(
+                0, -1, appconfig.resolution, appconfig.resolution, background_color
+            )
 
         for color in self.non_highlighted_colors + self.highlighted_colors:
             self.draw_color(color, painter, color_map=color_map)
@@ -296,17 +297,14 @@ class DotPlot(QLabel):
         painter.end()
 
     def update_plot(self) -> None:
-        if self.color_indices is None:
-            return
-
         canvas = self.pixmap()
-        canvas.fill('#00000000')
-        self.draw_dots(
-            canvas,
-            origin=(0, appconfig.resolution - 1),
-            color_map=COLOR_RGB_MAP,
-            background_color=BACKGROUND,
-        )
+        canvas.fill(BACKGROUND)
+        if self.color_indices is not None:
+            self.draw_dots(
+                canvas,
+                origin=(0, appconfig.resolution - 1),
+                color_map=COLOR_RGB_MAP,
+            )
         self.setPixmap(canvas)
         self.update()
 
