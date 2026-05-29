@@ -111,7 +111,7 @@ class Biplot(QWidget):
         )
         self.x_axis.draw_axis(
             canvas,
-            origin=(45, appconfig.resolution - 1),
+            origin=(45, appconfig.resolution),
             pen_color=axis_color,
             offset=0,
         )
@@ -287,7 +287,7 @@ class DotPlot(QLabel):
         painter.scale(1, -1)
 
         painter.fillRect(
-            0, 0, appconfig.resolution, appconfig.resolution, background_color
+            0, -1, appconfig.resolution, appconfig.resolution, background_color
         )
 
         for color in self.non_highlighted_colors + self.highlighted_colors:
