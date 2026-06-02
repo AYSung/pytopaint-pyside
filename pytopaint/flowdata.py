@@ -194,10 +194,14 @@ def upper_clip_limit(s: pd.Series):
 def bin_series(s: pd.Series, n_bins: int, clip_limits: dict[str, tuple[float, float]]):
     lower_limit, upper_limit = clip_limits[s.name]
 
-    bin_borders = [lower_limit] + [
-        lower_limit + (((n + 1) / n_bins) * (upper_limit - lower_limit))
-        for n in range(n_bins)
-    ]
+    bin_borders = (
+        [lower_limit]
+        + [
+            lower_limit + (((n + 1) / n_bins) * (upper_limit - lower_limit))
+            for n in range(n_bins - 1)
+        ]
+        + [float('inf')]
+    )
 
     return pd.cut(
         s, bins=bin_borders, include_lowest=True, labels=list(range(n_bins))
