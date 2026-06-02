@@ -155,6 +155,10 @@ class MainWindow(QMainWindow):
         if widget is not None:
             widget.deleteLater()
 
+    def close_all_tabs(self):
+        while self.painter_tabs.count() > 0:
+            self.handle_tab_close(0)
+
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -174,6 +178,9 @@ class MainWindow(QMainWindow):
                 self.painter_tabs.currentIndex()
             )
         )
+
+        close_all_tabs_shortcut = QShortcut(QKeySequence('Ctrl+Shift+W'), self)
+        close_all_tabs_shortcut.activated.connect(self.close_all_tabs)
 
     def configure_menu_bar(self):
         menu_bar = self.menuBar()
