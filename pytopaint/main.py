@@ -50,7 +50,7 @@ class MainWindow(QMainWindow):
 
         self.painter_tabs = QTabWidget()
         self.painter_tabs.setTabsClosable(True)
-        self.painter_tabs.setTabBarAutoHide(True)
+        self.painter_tabs.setElideMode(Qt.TextElideMode.ElideMiddle)
         self.painter_tabs.tabCloseRequested.connect(self.handle_tab_close)
 
         self.configure_menu_bar()
@@ -86,7 +86,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
-            self.painter_tabs.addTab(painter, file_path.name)
+            self.painter_tabs.addTab(painter, file_path.stem)
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e
