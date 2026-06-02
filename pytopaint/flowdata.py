@@ -31,7 +31,10 @@ class FlowData:
     def axis_ticks(self) -> dict[str, list[tuple[int, str]]]:
         return {
             channel: get_axis_ticks(
-                channel, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+                channel,
+                n_bins=appconfig.resolution,
+                scaling_factor=appconfig.scaling_factor,
+                clip_limits=self.clip_limits,
             )
             for channel in self.channels
         }
@@ -67,6 +70,7 @@ def bin_df(
 def get_axis_ticks(
     channel: str,
     n_bins: int,
+    scaling_factor: float,
     clip_limits: dict[str, tuple[float, float]],
 ) -> list[tuple[int, str]]:
     lower_limit, upper_limit = clip_limits[channel]
@@ -85,13 +89,18 @@ def get_axis_ticks(
         ticks = list(
             filter(
                 lambda x: (x >= lower_limit) and (x <= upper_limit),
-                [-0.63, 0.0, 0.63, 2.6, 4.89, 7.2, 9.5],
+                map(
+                    lambda x: math.asinh(x / scaling_factor),
+                    [-100, 0, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000],
+                ),
             )
         )
         scaled_ticks = bin_series(
             pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
         )
-        return list(zip(scaled_ticks, [None, '0', None, '1e3', '1e4', '1e5', '1e6']))
+        return list(
+            zip(scaled_ticks, [None, '0', None, '1e3', '1e4', '1e5', '1e6', '1e7'])
+        )
 
 
 def to_xform_df(

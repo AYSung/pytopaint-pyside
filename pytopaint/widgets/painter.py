@@ -365,5 +365,4 @@ class Painter(QWidget):
     @Slot()
     def handle_rescale(self) -> None:
         self.data.update_scale()
-        self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
-        self.emit_changes()
+        self.handle_resize()
