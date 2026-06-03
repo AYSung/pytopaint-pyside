@@ -6,7 +6,6 @@ from pytopaint.colors import (
     _add_color_to_series,
     _subtract_color_from_series,
     add_color_to_selection,
-    events_by_colors,
     indices_by_color,
     is_zappable,
     merge_colors,
@@ -253,33 +252,6 @@ def test_indices_by_color(test_df_1, test_df_2):
     assert indices_by_color(test_df_2.color)[Color.YELLOW] == [3]
     assert indices_by_color(test_df_2.color)[Color.CYAN] == [4]
     assert indices_by_color(test_df_2.color)[Color.WHITE] == [5]
-
-
-def test_percents_by_colors(test_df_1, test_df_2):
-    assert events_by_colors(test_df_1) == (
-        {
-            Color.GREY: 1,
-            Color.RED: 1,
-            Color.BLUE: 1,
-            Color.MAGENTA: 1,
-            Color.GREEN: 1,
-            Color.YELLOW: 1,
-            Color.CYAN: 1,
-            Color.WHITE: 1,
-        },
-        8,
-    )
-    assert events_by_colors(test_df_2) == (
-        {
-            Color.GREY: 1,
-            Color.RED: 3,
-            Color.GREEN: 1,
-            Color.YELLOW: 1,
-            Color.CYAN: 1,
-            Color.WHITE: 1,
-        },
-        8,
-    )
 
 
 def test_ratios_by_colors():

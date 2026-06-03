@@ -10,8 +10,6 @@ from pytopaint.flowdata import (
     _clean_marker_name,
     _get_channels,
     _get_compensation,
-    UPPER_ASINH,
-    LOWER_ASINH,
     UPPER_LINEAR,
     lower_clip_limit,
     upper_clip_limit,
@@ -19,6 +17,9 @@ from pytopaint.flowdata import (
     bin_series,
     get_axis_ticks,
 )
+
+LOWER_ASINH = -1
+UPPER_ASINH = 8
 
 
 def test_clean_marker_name():

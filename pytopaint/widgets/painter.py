@@ -60,7 +60,7 @@ class Painter(QWidget):
             channels=self.df.columns, layouts=import_layouts()
         )
 
-        for coords, label in self.layout_config.to_grid().items():
+        for coords, label in self.layout_config.layout.items():
             x_label, y_label = label
             row, col = coords
 

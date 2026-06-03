@@ -7,31 +7,17 @@ import yaml
 
 @dataclass
 class LayoutConfig:
-    layout: list[list[tuple[str, str]]]
-
-    @property
-    def rows(self) -> int:
-        return len(self.layout)
-
-    @property
-    def cols(self) -> int:
-        return max(map(len, self.layout))
+    layout: dict[tuple[int, int], tuple[str, str]]
 
     @property
     def channels(self) -> set[str]:
-        return set(chain(*chain(*self.layout)))
-
-    def flattened(self) -> list[tuple[str, str]]:
-        return list(chain(*[_extend_list(row, self.cols) for row in self.layout]))
-
-    def to_grid(self) -> dict[tuple[int, int], tuple[str, str]]:
-        return dict(zip(_to_grid_coordinates(self.rows, self.cols), self.flattened()))
+        return set(chain(*self.layout.values()))
 
     def biplot_score(self, panel: list[str]) -> float:
         return len([
-            (x, y) for x, y in self.flattened() if x in panel and y in panel
+            (x, y) for x, y in self.layout.values() if x in panel and y in panel
         ]) / len([
-            (x, y) for x, y in self.flattened() if x is not None and y is not None
+            (x, y) for x, y in self.layout.values() if x is not None and y is not None
         ])
 
     def channel_score(self, panel: list[str]) -> float:
@@ -45,7 +31,7 @@ def _import_layouts(anchor: str) -> list[LayoutConfig]:
         with open(item) as stream:
             layout = yaml.safe_load(stream)
 
-        return LayoutConfig([[(x, y) for x, y in row] for row in layout])
+        return LayoutConfig(to_grid(layout))
 
     dir = resources.files(anchor)
     return [
@@ -55,25 +41,22 @@ def _import_layouts(anchor: str) -> list[LayoutConfig]:
     ]
 
 
+def to_grid(
+    layout: list[list[tuple[str, str]]],
+) -> dict[tuple[int, int], tuple[str, str]]:
+    return {
+        (x, y): biplot
+        for x, row in enumerate(layout)
+        for y, biplot in enumerate(row)
+        if biplot is not None
+    }
+
+
 def import_layouts() -> list[LayoutConfig]:
     return _import_layouts('pytopaint.resources.layouts')
-
-
-def _to_grid_coordinates(
-    rows: int,
-    cols: int,
-) -> list[tuple[int, int]]:
-    return [(row, col) for row in range(rows) for col in range(cols)]
 
 
 def get_best_layout(channels: list[str], layouts: list[LayoutConfig]) -> LayoutConfig:
     return sorted(
         layouts, key=lambda x: x.biplot_score(channels) * x.channel_score(channels)
     )[-1]
-
-
-def _extend_list(list_: list[tuple[str, str]], target_length: int):
-    if len(list_) >= target_length:
-        return list_
-    else:
-        return list_ + [(None, None)] * (target_length - len(list_))
