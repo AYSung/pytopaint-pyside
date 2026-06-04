@@ -43,16 +43,18 @@ class LayoutConfig:
         ]
 
 
-def _import_layouts(anchor: str) -> list[LayoutConfig]:
-    def _read_panel(item) -> LayoutConfig:
-        with open(item) as stream:
-            layout = yaml.safe_load(stream)
+def read_yaml(item) -> LayoutConfig:
+    with open(item) as stream:
+        layout = yaml.safe_load(stream)
 
-        return LayoutConfig(to_grid(layout))
+    return LayoutConfig(to_grid(layout))
+
+
+def _import_layouts(anchor: str) -> list[LayoutConfig]:
 
     dir = resources.files(anchor)
     return [
-        _read_panel(item)
+        read_yaml(item)
         for item in dir.iterdir()
         if item.is_file() and item.name != 'example.yml'
     ]

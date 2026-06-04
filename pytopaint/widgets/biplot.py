@@ -78,6 +78,7 @@ class Biplot(QWidget):
 
     def update_plot_data(self):
         if self.x_axis.label is None or self.y_axis.label is None:
+            self.plot.clear()
             return
 
         df = self.df[[self.x_axis.label, self.y_axis.label, 'color']].drop_duplicates()
@@ -119,10 +120,13 @@ class Biplot(QWidget):
         clipboard.setPixmap(canvas)
 
     def transpose_axes(self):
-        x_label = self.x_axis.label
-        y_label = self.y_axis.label
-        self.x_axis.label = y_label
-        self.y_axis.label = x_label
+        self.set_axes(x_label=self.y_axis.label, y_label=self.x_axis.label)
+
+    def set_axes(self, x_label: str, y_label: str) -> None:
+        self.x_axis.label = x_label
+        self.y_axis.label = y_label
+        self.x_axis.update_axis()
+        self.y_axis.update_axis()
         self.update_plot_data()
         self.update_title()
 
@@ -186,6 +190,8 @@ class DotPlot(QLabel):
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
         self.highlighted_colors = []
+        self.x_data = None
+        self.y_data = None
         self.color_indices = None
 
     def mouseMoveEvent(self, e: QMouseEvent):
@@ -311,6 +317,12 @@ class DotPlot(QLabel):
     @Slot(int, dict)
     def resize(self, pixels: int, _: dict[str, list[tuple[int, str]]]):
         self.setPixmap(QPixmap(pixels, pixels))
+        self.update_plot()
+
+    def clear(self) -> None:
+        self.color_indices = None
+        self.x_data = None
+        self.y_data = None
         self.update_plot()
 
 

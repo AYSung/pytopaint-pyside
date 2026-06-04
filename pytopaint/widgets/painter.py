@@ -1,3 +1,4 @@
+import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
@@ -11,7 +12,7 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
 )
-import pandas as pd
+
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
@@ -21,7 +22,7 @@ from pytopaint.colors import (
 )
 from pytopaint.config import appconfig
 from pytopaint.flowdata import FlowData
-from pytopaint.layout import get_best_layout, import_layouts, replace_unused_channels
+from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
@@ -52,30 +53,16 @@ class Painter(QWidget):
         self.highlightsUpdated.connect(color_bar.highlightsUpdated)
 
         biplot_container = QWidget()
-        biplot_layout = QGridLayout()
-        biplot_layout.setSpacing(5)
-        biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self.biplot_layout = QGridLayout()
+        self.biplot_layout.setSpacing(5)
+        self.biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
         self.layout_config = get_best_layout(channels=self.df.columns)
 
         for coords, labels in self.layout_config.grid.items():
-            x_label, y_label = labels
-            row, col = coords
+            self.add_biplot(coords, labels)
 
-            biplot = Biplot(
-                self.df,
-                x_label=x_label,
-                y_label=y_label,
-                axis_ticks=self.data.axis_ticks,
-            )
-            biplot.pointsSelected.connect(self.handle_selection)
-            self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
-            self.dataUpdated.connect(biplot.set_data)
-            self.activeColorChanged.connect(biplot.plot.set_active_color)
-            biplot_layout.addWidget(biplot, row, col)
-            self.resizeTriggered.connect(biplot.resizeTriggered)
-
-        biplot_container.setLayout(biplot_layout)
+        biplot_container.setLayout(self.biplot_layout)
         biplot_container.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
@@ -364,3 +351,29 @@ class Painter(QWidget):
     def handle_rescale(self) -> None:
         self.data.update_scale()
         self.handle_resize()
+
+    def update_layout(self, layout: LayoutConfig) -> None:
+        for coords, labels in layout.grid.items():
+            layout_item = self.biplot_layout.itemAtPosition(*coords)
+            if layout_item is not None:
+                x_label, y_label = labels
+                x_label = x_label if x_label in self.data.channels else None
+                y_label = y_label if y_label in self.data.channels else None
+
+                biplot: Biplot = layout_item.widget()
+                biplot.set_axes(x_label, y_label)
+            else:
+                self.add_biplot(coords, labels)
+
+    def add_biplot(self, coords: tuple[int, int], labels: tuple[str, str]) -> None:
+        x_label, y_label = labels
+        row, col = coords
+        biplot = Biplot(
+            self.df, x_label=x_label, y_label=y_label, axis_ticks=self.data.axis_ticks
+        )
+        biplot.pointsSelected.connect(self.handle_selection)
+        self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
+        self.dataUpdated.connect(biplot.set_data)
+        self.activeColorChanged.connect(biplot.plot.set_active_color)
+        self.biplot_layout.addWidget(biplot, row, col)
+        self.resizeTriggered.connect(biplot.resizeTriggered)

@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.config import appconfig, import_config, save_config
 from pytopaint.flowdata import FlowData
+from pytopaint.layout import read_yaml
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     about_dialog,
@@ -129,7 +130,7 @@ class MainWindow(QMainWindow):
             parent=None,
             caption='Save Layout',
             dir='./pytopaint/resources/layouts/',
-            filter='.yml',
+            filter='YAML (*.yml)',
         )
         if not file_path:
             return
@@ -142,6 +143,16 @@ class MainWindow(QMainWindow):
                 sort_keys=False,
                 explicit_start=True,
             )
+
+    def load_layout(self) -> None:
+        file_path, _ = QFileDialog.getOpenFileName(
+            None, 'Load Layout', './pytopaint/resources/layouts/', 'YAML (*.yml)'
+        )
+        if not file_path:
+            return
+
+        layout = read_yaml(file_path)
+        self.get_active_painter().update_layout(layout)
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
@@ -252,6 +263,10 @@ class MainWindow(QMainWindow):
         save_layout_action = QAction('Save Layout...', self)
         save_layout_action.triggered.connect(self.save_layout)
         layout_menu.addAction(save_layout_action)
+
+        load_layout_action = QAction('Load Layout', self)
+        load_layout_action.triggered.connect(self.load_layout)
+        layout_menu.addAction(load_layout_action)
 
         plot_menu = menu_bar.addMenu('&Plot')
 
