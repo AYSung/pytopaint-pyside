@@ -7,23 +7,40 @@ import yaml
 
 @dataclass
 class LayoutConfig:
-    layout: dict[tuple[int, int], tuple[str, str]]
+    grid: dict[tuple[int, int], tuple[str, str]]
 
     @property
     def channels(self) -> set[str]:
-        return set(chain(*self.layout.values()))
+        return set(chain(*self.grid.values()))
+
+    @property
+    def rows(self) -> int:
+        return max([x for x, _ in self.grid.keys()]) + 1
+
+    def columns(self, row: int) -> int:
+        return max([y for x, y in self.grid.keys() if x == row]) + 1
 
     def biplot_score(self, panel: list[str]) -> float:
         return len([
-            (x, y) for x, y in self.layout.values() if x in panel and y in panel
+            (x, y) for x, y in self.grid.values() if x in panel and y in panel
         ]) / len([
-            (x, y) for x, y in self.layout.values() if x is not None and y is not None
+            (x, y) for x, y in self.grid.values() if x is not None and y is not None
         ])
 
     def channel_score(self, panel: list[str]) -> float:
         return len([channel for channel in self.channels if channel in panel]) / len(
             panel
         )
+
+    def to_yaml(self) -> list[list[list[str], str]]:
+        def _get_labels(x: int, y: int) -> list[str, str]:
+            labels = self.grid.get((x, y), None)
+            return list(labels) if labels is not None else None
+
+        return [
+            [_get_labels(x, y) for y in range(self.columns(row=x))]
+            for x in range(self.rows)
+        ]
 
 
 def _import_layouts(anchor: str) -> list[LayoutConfig]:
@@ -45,10 +62,10 @@ def to_grid(
     layout: list[list[tuple[str, str]]],
 ) -> dict[tuple[int, int], tuple[str, str]]:
     return {
-        (x, y): biplot
+        (x, y): tuple(labels)
         for x, row in enumerate(layout)
-        for y, biplot in enumerate(row)
-        if biplot is not None
+        for y, labels in enumerate(row)
+        if labels is not None
     }
 
 
@@ -56,7 +73,40 @@ def import_layouts() -> list[LayoutConfig]:
     return _import_layouts('pytopaint.resources.layouts')
 
 
-def get_best_layout(channels: list[str], layouts: list[LayoutConfig]) -> LayoutConfig:
+def get_best_layout(channels: list[str]) -> LayoutConfig:
+    best_layout_match = get_best_layout_match(channels, layouts=import_layouts())
+    return replace_unused_channels(best_layout_match, channels)
+
+
+def get_best_layout_match(
+    channels: list[str], layouts: list[LayoutConfig]
+) -> LayoutConfig:
     return sorted(
         layouts, key=lambda x: x.biplot_score(channels) * x.channel_score(channels)
     )[-1]
+
+
+def replace_unused_channels(
+    layout: LayoutConfig, data_channels: list[str]
+) -> LayoutConfig:
+    def _replace_label(labels: list[str] | None) -> tuple[str, str]:
+        if labels is None:
+            return None
+
+        x_label, y_label = labels
+        if x_label in unused_channel_map.keys():
+            x_label = unused_channel_map[x_label]
+        if y_label in unused_channel_map.keys():
+            y_label = unused_channel_map[y_label]
+        return x_label, y_label
+
+    unused_channel_map = dict(
+        zip(
+            filter(lambda x: x not in data_channels, layout.channels),
+            filter(lambda x: x not in layout.channels, data_channels),
+        )
+    )
+
+    return LayoutConfig({
+        coord: _replace_label(labels) for coord, labels in layout.grid.items()
+    })

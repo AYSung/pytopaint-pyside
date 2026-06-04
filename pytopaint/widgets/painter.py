@@ -21,7 +21,7 @@ from pytopaint.colors import (
 )
 from pytopaint.config import appconfig
 from pytopaint.flowdata import FlowData
-from pytopaint.layout import get_best_layout, import_layouts
+from pytopaint.layout import get_best_layout, import_layouts, replace_unused_channels
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
@@ -56,12 +56,10 @@ class Painter(QWidget):
         biplot_layout.setSpacing(5)
         biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
-        self.layout_config = get_best_layout(
-            channels=self.df.columns, layouts=import_layouts()
-        )
+        self.layout_config = get_best_layout(channels=self.df.columns)
 
-        for coords, label in self.layout_config.layout.items():
-            x_label, y_label = label
+        for coords, labels in self.layout_config.grid.items():
+            x_label, y_label = labels
             row, col = coords
 
             biplot = Biplot(
