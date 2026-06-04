@@ -26,7 +26,7 @@ appconfig = import_config()
 def save_config() -> None:
     file = resources.files('pytopaint.resources').joinpath('config.yml')
     with open(file, 'w') as handle:
-        yaml.dump(
+        yaml.safe_dump(
             asdict(appconfig),
             handle,
             default_flow_style=False,

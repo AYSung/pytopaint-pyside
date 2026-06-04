@@ -1,6 +1,7 @@
 import sys
 from io import BytesIO
 from pathlib import Path
+import yaml
 
 import flowio
 import numpy as np
@@ -123,6 +124,25 @@ class MainWindow(QMainWindow):
         with open(file_path, 'wb') as f:
             f.write(stream.getbuffer())
 
+    def save_layout(self) -> None:
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save Layout',
+            dir='./pytopaint/resources/layouts/',
+            filter='.yml',
+        )
+        if not file_path:
+            return
+
+        with open(file_path, 'w') as f:
+            yaml.safe_dump(
+                self.get_active_painter().layout_config.to_yaml(),
+                f,
+                default_flow_style=None,
+                sort_keys=False,
+                explicit_start=True,
+            )
+
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
 
@@ -229,7 +249,9 @@ class MainWindow(QMainWindow):
         self.painter_tabs.currentChanged.connect(
             lambda: layout_menu.setEnabled(self.painter_tabs.count())
         )
-        # TODO
+        save_layout_action = QAction('Save Layout...', self)
+        save_layout_action.triggered.connect(self.save_layout)
+        layout_menu.addAction(save_layout_action)
 
         plot_menu = menu_bar.addMenu('&Plot')
 
