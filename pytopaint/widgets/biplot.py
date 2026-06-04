@@ -82,7 +82,7 @@ class Biplot(QWidget):
             return
 
         df = self.df[[self.x_axis.label, self.y_axis.label, 'color']].drop_duplicates()
-        self.plot.update_working_data(
+        self.plot.set_working_data(
             x_data=df[self.x_axis.label],
             y_data=df[self.y_axis.label],
             color_data=df['color'],
@@ -190,9 +190,7 @@ class DotPlot(QLabel):
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
         self.highlighted_colors = []
-        self.x_data = None
-        self.y_data = None
-        self.color_indices = None
+        self.set_working_data(x_data=None, y_data=None, color_data=None)
 
     def mouseMoveEvent(self, e: QMouseEvent):
         if self.color_indices is None:
@@ -238,12 +236,14 @@ class DotPlot(QLabel):
 
         self.update_plot()
 
-    def update_working_data(
+    def set_working_data(
         self, x_data: pd.Series, y_data: pd.Series, color_data: pd.Series
     ):
         self.x_data = x_data
         self.y_data = y_data
-        self.color_indices = indices_by_color(color_data)
+        self.color_indices = (
+            indices_by_color(color_data) if color_data is not None else None
+        )
 
         self.update_plot()
 
@@ -320,10 +320,7 @@ class DotPlot(QLabel):
         self.update_plot()
 
     def clear(self) -> None:
-        self.color_indices = None
-        self.x_data = None
-        self.y_data = None
-        self.update_plot()
+        self.set_working_data(x_data=None, y_data=None, color_data=None)
 
 
 class XAxis(QLabel):
