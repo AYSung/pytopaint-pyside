@@ -10,7 +10,7 @@ from pytopaint.flowdata import (
     _clean_marker_name,
     _get_channels,
     _get_compensation,
-    UPPER_LINEAR,
+    UPPER_PHYSICAL,
     lower_clip_limit,
     upper_clip_limit,
     clip_series,
@@ -44,34 +44,6 @@ def test_clean_marker_name():
 def load_panel_config() -> list[list[str]]:
     with open('pytopaint/resources/panels.yml') as stream:
         return yaml.safe_load(stream)
-
-
-# PANELS = load_panel_config()
-
-
-# def _get_biplot_dims(channels: list[str]) -> list[list[str, str]]:
-#     return [[x, y] for x, y in PANELS if x in channels and y in channels]
-
-
-# def _get_basic_dims(channels: list[str]) -> list[list[str, str]]:
-#     cd45_label = 'CD45 AF700' if 'CD45 AF700' in channels else 'CD45'
-#     return [['FSC-A', 'SSC-A'], ['SSC-A', cd45_label], ['FSC-A', 'FSC-H']]
-
-
-# def _get_ssc_dims(channels: list[str]) -> list[list[str, str]]:
-#     marker_channels = [
-#         channel for channel in channels if channel not in LINEAR_PARAMETERS
-#     ]
-#     cd_channels = sorted(
-#         [channel for channel in marker_channels if channel.startswith('CD')],
-#         key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
-#     )
-#     non_cd_channels = sorted([
-#         channel for channel in marker_channels if not channel.startswith('CD')
-#     ])
-
-#     dims = [[channel, 'SSC-A'] for channel in cd_channels + non_cd_channels]
-#     return dims
 
 
 def get_biplot_config(channels: list[str]) -> list[list[str, str]]:
@@ -170,20 +142,6 @@ def test_sort_channels():
         'Time',
     ]
 
-    # marker_channels = [
-    #     channel for channel in channels if channel not in LINEAR_PARAMETERS
-    # ]
-    # cd_channels = sorted(
-    #     [channel for channel in marker_channels if channel.startswith('CD')],
-    #     key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
-    # )
-    # non_cd_channels = sorted([
-    #     channel for channel in marker_channels if not channel.startswith('CD')
-    # ])
-
-    # dims = [[channel, 'SSC-A'] for channel in cd_channels + non_cd_channels]
-    # return dims
-
 
 @pytest.fixture
 def df_1() -> pd.DataFrame:
@@ -231,10 +189,10 @@ def test_lower_clip_limits(df_1):
 
 
 def test_upper_clip_limits(df_1):
-    assert upper_clip_limit(df_1['FSC-A']) == UPPER_LINEAR
-    assert upper_clip_limit(df_1['FSC-H']) == UPPER_LINEAR
-    assert upper_clip_limit(df_1['SSC-A']) == UPPER_LINEAR
-    assert upper_clip_limit(df_1['SSC-H']) == UPPER_LINEAR
+    assert upper_clip_limit(df_1['FSC-A']) == UPPER_PHYSICAL
+    assert upper_clip_limit(df_1['FSC-H']) == UPPER_PHYSICAL
+    assert upper_clip_limit(df_1['SSC-A']) == UPPER_PHYSICAL
+    assert upper_clip_limit(df_1['SSC-H']) == UPPER_PHYSICAL
     assert upper_clip_limit(df_1['Time']) == df_1['Time'].max()
     assert upper_clip_limit(df_1['CD5']) == UPPER_ASINH
     assert upper_clip_limit(df_1['CD10']) > UPPER_ASINH
@@ -242,8 +200,8 @@ def test_upper_clip_limits(df_1):
 
 def test_clip_series(test_df_1):
     clip_limits = {
-        'FSC-A': (0, UPPER_LINEAR),
-        'SSC-A': (0, UPPER_LINEAR),
+        'FSC-A': (0, UPPER_PHYSICAL),
+        'SSC-A': (0, UPPER_PHYSICAL),
         'CD45': (LOWER_ASINH, UPPER_ASINH),
         'Time': (0, 100),
     }
@@ -268,8 +226,8 @@ def test_clip_series(test_df_1):
 
 def test_bin_series(test_df_1):
     clip_limits = {
-        'FSC-A': (0, UPPER_LINEAR),
-        'SSC-A': (0, UPPER_LINEAR),
+        'FSC-A': (0, UPPER_PHYSICAL),
+        'SSC-A': (0, UPPER_PHYSICAL),
         'CD45': (LOWER_ASINH, UPPER_ASINH),
         'Time': (0, 100),
     }
@@ -310,8 +268,8 @@ def test_bin_series(test_df_1):
 
 def test_bin(test_df_1):
     clip_limits = {
-        'FSC-A': (0, UPPER_LINEAR),
-        'SSC-A': (0, UPPER_LINEAR),
+        'FSC-A': (0, UPPER_PHYSICAL),
+        'SSC-A': (0, UPPER_PHYSICAL),
         'CD45': (LOWER_ASINH, UPPER_ASINH),
         'Time': (0, 100),
     }
@@ -329,22 +287,25 @@ def test_bin(test_df_1):
 
 def test_get_axis_ticks():
     clip_limits = {
-        'FSC-A': (0, UPPER_LINEAR),
+        'FSC-A': (0, UPPER_PHYSICAL),
         'CD45': (LOWER_ASINH, UPPER_ASINH),
         'Time': (0, 100),
     }
     assert get_axis_ticks(
         'FSC-A',
         n_bins=256,
+        scaling_factor=150,
         clip_limits=clip_limits,
     ) == [(0, '0'), (50, None), (100, '1e5'), (150, None), (200, '2e5'), (250, None)]
     assert get_axis_ticks(
         'CD45',
         n_bins=256,
+        scaling_factor=150,
         clip_limits=clip_limits,
     ) == [(10, None), (28, '0'), (46, None), (102, '1e3'), (167, '1e4'), (233, '1e5')]
     assert get_axis_ticks(
         'Time',
         n_bins=256,
+        scaling_factor=150,
         clip_limits=clip_limits,
-    ) == [(0, None), (63, None), (127, None), (191, None), (255, None)]
+    ) == [(0, None), (64, None), (128, None), (192, None), (256, None)]

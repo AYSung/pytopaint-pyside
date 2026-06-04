@@ -4,14 +4,16 @@ from itertools import chain
 
 import yaml
 
+from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+
 
 @dataclass
 class LayoutConfig:
     grid: dict[tuple[int, int], tuple[str, str]]
 
     @property
-    def channels(self) -> set[str]:
-        return set(chain(*self.grid.values()))
+    def channels(self) -> list[str]:
+        return sort_channels(set(chain(*self.grid.values())))
 
     @property
     def rows(self) -> int:
@@ -104,8 +106,18 @@ def replace_unused_channels(
 
     unused_channel_map = dict(
         zip(
-            filter(lambda x: x not in data_channels, layout.channels),
-            filter(lambda x: x not in layout.channels, data_channels),
+            filter(
+                lambda x: (
+                    x not in set(chain(data_channels, PHYSICAL_PARAMETERS, ['Time']))
+                ),
+                layout.channels,
+            ),
+            filter(
+                lambda x: (
+                    x not in set(chain(layout.channels, PHYSICAL_PARAMETERS, ['Time']))
+                ),
+                data_channels,
+            ),
         )
     )
 

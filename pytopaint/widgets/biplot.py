@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.colors import BACKGROUND, COLOR_RGB_MAP, Color, indices_by_color
 from pytopaint.config import appconfig
-from pytopaint.flowdata import LINEAR_PARAMETERS, sort_channels
+from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 
 class Biplot(QWidget):
@@ -375,7 +375,7 @@ class XAxis(QLabel):
 
             axis_labels = (
                 [(4, '0')] + axis_ticks[1:]
-                if self.label in LINEAR_PARAMETERS
+                if self.label in PHYSICAL_PARAMETERS
                 else axis_ticks
             )
 
@@ -471,7 +471,7 @@ class YAxis(QLabel):
 
             axis_labels = (
                 [(4, '0')] + axis_ticks[1:]
-                if self.label in LINEAR_PARAMETERS
+                if self.label in PHYSICAL_PARAMETERS
                 else axis_ticks
             )
 

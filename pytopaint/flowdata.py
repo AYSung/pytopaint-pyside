@@ -7,8 +7,8 @@ import pandas as pd
 
 from pytopaint.config import appconfig
 
-LINEAR_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
-UPPER_LINEAR = 255_000
+PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
+UPPER_PHYSICAL = 255_000
 
 
 class FlowData:
@@ -76,10 +76,10 @@ def get_axis_ticks(
     lower_limit, upper_limit = clip_limits[channel]
 
     if channel == 'Time':
-        quarter = appconfig.resolution / 4
+        quarter = n_bins / 4
         ticks = [(i * quarter) for i in range(5)]
         return [(tick, None) for tick in ticks]
-    if channel in LINEAR_PARAMETERS:
+    if channel in PHYSICAL_PARAMETERS:
         ticks = [0, 50_000, 100_000, 150_000, 200_000, 250_000]
         scaled_ticks = bin_series(
             pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
@@ -123,7 +123,7 @@ def _arcsinh_transformer(factor) -> flowkit.transforms.AsinhTransform:
     )
 
 
-def sort_channels(channels: list[str]) -> list[str]:
+def sort_channels(channels: list[str] | set[str]) -> list[str]:
     LIGHT_SCATTER_CHANNELS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
     light_scatter_channels = sorted([
         channel for channel in channels if channel in LIGHT_SCATTER_CHANNELS
@@ -176,7 +176,7 @@ def _get_compensation(metadata: dict[str, str]) -> str | None:
 
 
 def lower_clip_limit(s: pd.Series):
-    if s.name in LINEAR_PARAMETERS + ['Time']:
+    if s.name in PHYSICAL_PARAMETERS + ['Time']:
         return 0
     else:
         return min(appconfig.lower_arcsinh_limit, s.quantile(0.05) - 0.5)
@@ -185,8 +185,8 @@ def lower_clip_limit(s: pd.Series):
 def upper_clip_limit(s: pd.Series):
     if s.name == 'Time':
         return s.max()
-    if s.name in LINEAR_PARAMETERS:
-        return UPPER_LINEAR
+    if s.name in PHYSICAL_PARAMETERS:
+        return UPPER_PHYSICAL
     else:
         return max(appconfig.upper_arcsinh_limit, s.quantile(0.95) + 0.5)
 
