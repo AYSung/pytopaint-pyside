@@ -6,8 +6,6 @@ from PySide6.QtGui import (
     QShortcut,
 )
 from PySide6.QtWidgets import (
-    QGridLayout,
-    QLayout,
     QSizePolicy,
     QVBoxLayout,
     QWidget,
@@ -22,10 +20,11 @@ from pytopaint.colors import (
 )
 from pytopaint.config import appconfig
 from pytopaint.flowdata import FlowData
-from pytopaint.layout import get_best_layout, LayoutConfig, dict_to_yaml
+from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
+from pytopaint.widgets.biplotgrid import BiplotGrid
 
 
 class Painter(QWidget):
@@ -53,14 +52,12 @@ class Painter(QWidget):
         self.highlightsUpdated.connect(color_bar.highlightsUpdated)
 
         biplot_container = QWidget()
-        self.biplot_layout = QGridLayout()
-        self.biplot_layout.setSpacing(5)
-        self.biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
+        self.biplot_layout = BiplotGrid()
 
         layout_config = get_best_layout(channels=self.df.columns)
 
         for coords, labels in layout_config.grid.items():
-            self.add_biplot(coords, labels)
+            self.biplot_layout.add_biplot(self.new_biplot(labels), coords)
 
         biplot_container.setLayout(self.biplot_layout)
         biplot_container.setSizePolicy(
@@ -368,40 +365,23 @@ class Painter(QWidget):
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
             else:
-                self.add_biplot(coords, labels)
+                self.biplot_layout(self.new_biplot(labels), coords)
 
-    def add_biplot(self, coords: tuple[int, int], labels: tuple[str, str]) -> None:
+    def new_biplot(self, labels: tuple[str, str]) -> Biplot:
         x_label, y_label = labels
-        row, col = coords
         biplot = Biplot(
-            self.df, x_label=x_label, y_label=y_label, axis_ticks=self.data.axis_ticks
+            df=self.df,
+            x_label=x_label,
+            y_label=y_label,
+            axis_ticks=self.data.axis_ticks,
         )
         biplot.pointsSelected.connect(self.handle_selection)
-        biplot.removeTriggered.connect(self.remove_biplot)
+        biplot.removeTriggered.connect(self.biplot_layout.remove_biplot)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         self.resizeTriggered.connect(biplot.resizeTriggered)
-
-        self.biplot_layout.addWidget(biplot, row, col)
-
-    @Slot(object)
-    def remove_biplot(self, biplot: Biplot) -> None:
-        self.biplot_layout.setEnabled(False)
-
-        self.biplot_layout.removeWidget(biplot)
-        biplot.deleteLater()
-
-        self.biplot_layout.setEnabled(True)
-        self.biplot_layout.update()
+        return biplot
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
-        biplots = {
-            self.biplot_layout.getItemPosition(i)[:2]: self.biplot_layout
-            .itemAt(i)
-            .widget()
-            .labels
-            for i in range(self.biplot_layout.count())
-        }
-
-        return dict_to_yaml(biplots)
+        return self.biplot_layout.to_yaml()
