@@ -1,10 +1,10 @@
 import sys
 from io import BytesIO
 from pathlib import Path
-import yaml
 
 import flowio
 import numpy as np
+import yaml
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QAction,
@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.config import appconfig, import_config, save_config
-from pytopaint.flowdata import FlowData
+from pytopaint.flowdata import FlowData, extract_case_info
 from pytopaint.layout import read_yaml
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
-            self.painter_tabs.addTab(painter, file_path.stem)
+            self.painter_tabs.addTab(painter, extract_case_info(file_path.stem))
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e
@@ -290,8 +290,8 @@ class MainWindow(QMainWindow):
             lambda: self.get_active_painter().remove_empty_biplots()
         )
         layout_menu.addAction(remove_empty_cells_action)
-        plot_menu = menu_bar.addMenu('&Plot')
 
+        plot_menu = menu_bar.addMenu('&Plot')
         resize_action = QAction('Adjust Size', self)
         resize_action.triggered.connect(self.resize_plots)
         plot_menu.addAction(resize_action)

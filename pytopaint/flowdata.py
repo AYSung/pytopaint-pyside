@@ -212,3 +212,13 @@ def clip_series(s: pd.Series, clip_limits: dict[str, tuple[float, float]]):
     lower_limit, upper_limit = clip_limits[s.name]
 
     return s.clip(lower=lower_limit, upper=upper_limit)
+
+
+def extract_case_info(filename: str) -> str:
+    regex_match = re.match(
+        r'\w[- ](\d{2})[- ](\d{4,}) [a-zA-Z ]+[_\d]*_([a-zA-Z0-9- ]+)_\d{3}', filename
+    )
+    if regex_match:
+        return f'IP{regex_match.group(1)}-{int(regex_match.group(2)):05} {regex_match.group(3)}'
+    else:
+        return filename
