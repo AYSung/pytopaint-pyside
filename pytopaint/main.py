@@ -137,7 +137,7 @@ class MainWindow(QMainWindow):
 
         with open(file_path, 'w') as f:
             yaml.safe_dump(
-                self.get_active_painter().layout_config.to_yaml(),
+                self.get_active_painter().layout_to_yaml(),
                 f,
                 default_flow_style=None,
                 sort_keys=False,

@@ -5,6 +5,7 @@ from pytopaint.layout import (
     _import_layouts,
     to_grid,
     replace_unused_channels,
+    dict_to_yaml,
 )
 
 
@@ -306,11 +307,11 @@ def test_replace_channels(layout_1, layout_2):
 
 
 def test_to_yaml(layout_1, layout_2):
-    assert layout_1.to_yaml() == [
+    assert dict_to_yaml(layout_1.grid) == [
         [['CD5', 'CD19'], ['CD10', 'CD19'], ['CD10', 'CD20'], ['Lambda', 'Kappa']],
         [['CD20', 'CD38'], ['CD45', 'CD38'], ['CD34', 'CD38'], ['CD22', 'CD34']],
     ]
-    assert layout_2.to_yaml() == [
+    assert dict_to_yaml(layout_2.grid) == [
         [
             ['CD7', 'CD3'],
             ['CD2', 'CD3'],

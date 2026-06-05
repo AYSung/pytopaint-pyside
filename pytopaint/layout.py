@@ -34,16 +34,6 @@ class LayoutConfig:
             panel
         )
 
-    def to_yaml(self) -> list[list[list[str], str]]:
-        def _get_labels(x: int, y: int) -> list[str, str]:
-            labels = self.grid.get((x, y), None)
-            return list(labels) if labels is not None else None
-
-        return [
-            [_get_labels(x, y) for y in range(self.columns(row=x))]
-            for x in range(self.rows)
-        ]
-
 
 def read_yaml(item) -> LayoutConfig:
     with open(item) as stream:
@@ -58,7 +48,9 @@ def _import_layouts(anchor: str) -> list[LayoutConfig]:
     return [
         read_yaml(item)
         for item in dir.iterdir()
-        if item.is_file() and item.name != 'example.yml'
+        if item.is_file()
+        and item.name.endswith('.yml')
+        and item.name not in ['example.yml']
     ]
 
 
@@ -124,3 +116,18 @@ def replace_unused_channels(
     return LayoutConfig({
         coord: _replace_label(labels) for coord, labels in layout.grid.items()
     })
+
+
+def dict_to_yaml(
+    layout_grid: dict[tuple[int, int], tuple[str, str]],
+) -> list[list[list[str, str]]]:
+    def _get_labels(x: int, y: int) -> list[str, str]:
+        labels = layout_grid.get((x, y), None)
+        return list(labels) if labels is not None else None
+
+    def _columns(row: int) -> int:
+        return max([y for x, y in layout_grid.keys() if x == row]) + 1
+
+    rows = max([x for x, _ in layout_grid.keys()]) + 1
+
+    return [[_get_labels(x, y) for y in range(_columns(row=x))] for x in range(rows)]

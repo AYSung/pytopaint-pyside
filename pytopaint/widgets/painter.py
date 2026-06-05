@@ -22,7 +22,7 @@ from pytopaint.colors import (
 )
 from pytopaint.config import appconfig
 from pytopaint.flowdata import FlowData
-from pytopaint.layout import get_best_layout, LayoutConfig
+from pytopaint.layout import get_best_layout, LayoutConfig, dict_to_yaml
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
@@ -57,9 +57,9 @@ class Painter(QWidget):
         self.biplot_layout.setSpacing(5)
         self.biplot_layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
 
-        self.layout_config = get_best_layout(channels=self.df.columns)
+        layout_config = get_best_layout(channels=self.df.columns)
 
-        for coords, labels in self.layout_config.grid.items():
+        for coords, labels in layout_config.grid.items():
             self.add_biplot(coords, labels)
 
         biplot_container.setLayout(self.biplot_layout)
@@ -372,8 +372,28 @@ class Painter(QWidget):
             self.df, x_label=x_label, y_label=y_label, axis_ticks=self.data.axis_ticks
         )
         biplot.pointsSelected.connect(self.handle_selection)
+        biplot.removeTriggered.connect(self.remove_biplot)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         self.biplot_layout.addWidget(biplot, row, col)
         self.resizeTriggered.connect(biplot.resizeTriggered)
+
+    @Slot(object)
+    def remove_biplot(self, biplot: Biplot) -> None:
+        self.biplot_layout.setEnabled(False)
+        self.biplot_layout.removeWidget(biplot)
+        biplot.deleteLater()
+        self.biplot_layout.setEnabled(True)
+        self.biplot_layout.update()
+
+    def layout_to_yaml(self) -> list[list[list[str, str]]]:
+        biplots = {
+            self.biplot_layout.getItemPosition(i)[:2]: self.biplot_layout
+            .itemAt(i)
+            .widget()
+            .labels
+            for i in range(self.biplot_layout.count())
+        }
+
+        return dict_to_yaml(biplots)

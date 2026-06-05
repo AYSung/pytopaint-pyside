@@ -20,6 +20,7 @@ from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 class Biplot(QWidget):
     pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTriggered = Signal(int, dict)
+    removeTriggered = Signal(object)
 
     def __init__(
         self,
@@ -151,6 +152,10 @@ class Biplot(QWidget):
         )
         copy_dark.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='dark'))
         menu.addAction(copy_dark)
+        remove_biplot = QAction('Remove from grid', self)
+        remove_biplot.triggered.connect(lambda: self.removeTriggered.emit(self))
+        menu.addSeparator()
+        menu.addAction(remove_biplot)
         menu.exec(self.mapToGlobal(pos))
 
     @Slot(str)
@@ -174,7 +179,11 @@ class Biplot(QWidget):
         o = QStyleOption()
         o.initFrom(self)
         p = QPainter(self)
-        self.style().drawPrimitive(QStyle.PE_Widget, o, p, self)
+        self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, o, p, self)
+
+    @property
+    def labels(self) -> tuple[str, str]:
+        return self.x_axis.label, self.y_axis.label
 
 
 class DotPlot(QLabel):
