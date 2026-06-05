@@ -343,9 +343,14 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
+        self.biplot_layout.setEnabled(False)
+
         self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
         self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
         self.emit_changes()
+
+        self.biplot_layout.setEnabled(True)
+        self.biplot_layout.update()
 
     @Slot()
     def handle_rescale(self) -> None:
@@ -376,14 +381,17 @@ class Painter(QWidget):
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
-        self.biplot_layout.addWidget(biplot, row, col)
         self.resizeTriggered.connect(biplot.resizeTriggered)
+
+        self.biplot_layout.addWidget(biplot, row, col)
 
     @Slot(object)
     def remove_biplot(self, biplot: Biplot) -> None:
         self.biplot_layout.setEnabled(False)
+
         self.biplot_layout.removeWidget(biplot)
         biplot.deleteLater()
+
         self.biplot_layout.setEnabled(True)
         self.biplot_layout.update()
 
