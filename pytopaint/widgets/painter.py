@@ -25,6 +25,7 @@ from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.colorbar import ColorBar
 from pytopaint.widgets.biplotgrid import BiplotGrid
+from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
 
 
 class Painter(QWidget):
@@ -376,34 +377,64 @@ class Painter(QWidget):
             axis_ticks=self.data.axis_ticks,
         )
         biplot.pointsSelected.connect(self.handle_selection)
-        biplot.removeTriggered.connect(self.biplot_layout.remove_biplot)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
-        self.resizeTriggered.connect(biplot.resizeTriggered)
+        self.resizeTriggered.connect(biplot.resize)
         return biplot
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_layout.to_yaml()
 
     def add_biplot_row(self) -> None:
-        row = self.biplot_layout.rows
-        new_row_coords = [(row, col) for col in range(self.biplot_layout.columns)]
+        n_rows, ok = add_row_dialog(self)
+
+        if not ok:
+            return
+
+        col_range = range(
+            self.biplot_layout.columns if self.biplot_layout.columns > 0 else 1
+        )
+        row_range = range(n_rows)
+        new_row_coords = [
+            (row + self.biplot_layout.rows, col)
+            for row in row_range
+            for col in col_range
+        ]
         for coords in new_row_coords:
             self.biplot_layout.add_biplot(self.new_biplot(), coords)
 
     def add_biplot_column(self) -> None:
-        col = self.biplot_layout.columns
-        new_row_coords = [(row, col) for row in range(self.biplot_layout.rows)]
-        for coords in new_row_coords:
+        n_cols, ok = add_column_dialog(self)
+
+        if not ok:
+            return
+
+        row_range = range(self.biplot_layout.rows if self.biplot_layout.rows > 0 else 1)
+        col_range = range(n_cols)
+        new_col_coords = [
+            (row, col + self.biplot_layout.columns)
+            for col in col_range
+            for row in row_range
+        ]
+
+        for coords in new_col_coords:
             self.biplot_layout.add_biplot(self.new_biplot(), coords)
 
     def fill_empty_cells(self) -> None:
-        full_coords = [
-            (x, y)
-            for x in range(self.biplot_layout.rows)
-            for y in range(self.biplot_layout.columns)
-            if self.biplot_layout.position_empty((x, y))
-        ]
-        for coords in full_coords:
+        for coords in self.biplot_layout.empty_coords:
             self.biplot_layout.add_biplot(self.new_biplot(), coords)
+
+    def remove_empty_biplots(self) -> None:
+        empty_biplots = [
+            biplot
+            for biplot in self.biplot_layout.get_biplots()
+            if None in biplot.labels
+        ]
+        self.biplot_layout.setEnabled(False)
+
+        for biplot in empty_biplots:
+            self.biplot_layout.remove_biplot(biplot)
+
+        self.biplot_layout.setEnabled(True)
+        self.biplot_layout.update()

@@ -192,9 +192,9 @@ class ColorLabel(QWidget):
             menu.addAction(set_active_color)
 
             # highlight points
-            self.toggle_highlight = QAction('Highlight')
-            self.toggle_highlight.setCheckable(True)
-            self.toggle_highlight.setChecked(self.highlight)
+            self.toggle_highlight = QAction(
+                'Highlight', checkable=True, checked=self.highlight
+            )
             self.toggle_highlight.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.HIGHLIGHT, dict(color=self.color)

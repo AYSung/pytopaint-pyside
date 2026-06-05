@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 
 from pytopaint.config import appconfig
 from pytopaint.flowdata import sort_channels
-from pytopaint.widgets.painter import Painter
 
 
 def about_dialog(parent: QWidget) -> None:
@@ -188,14 +187,14 @@ def save_config_dialog(parent: QWidget) -> bool:
     return reply == QMessageBox.StandardButton.Yes
 
 
-def subsample_dialog(parent: QWidget, painter: Painter) -> tuple[int, bool]:
+def subsample_dialog(parent: QWidget, total_events: int) -> tuple[int, bool]:
     return QInputDialog.getInt(
         parent,
         'Subsample Events',
         'Events to subsample (min. 1000):',
-        value=min(10_000, painter.df.shape[0]),
+        value=min(10_000, total_events),
         minValue=1_000,
-        maxValue=painter.df.shape[0],
+        maxValue=total_events,
         step=1_000,
     )
 
@@ -209,4 +208,26 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
         minValue=128,
         maxValue=256,
         step=16,
+    )
+
+
+def add_row_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Add Rows',
+        'Number of Rows',
+        value=1,
+        minValue=1,
+        maxValue=10,
+    )
+
+
+def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Add Columns',
+        'Number of Columns',
+        value=1,
+        minValue=1,
+        maxValue=10,
     )

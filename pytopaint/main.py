@@ -158,7 +158,9 @@ class MainWindow(QMainWindow):
         return self.painter_tabs.currentWidget()
 
     def subsample(self) -> None:
-        n, ok = subsample_dialog(self, self.get_active_painter())
+        n, ok = subsample_dialog(
+            self, total_events=self.get_active_painter().df.shape[0]
+        )
         if ok:
             self.get_active_painter().handle_menu_action(
                 MenuAction.SUBSAMPLE, dict(n=n)
@@ -268,12 +270,12 @@ class MainWindow(QMainWindow):
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
         layout_menu.addSeparator()
-        add_biplot_row_action = QAction('Add Row', self)
+        add_biplot_row_action = QAction('Add Row(s)', self)
         add_biplot_row_action.triggered.connect(
             lambda: self.get_active_painter().add_biplot_row()
         )
         layout_menu.addAction(add_biplot_row_action)
-        add_biplot_column_action = QAction('Add Column', self)
+        add_biplot_column_action = QAction('Add Column(s)', self)
         add_biplot_column_action.triggered.connect(
             lambda: self.get_active_painter().add_biplot_column()
         )
@@ -283,7 +285,11 @@ class MainWindow(QMainWindow):
             lambda: self.get_active_painter().fill_empty_cells()
         )
         layout_menu.addAction(fill_empty_cell_action)
-
+        remove_empty_cells_action = QAction('Remove Empty Biplots', self)
+        remove_empty_cells_action.triggered.connect(
+            lambda: self.get_active_painter().remove_empty_biplots()
+        )
+        layout_menu.addAction(remove_empty_cells_action)
         plot_menu = menu_bar.addMenu('&Plot')
 
         resize_action = QAction('Adjust Size', self)

@@ -19,7 +19,6 @@ from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 class Biplot(QWidget):
     pointsSelected = Signal(object, str, str, QMouseEvent)
-    resizeTriggered = Signal(int, dict)
     removeTriggered = Signal(object)
 
     def __init__(
@@ -40,21 +39,20 @@ class Biplot(QWidget):
         self.x_axis = XAxis(x_label, channels, axis_ticks)
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.update_title)
-        self.resizeTriggered.connect(self.x_axis.resize)
         self.y_axis = YAxis(y_label, channels, axis_ticks)
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
-        self.resizeTriggered.connect(self.y_axis.resize)
 
         self.plot = DotPlot()
         self.update_plot_data()
         self.plot.pointsSelected.connect(self.points_selected)
-        self.resizeTriggered.connect(self.plot.resize)
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
         self.title_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.title_label.customContextMenuRequested.connect(self.title_context_menu)
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setFixedWidth(appconfig.resolution)
         self.update_title()
 
         layout = QGridLayout()
@@ -152,9 +150,8 @@ class Biplot(QWidget):
         )
         copy_dark.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='dark'))
         menu.addAction(copy_dark)
-        remove_biplot = QAction('Remove from grid', self)
+        remove_biplot = QAction('Remove Biplot', self)
         remove_biplot.triggered.connect(lambda: self.removeTriggered.emit(self))
-        menu.addSeparator()
         menu.addAction(remove_biplot)
         menu.exec(self.mapToGlobal(pos))
 
@@ -184,6 +181,13 @@ class Biplot(QWidget):
     @property
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
+
+    @Slot(int, dict)
+    def resize(self, pixels: int, axis_ticks: dict[str, list[tuple[int, str]]]) -> None:
+        self.plot.resize(pixels=pixels)
+        self.x_axis.resize(pixels=pixels, axis_ticks=axis_ticks)
+        self.y_axis.resize(pixels=pixels, axis_ticks=axis_ticks)
+        self.title_label.setFixedWidth(pixels)
 
 
 class DotPlot(QLabel):
@@ -323,8 +327,7 @@ class DotPlot(QLabel):
         self.setPixmap(canvas)
         self.update()
 
-    @Slot(int, dict)
-    def resize(self, pixels: int, _: dict[str, list[tuple[int, str]]]):
+    def resize(self, pixels: int):
         self.setPixmap(QPixmap(pixels, pixels))
         self.update_plot()
 
