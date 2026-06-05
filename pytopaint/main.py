@@ -267,6 +267,22 @@ class MainWindow(QMainWindow):
         load_layout_action = QAction('Load Layout', self)
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
+        layout_menu.addSeparator()
+        add_biplot_row_action = QAction('Add Row', self)
+        add_biplot_row_action.triggered.connect(
+            lambda: self.get_active_painter().add_biplot_row()
+        )
+        layout_menu.addAction(add_biplot_row_action)
+        add_biplot_column_action = QAction('Add Column', self)
+        add_biplot_column_action.triggered.connect(
+            lambda: self.get_active_painter().add_biplot_column()
+        )
+        layout_menu.addAction(add_biplot_column_action)
+        fill_empty_cell_action = QAction('Fill Empty Grid Cells', self)
+        fill_empty_cell_action.triggered.connect(
+            lambda: self.get_active_painter().fill_empty_cells()
+        )
+        layout_menu.addAction(fill_empty_cell_action)
 
         plot_menu = menu_bar.addMenu('&Plot')
 

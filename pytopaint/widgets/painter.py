@@ -367,7 +367,7 @@ class Painter(QWidget):
             else:
                 self.biplot_layout(self.new_biplot(labels), coords)
 
-    def new_biplot(self, labels: tuple[str, str]) -> Biplot:
+    def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
         biplot = Biplot(
             df=self.df,
@@ -385,3 +385,25 @@ class Painter(QWidget):
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_layout.to_yaml()
+
+    def add_biplot_row(self) -> None:
+        row = self.biplot_layout.rows
+        new_row_coords = [(row, col) for col in range(self.biplot_layout.columns)]
+        for coords in new_row_coords:
+            self.biplot_layout.add_biplot(self.new_biplot(), coords)
+
+    def add_biplot_column(self) -> None:
+        col = self.biplot_layout.columns
+        new_row_coords = [(row, col) for row in range(self.biplot_layout.rows)]
+        for coords in new_row_coords:
+            self.biplot_layout.add_biplot(self.new_biplot(), coords)
+
+    def fill_empty_cells(self) -> None:
+        full_coords = [
+            (x, y)
+            for x in range(self.biplot_layout.rows)
+            for y in range(self.biplot_layout.columns)
+            if self.biplot_layout.position_empty((x, y))
+        ]
+        for coords in full_coords:
+            self.biplot_layout.add_biplot(self.new_biplot(), coords)

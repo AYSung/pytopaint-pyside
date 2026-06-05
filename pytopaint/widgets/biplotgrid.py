@@ -30,11 +30,11 @@ class BiplotGrid(QGridLayout):
 
     @property
     def rows(self) -> int:
-        return max(self.getItemPosition(i)[0] for i in range(self.count()))
+        return max(self.getItemPosition(i)[0] for i in range(self.count())) + 1
 
     @property
     def columns(self) -> int:
-        return max(self.getItemPosition(i)[1] for i in range(self.count()))
+        return max(self.getItemPosition(i)[1] for i in range(self.count())) + 1
 
     def _to_dict(self) -> dict[tuple[int, int], tuple[str, str]]:
         return {
@@ -51,3 +51,6 @@ class BiplotGrid(QGridLayout):
 
     def _get_biplot_coords(self, index: int) -> tuple[int, int]:
         return self.getItemPosition(index)[:2]
+
+    def position_empty(self, coords: tuple[int, int]):
+        return self.itemAtPosition(*coords) is None
