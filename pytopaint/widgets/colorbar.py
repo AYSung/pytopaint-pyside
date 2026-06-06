@@ -65,9 +65,9 @@ class ColorBar(QWidget):
         self.eventsUpdated.emit(indices, total_events)
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
-    @Slot(object, int)
-    def update_memory_slot(self, paint_state: pd.Series, slot: int):
-        self.memory_slots[slot].store_state(paint_state)
+    @Slot(int, bool)
+    def update_memory_slot(self, slot: int, has_state: bool):
+        self.memory_slots[slot].update_appearance(has_state)
 
     def paintEvent(self, _: QStyle.PrimitiveElement):
         o = QStyleOption()
@@ -273,32 +273,25 @@ class MemorySlot(QToolButton):
         self.id = id
         self.setText(str(id))
         self.setStyleSheet('background-color: #121212;')
-        self.stored_state = None
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                if self.stored_state is not None:
-                    self.menuActionTriggered.emit(
-                        MenuAction.RECALL_STATE, dict(paint_state=self.stored_state)
-                    )
+                self.menuActionTriggered.emit(
+                    MenuAction.RECALL_STATE, dict(slot=self.id)
+                )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.menuActionTriggered.emit(
                     MenuAction.STORE_STATE, dict(slot=self.id)
                 )
-        elif self.stored_state is not None and (
-            e.button() == Qt.MouseButton.MiddleButton
-        ):
+        elif e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.clear_memory()
+                self.menuActionTriggered.emit(
+                    MenuAction.CLEAR_MEMORY_STATE, dict(slot=self.id)
+                )
 
         super().mouseReleaseEvent(e)
 
-    def store_state(self, paint_state: pd.Series) -> None:
-        self.stored_state = paint_state
-        self.setStyleSheet('background-color: #828282')
-
-    def clear_memory(self) -> None:
-        self.stored_state = None
-        self.setStyleSheet('background-color: #121212')
+    def update_appearance(self, has_state: bool) -> None:
+        self.setStyleSheet(f'background-color: {"#828282" if has_state else "#121212"}')

@@ -16,3 +16,4 @@ class MenuAction(IntEnum):
     HIGHLIGHT = auto()
     RECALL_STATE = auto()
     STORE_STATE = auto()
+    CLEAR_MEMORY_STATE = auto()

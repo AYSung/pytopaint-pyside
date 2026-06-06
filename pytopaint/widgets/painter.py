@@ -1,4 +1,3 @@
-import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
@@ -33,7 +32,7 @@ class Painter(QWidget):
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int, dict)
-    stateReturned = Signal(object, int)
+    memoryStateChanged = Signal(int, bool)
 
     def __init__(self, data: FlowData):
         super().__init__()
@@ -46,13 +45,14 @@ class Painter(QWidget):
         self.redo_history = []
 
         self.highlighted_colors = []
+        self.memory_states = {i: None for i in range(5)}
 
         color_bar = ColorBar()
         color_bar.menuActionTriggered.connect(self.handle_menu_action)
         self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.dataUpdated.connect(color_bar.update_labels)
         self.highlightsUpdated.connect(color_bar.highlightsUpdated)
-        self.stateReturned.connect(color_bar.update_memory_slot)
+        self.memoryStateChanged.connect(color_bar.update_memory_slot)
 
         biplot_container = QWidget()
         self.biplot_layout = BiplotGrid()
@@ -244,6 +244,7 @@ class Painter(QWidget):
             MenuAction.HIGHLIGHT: self.handle_highlights,
             MenuAction.RECALL_STATE: self.recall_state,
             MenuAction.STORE_STATE: self.store_state,
+            MenuAction.CLEAR_MEMORY_STATE: self.clear_memory_state,
         }
 
         FUNCTION_MAP[action](**kwargs)
@@ -253,6 +254,8 @@ class Painter(QWidget):
             MenuAction.UNDO,
             MenuAction.REDO,
             MenuAction.RESET,
+            MenuAction.STORE_STATE,
+            MenuAction.CLEAR_MEMORY_STATE,
         ]:
             self.record_current_state()
             self.emit_changes()
@@ -270,11 +273,18 @@ class Painter(QWidget):
     def zap_all(self):
         self.df['color'] = Color.GREY
 
-    def recall_state(self, paint_state: pd.Series):
-        self.df = self.data.binned_df.loc[paint_state.index].assign(color=paint_state)
+    def recall_state(self, slot: int):
+        state = self.memory_states[slot]
+        if state is not None:
+            self.df = self.data.binned_df.loc[state.index].assign(color=state)
 
     def store_state(self, slot: int):
-        self.stateReturned.emit(self.df.color.copy(), slot)
+        self.memory_states[slot] = self.df.color.copy()
+        self.memoryStateChanged.emit(slot, True)
+
+    def clear_memory_state(self, slot: int):
+        self.memory_states[slot] = None
+        self.memoryStateChanged.emit(slot, False)
 
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
