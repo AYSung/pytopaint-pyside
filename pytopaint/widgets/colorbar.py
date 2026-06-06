@@ -32,7 +32,7 @@ class ColorBar(QWidget):
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
-        layout.setContentsMargins(20, 0, 0, 0)
+        layout.setContentsMargins(20, 0, 20, 0)
 
         self.total_events_label = QLabel()
         self.total_events_label.setFixedWidth(150)
@@ -128,6 +128,7 @@ class ColorLabel(QWidget):
         self.combined_percents = {
             color: (self.event_count + index.size) / total_events
             for color, index in events.items()
+            if color != self.color
         }
 
     def mouseReleaseEvent(self, e: QMouseEvent):
