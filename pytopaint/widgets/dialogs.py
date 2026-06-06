@@ -23,7 +23,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.1\n\n\nCreated by Andrew Y. Sung\n\nLast updated May 2026',
+        'PytoPaint v0.2\n\n\nCreated by Andrew Y. Sung\n\nLast updated June 2026',
     )
 
 
