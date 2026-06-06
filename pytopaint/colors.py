@@ -231,22 +231,27 @@ def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:
     }
 
 
+def events_by_color(s: pd.Series) -> dict[Color, int]:
+    return {color: index.size for color, index in indices_by_color(s).items()}
+
+
 def ratios_by_color(
-    current_color: Color, events: dict[Color, int]
+    antecedent_color: Color,
+    percents: dict[Color, float],
 ) -> dict[Color, float]:
-    if current_color == Color.GREY:
+    if antecedent_color == Color.GREY:
         return dict()
     else:
-        return dict(
-            sorted(
-                {
-                    color: events.get(current_color, 0) / n
-                    for color, n in events.items()
-                    if (color not in [current_color, Color.GREY]) and (n > 0)
-                }.items()
+        antecedent_percent = percents.get(antecedent_color, 0)
+        return {
+            consequent_color: (
+                antecedent_percent / consequent_percent,
+                antecedent_percent + consequent_percent,
             )
-        )
+            for consequent_color, consequent_percent in percents.items()
+            if consequent_color not in [Color.GREY, antecedent_color]
+        }
 
 
-def is_zappable(color: Color, events: dict[Color, pd.Index]) -> bool:
+def is_zappable(color: Color, events: dict[Color, int]) -> bool:
     return any(c in ZAPPABLE_COLORS[color] for c in events.keys())

@@ -22,7 +22,7 @@ from pytopaint.flowdata import FlowData
 from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
-from pytopaint.widgets.colorbar import ColorBar
+from pytopaint.widgets.colorbar import Palette
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
 
@@ -45,14 +45,15 @@ class Painter(QWidget):
         self.redo_history = []
 
         self.highlighted_colors = []
-        self.memory_states = {i: None for i in range(5)}
+        N_MEMORY_STATES = 5
+        self.memory_states = {i: None for i in range(N_MEMORY_STATES)}
 
-        color_bar = ColorBar()
-        color_bar.menuActionTriggered.connect(self.handle_menu_action)
-        self.activeColorChanged.connect(color_bar.activeColorChanged)
-        self.dataUpdated.connect(color_bar.update_labels)
-        self.highlightsUpdated.connect(color_bar.highlightsUpdated)
-        self.memoryStateChanged.connect(color_bar.update_memory_slot)
+        palette = Palette(memory_states=N_MEMORY_STATES)
+        palette.menuActionTriggered.connect(self.handle_menu_action)
+        self.activeColorChanged.connect(palette.activeColorChanged)
+        self.dataUpdated.connect(palette.update_labels)
+        self.highlightsUpdated.connect(palette.highlightsUpdated)
+        self.memoryStateChanged.connect(palette.update_memory_slot)
 
         biplot_container = QWidget()
         self.biplot_layout = BiplotGrid()
@@ -70,12 +71,12 @@ class Painter(QWidget):
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(color_bar)
+        layout.addWidget(palette)
         layout.addWidget(biplot_container)
         layout.addStretch()
         self.setLayout(layout)
 
-        self.change_color(Color.RED)
+        self.change_color(Color.BLUE)
         self.emit_changes()
 
     def configure_shortcuts(self) -> None:

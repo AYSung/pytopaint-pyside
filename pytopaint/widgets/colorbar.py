@@ -15,19 +15,19 @@ from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     COLOR_RGB_MAP,
     Color,
-    indices_by_color,
+    events_by_color,
     ratios_by_color,
     is_zappable,
 )
 
 
-class ColorBar(QWidget):
+class Palette(QWidget):
     activeColorChanged = Signal(int)
     menuActionTriggered = Signal(int, dict)
     eventsUpdated = Signal(object, int)
     highlightsUpdated = Signal(list)
 
-    def __init__(self):
+    def __init__(self, memory_states: int):
         super().__init__()
 
         layout = QHBoxLayout()
@@ -49,7 +49,7 @@ class ColorBar(QWidget):
         save_state_label = QLabel('Save States:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
         layout.addWidget(save_state_label)
-        self.memory_slots = {i: MemorySlot(i) for i in range(5)}
+        self.memory_slots = {i: MemorySlot(i) for i in range(memory_states)}
         for memory_slot in self.memory_slots.values():
             layout.addWidget(memory_slot)
             memory_slot.menuActionTriggered.connect(self.menuActionTriggered)
@@ -60,10 +60,11 @@ class ColorBar(QWidget):
 
     @Slot(object)
     def update_labels(self, df: pd.DataFrame):
-        indices = indices_by_color(df.color)
-        total_events = df.shape[0]
-        self.eventsUpdated.emit(indices, total_events)
+        events = events_by_color(df.color)
+        total_events = df.color.size
         self.total_events_label.setText(f'Total Events: {total_events:,}')
+
+        self.eventsUpdated.emit(events, total_events)
 
     @Slot(int, bool)
     def update_memory_slot(self, slot: int, has_state: bool):
@@ -83,7 +84,7 @@ class ColorLabel(QWidget):
         super().__init__(parent)
         self.color = color
         self.highlight = False
-        self.event_indices = pd.Index([])
+        self.event_count = 0
         self.zappable = False
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -104,32 +105,23 @@ class ColorLabel(QWidget):
         self.setLayout(layout)
 
     @property
-    def event_count(self) -> int:
-        return self.event_indices.size
-
-    @property
     def has_events(self) -> bool:
-        return not self.event_indices.empty
+        return self.event_count > 0
 
     @Slot(object, int)
     def update_label(self, events: dict[Color, int], total_events: int):
-        self.event_indices = events.get(self.color, pd.Index([]))
+        self.event_count = events.get(self.color, 0)
         percent = self.event_count / total_events
-        decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
         if (self.event_count >= 100) or (self.event_count == 0):
-            self.label.setText(f'{percent:.{decimal_places}%}')
+            self.label.setText(_format_percent(percent))
         else:
-            self.label.setText(f'{percent:.{decimal_places}%} ({self.event_count})')
+            self.label.setText(f'{_format_percent(percent)} ({self.event_count})')
 
         self.zappable = is_zappable(self.color, events)
         self.ratios = ratios_by_color(
-            self.color, {color: index.size for color, index in events.items()}
+            self.color,
+            {color: n / total_events for color, n in sorted(events.items())},
         )
-        self.combined_percents = {
-            color: (self.event_count + index.size) / total_events
-            for color, index in events.items()
-            if color != self.color
-        }
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color == Color.GREY:
@@ -169,11 +161,6 @@ class ColorLabel(QWidget):
 
     def context_menu(self, pos):
         def _merge_action(color: Color) -> QAction:
-            def _color_icon(color: Color) -> QIcon:
-                pixmap = QPixmap(12, 12)
-                pixmap.fill(COLOR_RGB_MAP[color])
-                return QIcon(pixmap)
-
             action = QAction(_color_icon(color), color.label_name)
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
@@ -254,15 +241,32 @@ class ColorLabel(QWidget):
 
         ratio_labels = [
             QAction(
-                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {color.label_name} ({self.combined_percents[color]:.{1 if self.combined_percents[color] >= 0.01 else 2}%})',
+                _color_icon(color),
+                f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
                 enabled=False,
             )
-            for color, ratio in self.ratios.items()
-            if ratio
+            for color, label_info in self.ratios.items()
         ]
         menu.addActions(ratio_labels)
 
         menu.exec(self.mapToGlobal(pos))
+
+
+def _format_percent(percent: float) -> int:
+    return f'{percent:.{1 if (percent == 0) or (percent >= 0.01) else 2}%}'
+
+
+def _format_ratio(ratio: float) -> int:
+    return f'{ratio:.{1 if ratio >= 1 else 2}f} : 1'
+
+
+def _color_icon(color: Color) -> QIcon:
+    pixmap = QPixmap(16, 12)
+    pixmap.fill('#00000000')
+    painter = QPainter(pixmap)
+    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAP[color])
+    painter.end()
+    return QIcon(pixmap)
 
 
 class MemorySlot(QToolButton):

@@ -7,6 +7,7 @@ from pytopaint.colors import (
     _subtract_color_from_series,
     add_color_to_selection,
     indices_by_color,
+    events_by_color,
     is_zappable,
     merge_colors,
     ratios_by_color,
@@ -254,20 +255,10 @@ def test_indices_by_color(test_df_1, test_df_2):
     assert indices_by_color(test_df_2.color)[Color.WHITE] == [5]
 
 
-def test_ratios_by_colors():
-    assert ratios_by_color(
-        current_color=Color.RED,
-        events={
-            Color.GREY: 1,
-            Color.RED: 1,
-            Color.BLUE: 1,
-            Color.MAGENTA: 1,
-            Color.GREEN: 1,
-            Color.YELLOW: 1,
-            Color.CYAN: 1,
-            Color.WHITE: 1,
-        },
-    ) == {
+def test_events_by_color(test_df_1, test_df_2):
+    assert events_by_color(test_df_1.color) == {
+        Color.GREY: 1,
+        Color.RED: 1,
         Color.BLUE: 1,
         Color.MAGENTA: 1,
         Color.GREEN: 1,
@@ -276,34 +267,65 @@ def test_ratios_by_colors():
         Color.WHITE: 1,
     }
 
+    assert events_by_color(test_df_2.color) == {
+        Color.GREY: 1,
+        Color.RED: 3,
+        Color.GREEN: 1,
+        Color.YELLOW: 1,
+        Color.CYAN: 1,
+        Color.WHITE: 1,
+    }
+
+
+def test_ratios_by_colors():
     assert ratios_by_color(
-        current_color=Color.RED,
-        events={
-            Color.GREY: 2,
-            Color.RED: 1,
-            Color.BLUE: 3,
-            Color.MAGENTA: 4,
-            Color.GREEN: 5,
-            Color.YELLOW: 6,
+        antecedent_color=Color.RED,
+        percents={
+            Color.GREY: 0.1,
+            Color.RED: 0.1,
+            Color.BLUE: 0.1,
+            Color.MAGENTA: 0.1,
+            Color.GREEN: 0.1,
+            Color.YELLOW: 0.1,
+            Color.CYAN: 0.1,
+            Color.WHITE: 0.1,
         },
     ) == {
-        Color.BLUE: 1 / 3,
-        Color.MAGENTA: 1 / 4,
-        Color.GREEN: 1 / 5,
-        Color.YELLOW: 1 / 6,
+        Color.BLUE: (1, 0.2),
+        Color.GREEN: (1, 0.2),
+        Color.YELLOW: (1, 0.2),
+        Color.MAGENTA: (1, 0.2),
+        Color.CYAN: (1, 0.2),
+        Color.WHITE: (1, 0.2),
+    }
+
+    assert ratios_by_color(
+        antecedent_color=Color.RED,
+        percents={
+            Color.GREY: 0.2,
+            Color.RED: 0.1,
+            Color.BLUE: 0.3,
+            Color.GREEN: 0.5,
+            Color.YELLOW: 0.6,
+            Color.MAGENTA: 0.4,
+        },
+    ) == {
+        Color.BLUE: (0.1 / 0.3, 0.4),
+        Color.GREEN: (0.1 / 0.5, 0.6),
+        Color.YELLOW: (0.1 / 0.6, 0.7),
+        Color.MAGENTA: (0.1 / 0.4, 0.5),
     }
     assert ratios_by_color(
-        current_color=Color.RED,
-        events={
-            Color.GREY: 2,
-            Color.RED: 4,
-            Color.BLUE: 1,
-            Color.MAGENTA: 4,
-            Color.YELLOW: 0,
+        antecedent_color=Color.RED,
+        percents={
+            Color.GREY: 0.2,
+            Color.RED: 0.4,
+            Color.BLUE: 0.1,
+            Color.MAGENTA: 0.4,
         },
     ) == {
-        Color.BLUE: 4,
-        Color.MAGENTA: 1,
+        Color.BLUE: (4, 0.5),
+        Color.MAGENTA: (1, 0.8),
     }
 
 
