@@ -33,6 +33,7 @@ class Painter(QWidget):
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int, dict)
+    stateReturned = Signal(object, int)
 
     def __init__(self, data: FlowData):
         super().__init__()
@@ -51,6 +52,7 @@ class Painter(QWidget):
         self.activeColorChanged.connect(color_bar.activeColorChanged)
         self.dataUpdated.connect(color_bar.update_labels)
         self.highlightsUpdated.connect(color_bar.highlightsUpdated)
+        self.stateReturned.connect(color_bar.update_memory_slot)
 
         biplot_container = QWidget()
         self.biplot_layout = BiplotGrid()
@@ -240,7 +242,8 @@ class Painter(QWidget):
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
-            MenuAction.RECALL: self.recall_color,
+            MenuAction.RECALL_STATE: self.recall_state,
+            MenuAction.STORE_STATE: self.store_state,
         }
 
         FUNCTION_MAP[action](**kwargs)
@@ -267,8 +270,11 @@ class Painter(QWidget):
     def zap_all(self):
         self.df['color'] = Color.GREY
 
-    def recall_color(self, color: Color, index: pd.Index):
-        self.df.loc[index, 'color'] = color
+    def recall_state(self, paint_state: pd.Series):
+        self.df = self.data.binned_df.loc[paint_state.index].assign(color=paint_state)
+
+    def store_state(self, slot: int):
+        self.stateReturned.emit(self.df.color.copy(), slot)
 
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)

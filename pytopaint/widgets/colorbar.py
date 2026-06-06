@@ -8,6 +8,7 @@ from PySide6.QtWidgets import (
     QStyle,
     QStyleOption,
     QWidget,
+    QToolButton,
 )
 
 from pytopaint.actions import MenuAction
@@ -18,8 +19,6 @@ from pytopaint.colors import (
     ratios_by_color,
     is_zappable,
 )
-
-RESOLUTION = 256
 
 
 class ColorBar(QWidget):
@@ -47,6 +46,14 @@ class ColorBar(QWidget):
             self.activeColorChanged.connect(color_label.update_active_color)
             self.eventsUpdated.connect(color_label.update_label)
 
+        save_state_label = QLabel('Save States:')
+        save_state_label.setContentsMargins(0, 0, 10, 0)
+        layout.addWidget(save_state_label)
+        self.memory_slots = {i: MemorySlot(i) for i in range(5)}
+        for memory_slot in self.memory_slots.values():
+            layout.addWidget(memory_slot)
+            memory_slot.menuActionTriggered.connect(self.menuActionTriggered)
+
         layout.addStretch()
 
         self.setLayout(layout)
@@ -57,6 +64,10 @@ class ColorBar(QWidget):
         total_events = df.shape[0]
         self.eventsUpdated.emit(indices, total_events)
         self.total_events_label.setText(f'Total Events: {total_events:,}')
+
+    @Slot(object, int)
+    def update_memory_slot(self, paint_state: pd.Series, slot: int):
+        self.memory_slots[slot].store_state(paint_state)
 
     def paintEvent(self, _: QStyle.PrimitiveElement):
         o = QStyleOption()
@@ -73,7 +84,6 @@ class ColorLabel(QWidget):
         self.color = color
         self.highlight = False
         self.event_indices = pd.Index([])
-        self.remembered_events = pd.Index([])
         self.zappable = False
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -114,20 +124,6 @@ class ColorLabel(QWidget):
         else:
             self.label.setText(f'{percent:.{decimal_places}%} ({self.event_count})')
         self.zappable = is_zappable(self.color, events)
-
-    @Slot(int)
-    def remember_color(self) -> None:
-        self.remembered_events = self.event_indices.copy()
-
-    @Slot(int)
-    def recall_color(self) -> None:
-        self.menuActionTriggered.emit(
-            MenuAction.RECALL, dict(color=self.color, index=self.remembered_events)
-        )
-
-    @Slot()
-    def clear_memory(self) -> None:
-        self.remembered_events = pd.Index([])
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color == Color.GREY:
@@ -212,7 +208,6 @@ class ColorLabel(QWidget):
             )
             menu.addAction(zap)
 
-            # TODO: enable if derivative colors present
             exact_zap = QAction('Exact Zap', enabled=self.has_events)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
@@ -231,17 +226,6 @@ class ColorLabel(QWidget):
             for merge_action in merge_actions:
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
-
-            menu.addSeparator()
-            remember = QAction('Remember Color', enabled=self.has_events)
-            remember.triggered.connect(self.remember_color)
-            menu.addAction(remember)
-            recall = QAction('Recall Color', enabled=not self.remembered_events.empty)
-            recall.triggered.connect(self.recall_color)
-            menu.addAction(recall)
-            clear = QAction('Clear Memory', enabled=not self.remembered_events.empty)
-            clear.triggered.connect(self.clear_memory)
-            menu.addAction(clear)
 
         menu.addSeparator()
         menu.addSection('Filter')
@@ -274,3 +258,42 @@ class ColorLabel(QWidget):
             menu.addAction(label)
 
         menu.exec(self.mapToGlobal(pos))
+
+
+class MemorySlot(QToolButton):
+    menuActionTriggered = Signal(int, dict)
+
+    def __init__(self, id: int, parent=None):
+        super().__init__(parent)
+        self.id = id
+        self.setText(str(id))
+        self.setStyleSheet('background-color: #121212;')
+        self.stored_state = None
+
+    def mouseReleaseEvent(self, e: QMouseEvent):
+        modifiers = e.modifiers()
+        if e.button() == Qt.MouseButton.LeftButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                if self.stored_state is not None:
+                    self.menuActionTriggered.emit(
+                        MenuAction.RECALL_STATE, dict(paint_state=self.stored_state)
+                    )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.STORE_STATE, dict(slot=self.id)
+                )
+        elif self.stored_state is not None and (
+            e.button() == Qt.MouseButton.MiddleButton
+        ):
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.clear_memory()
+
+        super().mouseReleaseEvent(e)
+
+    def store_state(self, paint_state: pd.Series) -> None:
+        self.stored_state = paint_state
+        self.setStyleSheet('background-color: #828282')
+
+    def clear_memory(self) -> None:
+        self.stored_state = None
+        self.setStyleSheet('background-color: #121212')
