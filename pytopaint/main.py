@@ -26,7 +26,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.config import appconfig, import_config, save_config
-from pytopaint.flowdata import FlowData, extract_case_info
+from pytopaint.flowdata import FlowData
 from pytopaint.layout import read_yaml
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
-            self.painter_tabs.addTab(painter, extract_case_info(file_path.stem))
+            self.painter_tabs.addTab(painter, painter.data.sample.id)
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e

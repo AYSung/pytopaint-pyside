@@ -66,10 +66,6 @@ class Palette(QWidget):
 
         self.eventsUpdated.emit(events, total_events)
 
-    @Slot(int, bool)
-    def update_memory_slot(self, slot: int, has_state: bool):
-        self.memory_slots[slot].update_appearance(has_state)
-
     def paintEvent(self, _: QStyle.PrimitiveElement):
         o = QStyleOption()
         o.initFrom(self)
@@ -276,26 +272,51 @@ class MemorySlot(QToolButton):
         super().__init__(parent)
         self.id = id
         self.setText(str(id))
-        self.setStyleSheet('background-color: #121212;')
+        self.has_events = False
+        self.update_appearance()
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.customContextMenuRequested.connect(self.context_menu)
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.menuActionTriggered.emit(
-                    MenuAction.RECALL_STATE, dict(slot=self.id)
-                )
+                self.recall_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.menuActionTriggered.emit(
-                    MenuAction.STORE_STATE, dict(slot=self.id)
-                )
+                self.store_state()
         elif e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.menuActionTriggered.emit(
-                    MenuAction.CLEAR_MEMORY_STATE, dict(slot=self.id)
-                )
+                self.clear_state()
 
         super().mouseReleaseEvent(e)
 
-    def update_appearance(self, has_state: bool) -> None:
-        self.setStyleSheet(f'background-color: {"#828282" if has_state else "#121212"}')
+    def update_appearance(self) -> None:
+        self.setStyleSheet(
+            f'background-color: {"#828282" if self.has_events else "#121212"}'
+        )
+
+    def context_menu(self, pos):
+        menu = QMenu()
+        recall_state = QAction('Recall', self, enabled=self.has_events)
+        recall_state.triggered.connect(self.recall_state)
+        menu.addAction(recall_state)
+        store_state = QAction('Store', self)
+        store_state.triggered.connect(self.store_state)
+        menu.addAction(store_state)
+        clear_state = QAction('Clear', self, enabled=self.has_events)
+        clear_state.triggered.connect(self.clear_state)
+        menu.addAction(clear_state)
+        menu.exec(self.mapToGlobal(pos))
+
+    def store_state(self):
+        self.menuActionTriggered.emit(MenuAction.STORE_STATE, dict(slot=self.id))
+        self.has_events = True
+        self.update_appearance()
+
+    def recall_state(self):
+        self.menuActionTriggered.emit(MenuAction.RECALL_STATE, dict(slot=self.id))
+
+    def clear_state(self):
+        self.menuActionTriggered.emit(MenuAction.CLEAR_MEMORY_STATE, dict(slot=self.id))
+        self.has_events = False
+        self.update_appearance()

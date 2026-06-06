@@ -1,6 +1,7 @@
 import math
 import re
 from functools import partial
+from pathlib import Path
 
 import flowkit
 import pandas as pd
@@ -19,8 +20,8 @@ class FlowData:
         self.update_scale()
 
     @classmethod
-    def from_path(cls, filepath: str):
-        sample = flowkit.Sample(filepath)
+    def from_path(cls, filepath: Path):
+        sample = flowkit.Sample(filepath, sample_id=extract_case_info(filepath.stem))
         return cls(sample)
 
     @property

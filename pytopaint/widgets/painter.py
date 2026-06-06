@@ -32,7 +32,6 @@ class Painter(QWidget):
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int, dict)
-    memoryStateChanged = Signal(int, bool)
 
     def __init__(self, data: FlowData):
         super().__init__()
@@ -53,7 +52,6 @@ class Painter(QWidget):
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.dataUpdated.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
-        self.memoryStateChanged.connect(palette.update_memory_slot)
 
         biplot_container = QWidget()
         self.biplot_layout = BiplotGrid()
@@ -286,11 +284,9 @@ class Painter(QWidget):
 
     def store_state(self, slot: int):
         self.memory_states[slot] = self.df.color.copy()
-        self.memoryStateChanged.emit(slot, True)
 
     def clear_memory_state(self, slot: int):
         self.memory_states[slot] = None
-        self.memoryStateChanged.emit(slot, False)
 
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
