@@ -114,16 +114,21 @@ class ColorLabel(QWidget):
     @Slot(object, int)
     def update_label(self, events: dict[Color, int], total_events: int):
         self.event_indices = events.get(self.color, pd.Index([]))
-        self.ratios = ratios_by_color(
-            self.color, {color: index.size for color, index in events.items()}
-        )
         percent = self.event_count / total_events
         decimal_places = 1 if (percent == 0) or (percent >= 0.01) else 2
         if (self.event_count >= 100) or (self.event_count == 0):
             self.label.setText(f'{percent:.{decimal_places}%}')
         else:
             self.label.setText(f'{percent:.{decimal_places}%} ({self.event_count})')
+
         self.zappable = is_zappable(self.color, events)
+        self.ratios = ratios_by_color(
+            self.color, {color: index.size for color, index in events.items()}
+        )
+        self.combined_percents = {
+            color: (self.event_count + index.size) / total_events
+            for color, index in events.items()
+        }
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color == Color.GREY:
@@ -248,14 +253,13 @@ class ColorLabel(QWidget):
 
         ratio_labels = [
             QAction(
-                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {color.label_name}',
+                f'{ratio:.{1 if ratio >= 1 else 2}f} : 1 {color.label_name} ({self.combined_percents[color]:.{1 if self.combined_percents[color] >= 0.01 else 2}%})',
                 enabled=False,
             )
             for color, ratio in self.ratios.items()
             if ratio
         ]
-        for label in ratio_labels:
-            menu.addAction(label)
+        menu.addActions(ratio_labels)
 
         menu.exec(self.mapToGlobal(pos))
 
