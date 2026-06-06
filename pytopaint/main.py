@@ -307,6 +307,7 @@ class MainWindow(QMainWindow):
         help_menu.addAction(shortcut_help_action)
 
         about_action = QAction('About PytoPaint', self)
+        about_action.setMenuRole(QAction.MenuRole.NoRole)
         about_action.triggered.connect(lambda: about_dialog(self))
         help_menu.addAction(about_action)
 
