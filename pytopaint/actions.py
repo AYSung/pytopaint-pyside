@@ -7,6 +7,7 @@ class MenuAction(IntEnum):
     EXACT_ZAP = auto()
     ZAP_ALL = auto()
     MERGE = auto()
+    UNHIDE_ALL = auto()
     HIDE = auto()
     ISOLATE = auto()
     UNDO = auto()

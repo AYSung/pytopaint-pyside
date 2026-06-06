@@ -132,9 +132,13 @@ class Painter(QWidget):
             lambda: self.handle_menu_action(MenuAction.REDO, dict())
         )
 
-        reset_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
+        reset_shortcut = QShortcut(QKeySequence('Ctrl+Shift+R'), self)
         reset_shortcut.activated.connect(
             lambda: self.handle_menu_action(MenuAction.RESET, dict())
+        )
+        unhide_all_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
+        unhide_all_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.UNHIDE_ALL, dict())
         )
 
         hide_events_shortcut = QShortcut(QKeySequence.StandardKey.Backspace, self)
@@ -236,10 +240,11 @@ class Painter(QWidget):
             MenuAction.EXACT_ZAP: self.exact_zap_color,
             MenuAction.ZAP_ALL: self.zap_all,
             MenuAction.MERGE: self.merge_color,
+            MenuAction.UNHIDE_ALL: self.unhide_all,
             MenuAction.HIDE: self.hide_color,
             MenuAction.ISOLATE: self.isolate_color,
-            MenuAction.UNDO: self.undo_action,
-            MenuAction.REDO: self.redo_action,
+            MenuAction.UNDO: self.undo_paint,
+            MenuAction.REDO: self.redo_paint,
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
@@ -290,6 +295,11 @@ class Painter(QWidget):
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
 
+    def unhide_all(self) -> None:
+        current_colors = self.df.color.copy()
+        self.df = self.data.binned_df.assign(color=Color.GREY)
+        self.df.color.update(current_colors)
+
     def hide_color(self, color: Color):
         self.df = self.df.loc[self.df.color != color]
 
@@ -312,7 +322,7 @@ class Painter(QWidget):
         self.redo_history = []
 
     @Slot()
-    def undo_action(self):
+    def undo_paint(self):
         if len(self.undo_history) <= 1:
             return
 
@@ -329,7 +339,7 @@ class Painter(QWidget):
         self.emit_changes()
 
     @Slot()
-    def redo_action(self):
+    def redo_paint(self):
         if not self.redo_history:
             return
 
