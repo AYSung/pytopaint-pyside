@@ -22,7 +22,7 @@ from pytopaint.flowdata import FlowData
 from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
-from pytopaint.widgets.colorbar import Palette
+from pytopaint.widgets.palette import Palette
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
 
