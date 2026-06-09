@@ -46,7 +46,7 @@ class Palette(QWidget):
             self.activeColorChanged.connect(color_label.update_active_color)
             self.eventsUpdated.connect(color_label.update_label)
 
-        save_state_label = QLabel('Save States:')
+        save_state_label = QLabel('Snapshots:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
         layout.addWidget(save_state_label)
         self.memory_slots = {i: MemorySlot(i) for i in range(memory_states)}
@@ -283,7 +283,7 @@ class MemorySlot(QToolButton):
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.recall_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.store_state()
+                self.combine_state()
         elif e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.clear_state()
@@ -297,15 +297,22 @@ class MemorySlot(QToolButton):
 
     def context_menu(self, pos):
         menu = QMenu()
-        recall_state = QAction('Recall', self, enabled=self.has_events)
-        recall_state.triggered.connect(self.recall_state)
-        menu.addAction(recall_state)
-        store_state = QAction('Store', self)
-        store_state.triggered.connect(self.store_state)
-        menu.addAction(store_state)
-        clear_state = QAction('Clear', self, enabled=self.has_events)
-        clear_state.triggered.connect(self.clear_state)
-        menu.addAction(clear_state)
+        recall_state_action = QAction('Recall', self, enabled=self.has_events)
+        recall_state_action.triggered.connect(self.recall_state)
+        menu.addAction(recall_state_action)
+        combine_state_action = QAction('Combine', self, enabled=self.has_events)
+        combine_state_action.triggered.connect(self.combine_state)
+        menu.addAction(combine_state_action)
+
+        menu.addSeparator()
+
+        store_state_action = QAction('Store', self)
+        store_state_action.triggered.connect(self.store_state)
+        menu.addAction(store_state_action)
+        clear_state_action = QAction('Clear', self, enabled=self.has_events)
+        clear_state_action.triggered.connect(self.clear_state)
+        menu.addAction(clear_state_action)
+
         menu.exec(self.mapToGlobal(pos))
 
     def store_state(self):
@@ -315,6 +322,9 @@ class MemorySlot(QToolButton):
 
     def recall_state(self):
         self.menuActionTriggered.emit(MenuAction.RECALL_STATE, dict(slot=self.id))
+
+    def combine_state(self):
+        self.menuActionTriggered.emit(MenuAction.COMBINE_STATE, dict(slot=self.id))
 
     def clear_state(self):
         self.menuActionTriggered.emit(MenuAction.CLEAR_MEMORY_STATE, dict(slot=self.id))

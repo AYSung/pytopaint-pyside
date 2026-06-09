@@ -16,5 +16,6 @@ class MenuAction(IntEnum):
     SUBSAMPLE = auto()
     HIGHLIGHT = auto()
     RECALL_STATE = auto()
+    COMBINE_STATE = auto()
     STORE_STATE = auto()
     CLEAR_MEMORY_STATE = auto()

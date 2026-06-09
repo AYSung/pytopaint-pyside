@@ -1,3 +1,5 @@
+import pandas as pd
+
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
@@ -45,7 +47,9 @@ class Painter(QWidget):
 
         self.highlighted_colors = []
         N_MEMORY_STATES = 5
-        self.memory_states = {i: None for i in range(N_MEMORY_STATES)}
+        self.memory_states: dict[int, pd.Series] = {
+            i: None for i in range(N_MEMORY_STATES)
+        }
 
         palette = Palette(memory_states=N_MEMORY_STATES)
         palette.menuActionTriggered.connect(self.handle_menu_action)
@@ -247,6 +251,7 @@ class Painter(QWidget):
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
             MenuAction.RECALL_STATE: self.recall_state,
+            MenuAction.COMBINE_STATE: self.combine_state,
             MenuAction.STORE_STATE: self.store_state,
             MenuAction.CLEAR_MEMORY_STATE: self.clear_memory_state,
         }
@@ -281,6 +286,16 @@ class Painter(QWidget):
         state = self.memory_states[slot]
         if state is not None:
             self.df = self.data.binned_df.loc[state.index].assign(color=state)
+
+    def combine_state(self, slot: int):
+        state = self.memory_states[slot]
+        if state is not None:
+            current_colors = self.df.color.copy()
+            self.df = self.data.binned_df.loc[state.index.union(self.df.index)].assign(
+                color=Color.GREY
+            )
+            self.df.color.update(current_colors.loc[current_colors != Color.GREY])
+            self.df.color.update(state.loc[state != Color.GREY])
 
     def store_state(self, slot: int):
         self.memory_states[slot] = self.df.color.copy()
