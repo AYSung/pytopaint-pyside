@@ -44,6 +44,7 @@ class Painter(QWidget):
         self.df = self.data.binned_df.assign(color=Color.GREY)
         self.undo_history = [self.df.color.copy()]
         self.redo_history = []
+        self.active_color = Color.BLUE
 
         self.highlighted_colors = []
         N_MEMORY_STATES = 5
@@ -78,7 +79,6 @@ class Painter(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
-        self.change_color(Color.BLUE)
         self.emit_changes()
 
     def configure_shortcuts(self) -> None:
@@ -419,6 +419,7 @@ class Painter(QWidget):
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         self.resizeTriggered.connect(biplot.resize)
+        biplot.plot.set_active_color(self.active_color)
         return biplot
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
