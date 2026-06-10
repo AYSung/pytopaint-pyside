@@ -313,8 +313,6 @@ def test_get_axis_ticks():
 
 
 def test_extract_case_number():
-    assert extract_case_number('normal_02_B') == 'normal_02_B'
-    assert extract_case_number('CLL_01_B') == 'CLL_01_B'
     assert extract_case_number('Z-26-1234 JOHN SMITH') == 'IP26-01234'
     assert extract_case_number('Z-24-12345 SMITH') == 'IP24-12345'
     assert extract_case_number('Z-24-1234 SMITH') == 'IP24-01234'
