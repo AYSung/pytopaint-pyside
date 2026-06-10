@@ -1,4 +1,3 @@
-import flowkit
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -16,14 +15,14 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.config import appconfig
-from pytopaint.flowdata import sort_channels
+from pytopaint.flowdata import sort_channels, FlowData
 
 
 def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.2\n\n\nCreated by Andrew Y. Sung\n\nLast updated June 2026',
+        'PytoPaint v0.2\n\n\nCreated by Andrew Y. Sung\n\nLast updated June 2026\n\nFor research and educational use only.',
     )
 
 
@@ -149,15 +148,17 @@ class PlotScaleDialog(QDialog):
         return self.lower_arcsinh_limit_input.value()
 
 
-def file_info_dialog(parent: QWidget, sample: flowkit.Sample) -> QDialog:
+def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
     dialog = QDialog(parent)
     dialog.setWindowTitle('File Info')
 
-    file_name = QLabel(f'File Name: {sample.current_filename}')
-    event_count = QLabel(f'Event Count: {sample.event_count:,}')
+    file_name = QLabel(f'File Name: {data.sample.current_filename}')
+    event_count = QLabel(f'Event Count: {data.sample.event_count:,}')
     channels = [
         f'{marker} ({fluor})' if marker else fluor
-        for fluor, marker in sample.channels[['pnn', 'pns']].to_records(index=False)
+        for fluor, marker in data.sample.channels[['pnn', 'pns']].to_records(
+            index=False
+        )
     ]
     channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
 
@@ -166,6 +167,9 @@ def file_info_dialog(parent: QWidget, sample: flowkit.Sample) -> QDialog:
 
     layout = QVBoxLayout()
     layout.addWidget(file_name)
+    if data.tube is not None:
+        tube_label = QLabel(f'Tube: {data.tube}')
+        layout.addWidget(tube_label)
     layout.addWidget(event_count)
     layout.addWidget(channels_label)
     layout.addWidget(button_box)

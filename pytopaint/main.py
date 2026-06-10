@@ -88,7 +88,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
-            self.painter_tabs.addTab(painter, painter.data.sample.id)
+            self.painter_tabs.addTab(painter, painter.data.name)
             self.painter_tabs.setCurrentWidget(painter)
         except ValueError as e:
             raise e
@@ -106,9 +106,7 @@ class MainWindow(QMainWindow):
 
         painter = self.get_active_painter()
         sample = painter.data.sample
-        metadata = sample._get_metadata_for_export(source='raw', include_all=False) | {
-            k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
-        }
+        metadata = sample._get_metadata_for_export(source='raw', include_all=True)
         event_mask = np.isin(np.arange(sample.event_count), painter.df.index)
         df = sample.as_dataframe(source='raw', event_mask=event_mask)
 
@@ -236,7 +234,7 @@ class MainWindow(QMainWindow):
 
         file_info_action = QAction('File Info', self, enabled=False)
         file_info_action.triggered.connect(
-            lambda: file_info_dialog(self, self.get_active_painter().data.sample).exec()
+            lambda: file_info_dialog(self, self.get_active_painter().data).exec()
         )
         self.painter_tabs.currentChanged.connect(
             lambda: file_info_action.setEnabled(self.painter_tabs.count())

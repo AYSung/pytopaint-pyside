@@ -16,7 +16,7 @@ from pytopaint.flowdata import (
     clip_series,
     bin_series,
     get_axis_ticks,
-    extract_case_info,
+    extract_case_number,
 )
 
 LOWER_ASINH = -1
@@ -312,20 +312,12 @@ def test_get_axis_ticks():
     ) == [(0, None), (64, None), (128, None), (192, None), (256, None)]
 
 
-def test_extract_case_info():
-    assert extract_case_info('normal_02_B') == 'normal_02_B'
-    assert extract_case_info('CLL_01_B') == 'CLL_01_B'
-    assert extract_case_info('Z-26-1234 JOHN SMITH_B CELL_001') == 'IP26-01234 B CELL'
-    assert extract_case_info('Z-24-12345 SMITH_T CELL_002') == 'IP24-12345 T CELL'
-    assert (
-        extract_case_info('Z-24-1234 SMITH_CAR-T 19 TUBE 3_002')
-        == 'IP24-01234 CAR-T 19 TUBE 3'
-    )
-    assert (
-        extract_case_info('Z-24-1234 SMITH_1_BLL-REFLEX MRD_002')
-        == 'IP24-01234 BLL-REFLEX MRD'
-    )
-    assert (
-        extract_case_info('Y 24-1234 SMITH_1_BLL-REFLEX MRD_002')
-        == 'IP24-01234 BLL-REFLEX MRD'
-    )
+def test_extract_case_number():
+    assert extract_case_number('normal_02_B') == 'normal_02_B'
+    assert extract_case_number('CLL_01_B') == 'CLL_01_B'
+    assert extract_case_number('Z-26-1234 JOHN SMITH') == 'IP26-01234'
+    assert extract_case_number('Z-24-12345 SMITH') == 'IP24-12345'
+    assert extract_case_number('Z-24-1234 SMITH') == 'IP24-01234'
+    assert extract_case_number('Z-24-1234 SMITH') == 'IP24-01234'
+    assert extract_case_number('Y 24-1234 SMITH') == 'IP24-01234'
+    assert extract_case_number('Y 1234 SMITH') == 'IPxx-01234'

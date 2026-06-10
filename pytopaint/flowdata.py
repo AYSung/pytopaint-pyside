@@ -13,16 +13,30 @@ UPPER_PHYSICAL = 255_000
 
 
 class FlowData:
-    def __init__(self, sample: flowkit.Sample):
+    def __init__(self, sample: flowkit.Sample, id: str, tube: str):
         self.sample = sample
         self.channels = _get_channels(self.sample.channels)
+        self.tube = tube
+        self.id = id
 
         self.update_scale()
 
     @classmethod
     def from_path(cls, filepath: Path):
-        sample = flowkit.Sample(filepath, sample_id=extract_case_info(filepath.stem))
-        return cls(sample)
+        sample = flowkit.Sample(filepath)
+        tube = sample.metadata.get('tube name', None)
+        id = (
+            extract_case_number(sample.metadata['src'])
+            if 'src' in sample.metadata
+            else filepath.stem
+        )
+
+        sample.metadata = sample._get_metadata_for_export(source='raw') | {
+            k: v
+            for k, v in sample.metadata.items()
+            if k in ['spill', 'spillover', 'tube name']
+        }
+        return cls(sample, id, tube)
 
     @property
     def sorted_channels(self) -> list[str]:
@@ -39,6 +53,13 @@ class FlowData:
             )
             for channel in self.channels
         }
+
+    @property
+    def name(self) -> str:
+        if self.tube is not None:
+            return f'{self.id} {self.tube}'
+        else:
+            return f'{self.id}'
 
     @property
     def binned_df(self) -> pd.DataFrame:
@@ -107,7 +128,7 @@ def get_axis_ticks(
 def to_xform_df(
     sample: flowkit.Sample,
     channels: list[str],
-    scaling_factor: float = 150,
+    scaling_factor: float,
 ):
     compensation = _get_compensation(sample.metadata)
     if compensation is not None:
@@ -215,11 +236,10 @@ def clip_series(s: pd.Series, clip_limits: dict[str, tuple[float, float]]):
     return s.clip(lower=lower_limit, upper=upper_limit)
 
 
-def extract_case_info(filename: str) -> str:
-    regex_match = re.match(
-        r'\w[- ](\d{2})[- ](\d{4,}) [a-zA-Z ]+[_\d]*_([a-zA-Z0-9- ]+)_\d{3}', filename
-    )
-    if regex_match:
-        return f'IP{regex_match.group(1)}-{int(regex_match.group(2)):05} {regex_match.group(3)}'
+def extract_case_number(filename: str) -> str:
+    if match := re.match(r'\w[- ](\d{2})[- ](\d{4,}) [a-zA-Z ]+$', filename):
+        return f'IP{match.group(1)}-{int(match.group(2)):05}'
+    elif match := re.match(r'\w[- ](\d{4,}) [a-zA-Z ]+[_\d]*', filename):
+        return f'IPxx-{int(match.group(1)):05}'
     else:
         return filename
