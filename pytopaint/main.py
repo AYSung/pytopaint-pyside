@@ -52,6 +52,7 @@ class MainWindow(QMainWindow):
 
         self.painter_tabs = QTabWidget()
         self.painter_tabs.setTabsClosable(True)
+        self.painter_tabs.setMovable(True)
         self.painter_tabs.setElideMode(Qt.TextElideMode.ElideMiddle)
         self.painter_tabs.tabCloseRequested.connect(self.handle_tab_close)
 
