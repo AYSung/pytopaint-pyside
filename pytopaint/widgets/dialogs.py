@@ -154,12 +154,7 @@ def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
 
     file_name = QLabel(f'File Name: {data.sample.current_filename}')
     event_count = QLabel(f'Event Count: {data.sample.event_count:,}')
-    channels = [
-        f'{marker} ({fluor})' if marker else fluor
-        for fluor, marker in data.sample.channels[['pnn', 'pns']].to_records(
-            index=False
-        )
-    ]
+    channels = data.channel_details
     channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
 
     button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)

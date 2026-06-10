@@ -15,7 +15,6 @@ UPPER_PHYSICAL = 255_000
 class FlowData:
     def __init__(self, sample: flowkit.Sample, id: str, tube: str):
         self.sample = sample
-        self.channels = _get_channels(self.sample.channels)
         self.tube = tube
         self.id = id
 
@@ -40,7 +39,17 @@ class FlowData:
 
     @property
     def sorted_channels(self) -> list[str]:
-        return sort_channels(self.channels)
+        return sort_channels(self.xform_df.columns)
+
+    @property
+    def channel_details(self) -> list[str]:
+        return [
+            f'{marker} ({fluor})' if marker else fluor
+            for fluor, marker in self.sample.channels[['pnn', 'pns']].to_records(
+                index=False
+            )
+            if fluor not in _get_empty_channels(self.sample.channels)
+        ]
 
     @property
     def axis_ticks(self) -> dict[str, list[tuple[int, str]]]:
@@ -51,7 +60,7 @@ class FlowData:
                 scaling_factor=appconfig.scaling_factor,
                 clip_limits=self.clip_limits,
             )
-            for channel in self.channels
+            for channel in self.xform_df.columns
         }
 
     @property
@@ -69,7 +78,7 @@ class FlowData:
 
     def update_scale(self) -> None:
         self.xform_df = to_xform_df(
-            self.sample, channels=self.channels, scaling_factor=appconfig.scaling_factor
+            self.sample, scaling_factor=appconfig.scaling_factor
         )
 
         self.clip_limits = {
@@ -77,7 +86,7 @@ class FlowData:
                 lower_clip_limit(self.xform_df[channel]),
                 upper_clip_limit(self.xform_df[channel]),
             )
-            for channel in self.channels
+            for channel in self.xform_df.columns
         }
 
 
@@ -127,7 +136,6 @@ def get_axis_ticks(
 
 def to_xform_df(
     sample: flowkit.Sample,
-    channels: list[str],
     scaling_factor: float,
 ):
     compensation = _get_compensation(sample.metadata)
@@ -135,8 +143,10 @@ def to_xform_df(
         sample.apply_compensation(compensation)
 
     sample.apply_transform(_arcsinh_transformer(scaling_factor))
-
-    return sample.as_dataframe(source='xform', col_names=channels)
+    df = sample.as_dataframe(source='xform', col_names=_get_channels(sample.channels))
+    if empty_channels := _get_empty_channels(sample.channels):
+        df = df.drop(columns=empty_channels)
+    return df
 
 
 def _arcsinh_transformer(factor) -> flowkit.transforms.AsinhTransform:
@@ -146,10 +156,9 @@ def _arcsinh_transformer(factor) -> flowkit.transforms.AsinhTransform:
 
 
 def sort_channels(channels: list[str] | set[str]) -> list[str]:
-    LIGHT_SCATTER_CHANNELS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
-    light_scatter_channels = sorted([
-        channel for channel in channels if channel in LIGHT_SCATTER_CHANNELS
-    ])
+    light_scatter_channels = sorted(
+        list(filter(lambda x: x in PHYSICAL_PARAMETERS, channels))
+    )
     cd_channels = sorted(
         [channel for channel in channels if channel.startswith('CD')],
         key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
@@ -158,7 +167,7 @@ def sort_channels(channels: list[str] | set[str]) -> list[str]:
         channel
         for channel in channels
         if not channel.startswith('CD')
-        and channel not in LIGHT_SCATTER_CHANNELS + ['Time']
+        and channel not in PHYSICAL_PARAMETERS + ['Time']
     ])
     time_channel = ['Time'] if 'Time' in channels else []
 
@@ -190,6 +199,14 @@ def _get_channels(df: pd.DataFrame) -> list[str]:
     return [
         f'{_clean_marker_name(marker)}' if marker else fluor
         for fluor, marker in df[['pnn', 'pns']].to_records(index=False)
+    ]
+
+
+def _get_empty_channels(df: pd.DataFrame) -> list[str]:
+    return [
+        fluor
+        for fluor, marker in df[['pnn', 'pns']].to_records(index=False)
+        if not marker and fluor not in PHYSICAL_PARAMETERS + ['Time']
     ]
 
 
