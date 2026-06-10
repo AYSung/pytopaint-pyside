@@ -243,6 +243,7 @@ class MainWindow(QMainWindow):
 
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')
+        exit_action.setMenuRole(QAction.MenuRole.NoRole)
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
