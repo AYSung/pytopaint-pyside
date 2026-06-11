@@ -190,19 +190,23 @@ class Painter(QWidget):
                 )
 
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                # override existing colors
-                self.df.loc[selection, 'color'] = self.active_color
+                # ignore painted
+                self.df = add_color_to_selection(
+                    self.df,
+                    self.active_color,
+                    selection.intersection(
+                        self.df.color.loc[lambda s: s == Color.GREY].index
+                    ),
+                )
 
             elif (
                 modifiers
                 == Qt.KeyboardModifier.ControlModifier
                 | Qt.KeyboardModifier.ShiftModifier
             ):
-                # override painted colors only
-                self.df.loc[
-                    self.df.index.isin(selection) & (self.df.color != Color.GREY),
-                    'color',
-                ] = self.active_color
+                # override colors
+                self.df.loc[selection, 'color'] = self.active_color
+
         elif e.button() == Qt.MouseButton.RightButton:
             # if not selection.empty:
             if modifiers == Qt.KeyboardModifier.NoModifier:
@@ -299,6 +303,7 @@ class Painter(QWidget):
         self.memoryStateReturned.emit(slot, self.df.color.copy())
         if clear_colors:
             self.zap_all()
+            self.record_current_state()
             self.emit_changes()
 
     def store_color(self, color: Color, clear_color: bool):
@@ -307,6 +312,7 @@ class Painter(QWidget):
         )
         if clear_color:
             self.exact_zap_color(color)
+            self.record_current_state()
             self.emit_changes()
 
     def recall_color(self, color_state: pd.Series):
