@@ -1,4 +1,5 @@
 import pandas as pd
+from functools import wraps
 
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -40,6 +41,29 @@ class Painter(QWidget):
     def __init__(self, data: FlowData):
         super().__init__()
         self.configure_shortcuts()
+
+        self.paint_actions = {
+            MenuAction.SET_ACTIVE: self.change_color,
+            MenuAction.ZAP: self.zap_color,
+            MenuAction.EXACT_ZAP: self.exact_zap_color,
+            MenuAction.ZAP_ALL: self.zap_all,
+            MenuAction.MERGE_COLOR: self.merge_color,
+            MenuAction.UNHIDE_ALL: self.unhide_all,
+            MenuAction.HIDE: self.hide_color,
+            MenuAction.ISOLATE: self.isolate_color,
+            MenuAction.UNDO: self.undo_paint,
+            MenuAction.REDO: self.redo_paint,
+            MenuAction.RESET: self.reset_df,
+            MenuAction.SUBSAMPLE: self.subsample_df,
+            MenuAction.HIGHLIGHT: self.handle_highlights,
+            MenuAction.STORE_STATE: self.store_state,
+            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
+            MenuAction.REPLACE_STATE: self.replace_state,
+            MenuAction.MERGE_STATE: self.merge_state,
+            MenuAction.STORE_COLOR: self.store_color,
+            MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
+            MenuAction.RECALL_COLOR: self.recall_color,
+        }
 
         self.data = data
 
@@ -238,60 +262,41 @@ class Painter(QWidget):
         self.record_current_state()
         self.emit_changes()
 
-    @Slot(int, dict)
-    def handle_menu_action(self, action: MenuAction, kwargs: dict):
-        FUNCTION_MAP = {
-            MenuAction.SET_ACTIVE: self.change_color,
-            MenuAction.ZAP: self.zap_color,
-            MenuAction.EXACT_ZAP: self.exact_zap_color,
-            MenuAction.ZAP_ALL: self.zap_all,
-            MenuAction.MERGE_COLOR: self.merge_color,
-            MenuAction.UNHIDE_ALL: self.unhide_all,
-            MenuAction.HIDE: self.hide_color,
-            MenuAction.ISOLATE: self.isolate_color,
-            MenuAction.UNDO: self.undo_paint,
-            MenuAction.REDO: self.redo_paint,
-            MenuAction.RESET: self.reset_df,
-            MenuAction.SUBSAMPLE: self.subsample_df,
-            MenuAction.HIGHLIGHT: self.handle_highlights,
-            MenuAction.STORE_STATE: self.store_state,
-            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
-            MenuAction.REPLACE_STATE: self.replace_state,
-            MenuAction.MERGE_STATE: self.merge_state,
-            MenuAction.STORE_COLOR: self.store_color,
-            MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
-            MenuAction.RECALL_COLOR: self.recall_color,
-        }
-
-        FUNCTION_MAP[action](**kwargs)
-        if action not in [
-            MenuAction.SET_ACTIVE,
-            MenuAction.HIGHLIGHT,
-            MenuAction.UNDO,
-            MenuAction.REDO,
-            MenuAction.RESET,
-            MenuAction.STORE_STATE,
-            MenuAction.STORE_COLOR,
-        ]:
+    @staticmethod
+    def record_action(func):
+        @wraps(func)
+        def wrapper(self: Painter, *args, **kwargs):
+            func(self, *args, **kwargs)
             self.record_current_state()
             self.emit_changes()
+
+        return wrapper
+
+    @Slot(int, dict)
+    def handle_menu_action(self, action: MenuAction, kwargs: dict):
+        self.paint_actions[action](**kwargs)
 
     def change_color(self, color: Color):
         self.active_color = color
         self.activeColorChanged.emit(self.active_color)
 
+    @record_action
     def zap_color(self, color: Color):
         self.df = subtract_color_from_selection(self.df, color, self.df.index)
 
+    @record_action
     def exact_zap_color(self, color: Color):
         self.df.loc[self.df.color == color, 'color'] = Color.GREY
 
+    @record_action
     def zap_all(self):
         self.df['color'] = Color.GREY
 
+    @record_action
     def replace_state(self, color_state: pd.Series):
         self.df = self.data.binned_df.loc[color_state.index].assign(color=color_state)
 
+    @record_action
     def merge_state(self, color_state: pd.Series):
         current_colors = self.df.color.copy()
         self.df = self.data.binned_df.loc[
@@ -303,6 +308,7 @@ class Painter(QWidget):
     def store_state(self, slot: int):
         self.memoryStateReturned.emit(slot, self.df.color.copy())
 
+    @record_action
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
         self.zap_all()
@@ -312,31 +318,39 @@ class Painter(QWidget):
             color, self.df.color.loc[lambda s: s == color].copy()
         )
 
+    @record_action
     def store_color_and_clear(self, color: Color):
         self.store_color(color=color)
         self.exact_zap_color(color=color)
 
+    @record_action
     def recall_color(self, color_state: pd.Series):
         self.df.color.update(color_state)
 
+    @record_action
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
 
+    @record_action
     def unhide_all(self) -> None:
         current_colors = self.df.color.copy()
         self.df = self.data.binned_df.assign(color=Color.GREY)
         self.df.color.update(current_colors)
 
+    @record_action
     def hide_color(self, color: Color):
         self.df = self.df.loc[self.df.color != color]
 
+    @record_action
     def isolate_color(self, color: Color):
         if (self.df.color == color).any():
             self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
 
+    @record_action
     def subsample_df(self, n: int):
         self.df = self.df.sample(n, random_state=42)
 
+    @record_action
     def reset_df(self):
         self.df = self.data.binned_df.assign(color=Color.GREY)
         self.record_current_state()
