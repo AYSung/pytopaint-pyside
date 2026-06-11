@@ -169,7 +169,8 @@ class ColorLabel(QWidget):
             action = QAction(_color_icon(color), color.label_name)
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.MERGE, dict(source_color=self.color, target_color=color)
+                    MenuAction.MERGE_COLOR,
+                    dict(source_color=self.color, target_color=color),
                 )
             )
             return action
@@ -246,7 +247,7 @@ class ColorLabel(QWidget):
         remember = QAction('Remember', self, enabled=self.has_events)
         remember.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_COLOR, dict(color=self.color, clear_color=False)
+                MenuAction.STORE_COLOR, dict(color=self.color)
             )
         )
         menu.addAction(remember)
@@ -255,7 +256,7 @@ class ColorLabel(QWidget):
         # shortcut?
         remember_and_clear.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_COLOR, dict(color=self.color, clear_color=True)
+                MenuAction.STORE_COLOR_AND_CLEAR, dict(color=self.color)
             )
         )
         menu.addAction(remember_and_clear)
@@ -330,9 +331,9 @@ class MemorySlot(QToolButton):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.recall_state(replace=True)
+                self.replace_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.recall_state(replace=False)
+                self.merge_state()
         elif e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.clear_state()
@@ -347,10 +348,10 @@ class MemorySlot(QToolButton):
     def context_menu(self, pos):
         menu = QMenu()
         recall_state_action = QAction('Recall', self, enabled=self.has_events)
-        recall_state_action.triggered.connect(lambda: self.recall_state(replace=True))
+        recall_state_action.triggered.connect(self.replace_state)
         menu.addAction(recall_state_action)
         combine_state_action = QAction('Recall Merge', self, enabled=self.has_events)
-        combine_state_action.triggered.connect(lambda: self.recall_state(replace=False))
+        combine_state_action.triggered.connect(self.merge_state)
         menu.addAction(combine_state_action)
 
         menu.addSeparator()
@@ -358,14 +359,14 @@ class MemorySlot(QToolButton):
         store_state_action = QAction('Remember', self)
         store_state_action.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_STATE, dict(slot=self.id, clear_colors=False)
+                MenuAction.STORE_STATE, dict(slot=self.id)
             )
         )
         menu.addAction(store_state_action)
         store_state_and_clear_action = QAction('Remember && Clear', self)
         store_state_and_clear_action.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_STATE, dict(slot=self.id, clear_colors=True)
+                MenuAction.STORE_STATE_AND_CLEAR, dict(slot=self.id)
             )
         )
         menu.addAction(store_state_and_clear_action)
@@ -375,6 +376,16 @@ class MemorySlot(QToolButton):
 
         menu.exec(self.mapToGlobal(pos))
 
+    def replace_state(self):
+        self.menuActionTriggered.emit(
+            MenuAction.REPLACE_STATE, dict(color_state=self.memory)
+        )
+
+    def merge_state(self):
+        self.menuActionTriggered.emit(
+            MenuAction.MERGE_STATE, dict(color_state=self.memory)
+        )
+
     def store_state(self, color_state: pd.Series):
         self.memory = color_state
         self.update_appearance()
@@ -382,8 +393,3 @@ class MemorySlot(QToolButton):
     def clear_state(self):
         self.memory = None
         self.update_appearance()
-
-    def recall_state(self, replace: bool):
-        self.menuActionTriggered.emit(
-            MenuAction.RECALL_STATE, dict(color_state=self.memory, replace=replace)
-        )

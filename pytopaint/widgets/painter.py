@@ -245,7 +245,7 @@ class Painter(QWidget):
             MenuAction.ZAP: self.zap_color,
             MenuAction.EXACT_ZAP: self.exact_zap_color,
             MenuAction.ZAP_ALL: self.zap_all,
-            MenuAction.MERGE: self.merge_color,
+            MenuAction.MERGE_COLOR: self.merge_color,
             MenuAction.UNHIDE_ALL: self.unhide_all,
             MenuAction.HIDE: self.hide_color,
             MenuAction.ISOLATE: self.isolate_color,
@@ -255,8 +255,11 @@ class Painter(QWidget):
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
             MenuAction.STORE_STATE: self.store_state,
-            MenuAction.RECALL_STATE: self.recall_state,
+            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
+            MenuAction.REPLACE_STATE: self.replace_state,
+            MenuAction.MERGE_STATE: self.merge_state,
             MenuAction.STORE_COLOR: self.store_color,
+            MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
             MenuAction.RECALL_COLOR: self.recall_color,
         }
 
@@ -286,34 +289,32 @@ class Painter(QWidget):
     def zap_all(self):
         self.df['color'] = Color.GREY
 
-    def recall_state(self, color_state: pd.Series, replace: bool):
-        if replace:
-            self.df = self.data.binned_df.loc[color_state.index].assign(
-                color=color_state
-            )
-        else:
-            current_colors = self.df.color.copy()
-            self.df = self.data.binned_df.loc[
-                color_state.index.union(self.df.index)
-            ].assign(color=Color.GREY)
-            self.df.color.update(current_colors.loc[current_colors != Color.GREY])
-            self.df.color.update(color_state.loc[color_state != Color.GREY])
+    def replace_state(self, color_state: pd.Series):
+        self.df = self.data.binned_df.loc[color_state.index].assign(color=color_state)
 
-    def store_state(self, slot: int, clear_colors: bool):
+    def merge_state(self, color_state: pd.Series):
+        current_colors = self.df.color.copy()
+        self.df = self.data.binned_df.loc[
+            color_state.index.union(self.df.index)
+        ].assign(color=Color.GREY)
+        self.df.color.update(current_colors.loc[current_colors != Color.GREY])
+        self.df.color.update(color_state.loc[color_state != Color.GREY])
+
+    def store_state(self, slot: int):
         self.memoryStateReturned.emit(slot, self.df.color.copy())
-        if clear_colors:
-            self.zap_all()
-            self.record_current_state()
-            self.emit_changes()
 
-    def store_color(self, color: Color, clear_color: bool):
+    def store_state_and_clear(self, slot: int):
+        self.store_state(slot=slot)
+        self.zap_all()
+
+    def store_color(self, color: Color):
         self.colorStateReturned.emit(
             color, self.df.color.loc[lambda s: s == color].copy()
         )
-        if clear_color:
-            self.exact_zap_color(color)
-            self.record_current_state()
-            self.emit_changes()
+
+    def store_color_and_clear(self, color: Color):
+        self.store_color(color=color)
+        self.exact_zap_color(color=color)
 
     def recall_color(self, color_state: pd.Series):
         self.df.color.update(color_state)
