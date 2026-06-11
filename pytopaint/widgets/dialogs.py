@@ -51,8 +51,8 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         _shortcut_table([
             ('Paint events', 'Left-Click'),
             ('Paint non-grey events', 'Shift + Left-Click'),
-            ('Override paint colors', 'Ctrl+Left-Click'),
-            ('Override non-grey events', 'Ctrl+Shift+Left-Click'),
+            ('Paint grey events', 'Ctrl+Left-Click'),
+            ('Override paint colors', 'Ctrl+Shift+Left-Click'),
         ])
     )
     layout.addWidget(
