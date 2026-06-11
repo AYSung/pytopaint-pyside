@@ -27,7 +27,7 @@ class Palette(QWidget):
     eventsUpdated = Signal(object, int)
     highlightsUpdated = Signal(list)
 
-    def __init__(self, memory_states: int):
+    def __init__(self):
         super().__init__()
 
         layout = QHBoxLayout()
@@ -38,8 +38,8 @@ class Palette(QWidget):
         self.total_events_label.setFixedWidth(150)
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = [ColorLabel(c) for c in Color]
-        for color_label in self.color_labels:
+        self.color_labels = {c: ColorLabel(c) for c in Color}
+        for color_label in self.color_labels.values():
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
             self.highlightsUpdated.connect(color_label.update_highlight)
@@ -49,7 +49,7 @@ class Palette(QWidget):
         save_state_label = QLabel('Snapshots:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
         layout.addWidget(save_state_label)
-        self.memory_slots = {i: MemorySlot(i) for i in range(memory_states)}
+        self.memory_slots = {i: MemorySlot(i) for i in range(5)}
         for memory_slot in self.memory_slots.values():
             layout.addWidget(memory_slot)
             memory_slot.menuActionTriggered.connect(self.menuActionTriggered)
@@ -72,6 +72,14 @@ class Palette(QWidget):
         p = QPainter(self)
         self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, o, p, self)
 
+    @Slot(int, object)
+    def update_color_memory(self, color: Color, color_state: pd.Series):
+        self.color_labels[color].remember_state(color_state)
+
+    @Slot(int, object)
+    def update_memory_slot(self, slot: int, color_state: pd.Series):
+        self.memory_slots[slot].store_state(color_state)
+
 
 class ColorLabel(QWidget):
     menuActionTriggered = Signal(int, dict)
@@ -82,6 +90,7 @@ class ColorLabel(QWidget):
         self.highlight = False
         self.event_count = 0
         self.zappable = False
+        self.memory = None
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -233,6 +242,36 @@ class ColorLabel(QWidget):
         )
         menu.addAction(isolate)
 
+        menu.addSeparator()
+        remember = QAction('Remember', self, enabled=self.has_events)
+        remember.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.STORE_COLOR, dict(color=self.color, clear_color=False)
+            )
+        )
+        menu.addAction(remember)
+
+        remember_and_clear = QAction('Remember && Clear', self, enabled=self.has_events)
+        # shortcut?
+        remember_and_clear.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.STORE_COLOR, dict(color=self.color, clear_color=True)
+            )
+        )
+        menu.addAction(remember_and_clear)
+
+        recall = QAction('Recall', self, enabled=self.memory is not None)
+        recall.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.RECALL_COLOR, dict(color_state=self.memory)
+            )
+        )
+        menu.addAction(recall)
+
+        clear_memory = QAction('Forget', self, enabled=self.memory is not None)
+        clear_memory.triggered.connect(self.clear_memory)
+        menu.addAction(clear_memory)
+
         menu.addSection('Ratios')
 
         ratio_labels = [
@@ -246,6 +285,12 @@ class ColorLabel(QWidget):
         menu.addActions(ratio_labels)
 
         menu.exec(self.mapToGlobal(pos))
+
+    def remember_state(self, color_state: pd.Series):
+        self.memory = color_state
+
+    def clear_memory(self):
+        self.memory = None
 
 
 def _format_percent(percent: float) -> int:
@@ -272,18 +317,22 @@ class MemorySlot(QToolButton):
         super().__init__(parent)
         self.id = id
         self.setText(str(id))
-        self.has_events = False
+        self.memory = None
         self.update_appearance()
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
+
+    @property
+    def has_events(self) -> bool:
+        return self.memory is not None
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.recall_state()
+                self.recall_state(replace=True)
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.combine_state()
+                self.recall_state(replace=False)
         elif e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.clear_state()
@@ -298,35 +347,43 @@ class MemorySlot(QToolButton):
     def context_menu(self, pos):
         menu = QMenu()
         recall_state_action = QAction('Recall', self, enabled=self.has_events)
-        recall_state_action.triggered.connect(self.recall_state)
+        recall_state_action.triggered.connect(lambda: self.recall_state(replace=True))
         menu.addAction(recall_state_action)
-        combine_state_action = QAction('Combine', self, enabled=self.has_events)
-        combine_state_action.triggered.connect(self.combine_state)
+        combine_state_action = QAction('Recall Merge', self, enabled=self.has_events)
+        combine_state_action.triggered.connect(lambda: self.recall_state(replace=False))
         menu.addAction(combine_state_action)
 
         menu.addSeparator()
 
-        store_state_action = QAction('Store', self)
-        store_state_action.triggered.connect(self.store_state)
+        store_state_action = QAction('Remember', self)
+        store_state_action.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.STORE_STATE, dict(slot=self.id, clear_colors=False)
+            )
+        )
         menu.addAction(store_state_action)
-        clear_state_action = QAction('Clear', self, enabled=self.has_events)
+        store_state_and_clear_action = QAction('Remember && Clear', self)
+        store_state_and_clear_action.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.STORE_STATE, dict(slot=self.id, clear_colors=True)
+            )
+        )
+        menu.addAction(store_state_and_clear_action)
+        clear_state_action = QAction('Forget', self, enabled=self.has_events)
         clear_state_action.triggered.connect(self.clear_state)
         menu.addAction(clear_state_action)
 
         menu.exec(self.mapToGlobal(pos))
 
-    def store_state(self):
-        self.menuActionTriggered.emit(MenuAction.STORE_STATE, dict(slot=self.id))
-        self.has_events = True
+    def store_state(self, color_state: pd.Series):
+        self.memory = color_state
         self.update_appearance()
-
-    def recall_state(self):
-        self.menuActionTriggered.emit(MenuAction.RECALL_STATE, dict(slot=self.id))
-
-    def combine_state(self):
-        self.menuActionTriggered.emit(MenuAction.COMBINE_STATE, dict(slot=self.id))
 
     def clear_state(self):
-        self.menuActionTriggered.emit(MenuAction.CLEAR_MEMORY_STATE, dict(slot=self.id))
-        self.has_events = False
+        self.memory = None
         self.update_appearance()
+
+    def recall_state(self, replace: bool):
+        self.menuActionTriggered.emit(
+            MenuAction.RECALL_STATE, dict(color_state=self.memory, replace=replace)
+        )

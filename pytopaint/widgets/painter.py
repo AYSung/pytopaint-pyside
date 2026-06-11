@@ -34,6 +34,8 @@ class Painter(QWidget):
     dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int, dict)
+    colorStateReturned = Signal(int, object)
+    memoryStateReturned = Signal(int, object)
 
     def __init__(self, data: FlowData):
         super().__init__()
@@ -47,13 +49,11 @@ class Painter(QWidget):
         self.active_color = Color.BLUE
 
         self.highlighted_colors = []
-        N_MEMORY_STATES = 5
-        self.memory_states: dict[int, pd.Series] = {
-            i: None for i in range(N_MEMORY_STATES)
-        }
 
-        palette = Palette(memory_states=N_MEMORY_STATES)
+        palette = Palette()
         palette.menuActionTriggered.connect(self.handle_menu_action)
+        self.colorStateReturned.connect(palette.update_color_memory)
+        self.memoryStateReturned.connect(palette.update_memory_slot)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.dataUpdated.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
@@ -250,10 +250,10 @@ class Painter(QWidget):
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.handle_highlights,
-            MenuAction.RECALL_STATE: self.recall_state,
-            MenuAction.COMBINE_STATE: self.combine_state,
             MenuAction.STORE_STATE: self.store_state,
-            MenuAction.CLEAR_MEMORY_STATE: self.clear_memory_state,
+            MenuAction.RECALL_STATE: self.recall_state,
+            MenuAction.STORE_COLOR: self.store_color,
+            MenuAction.RECALL_COLOR: self.recall_color,
         }
 
         FUNCTION_MAP[action](**kwargs)
@@ -264,7 +264,7 @@ class Painter(QWidget):
             MenuAction.REDO,
             MenuAction.RESET,
             MenuAction.STORE_STATE,
-            MenuAction.CLEAR_MEMORY_STATE,
+            MenuAction.STORE_COLOR,
         ]:
             self.record_current_state()
             self.emit_changes()
@@ -282,26 +282,35 @@ class Painter(QWidget):
     def zap_all(self):
         self.df['color'] = Color.GREY
 
-    def recall_state(self, slot: int):
-        state = self.memory_states[slot]
-        if state is not None:
-            self.df = self.data.binned_df.loc[state.index].assign(color=state)
-
-    def combine_state(self, slot: int):
-        state = self.memory_states[slot]
-        if state is not None:
-            current_colors = self.df.color.copy()
-            self.df = self.data.binned_df.loc[state.index.union(self.df.index)].assign(
-                color=Color.GREY
+    def recall_state(self, color_state: pd.Series, replace: bool):
+        if replace:
+            self.df = self.data.binned_df.loc[color_state.index].assign(
+                color=color_state
             )
+        else:
+            current_colors = self.df.color.copy()
+            self.df = self.data.binned_df.loc[
+                color_state.index.union(self.df.index)
+            ].assign(color=Color.GREY)
             self.df.color.update(current_colors.loc[current_colors != Color.GREY])
-            self.df.color.update(state.loc[state != Color.GREY])
+            self.df.color.update(color_state.loc[color_state != Color.GREY])
 
-    def store_state(self, slot: int):
-        self.memory_states[slot] = self.df.color.copy()
+    def store_state(self, slot: int, clear_colors: bool):
+        self.memoryStateReturned.emit(slot, self.df.color.copy())
+        if clear_colors:
+            self.zap_all()
+            self.emit_changes()
 
-    def clear_memory_state(self, slot: int):
-        self.memory_states[slot] = None
+    def store_color(self, color: Color, clear_color: bool):
+        self.colorStateReturned.emit(
+            color, self.df.color.loc[lambda s: s == color].copy()
+        )
+        if clear_color:
+            self.exact_zap_color(color)
+            self.emit_changes()
+
+    def recall_color(self, color_state: pd.Series):
+        self.df.color.update(color_state)
 
     def merge_color(self, source_color: Color, target_color: Color):
         self.df = merge_colors(self.df, [source_color], target_color)
@@ -315,7 +324,8 @@ class Painter(QWidget):
         self.df = self.df.loc[self.df.color != color]
 
     def isolate_color(self, color: Color):
-        self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
+        if (self.df.color == color).any():
+            self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
 
     def subsample_df(self, n: int):
         self.df = self.df.sample(n, random_state=42)
