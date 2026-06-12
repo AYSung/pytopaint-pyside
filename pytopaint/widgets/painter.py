@@ -308,7 +308,6 @@ class Painter(QWidget):
     def store_state(self, slot: int):
         self.memoryStateReturned.emit(slot, self.df.color.copy())
 
-    @record_action
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
         self.zap_all()
@@ -318,7 +317,6 @@ class Painter(QWidget):
             color, self.df.color.loc[lambda s: s == color].copy()
         )
 
-    @record_action
     def store_color_and_clear(self, color: Color):
         self.store_color(color=color)
         self.exact_zap_color(color=color)
