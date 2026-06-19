@@ -188,6 +188,7 @@ class Biplot(QWidget):
         self.x_axis.resize(pixels=pixels, axis_ticks=axis_ticks)
         self.y_axis.resize(pixels=pixels, axis_ticks=axis_ticks)
         self.title_label.setFixedWidth(pixels)
+        self.updateGeometry()
 
 
 class DotPlot(QLabel):
@@ -325,11 +326,9 @@ class DotPlot(QLabel):
                 color_map=COLOR_RGB_MAP,
             )
         self.setPixmap(canvas)
-        self.update()
 
     def resize(self, pixels: int):
         self.setPixmap(QPixmap(pixels, pixels))
-        self.update_plot()
 
     def clear(self) -> None:
         self.set_working_data(x_data=None, y_data=None, color_data=None)
@@ -418,7 +417,6 @@ class XAxis(QLabel):
             offset=4,
         )
         self.setPixmap(canvas)
-        self.update()
 
     def context_menu(self, pos):
         menu = QMenu()
@@ -516,7 +514,6 @@ class YAxis(QLabel):
             offset=4,
         )
         self.setPixmap(canvas)
-        self.update()
 
     def context_menu(self, pos):
         menu = QMenu()

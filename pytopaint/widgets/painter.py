@@ -8,7 +8,6 @@ from PySide6.QtGui import (
     QShortcut,
 )
 from PySide6.QtWidgets import (
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -82,24 +81,19 @@ class Painter(QWidget):
         self.dataUpdated.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
 
-        biplot_container = QWidget()
-        self.biplot_layout = BiplotGrid()
+        self.biplot_grid = BiplotGrid()
+        self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
 
         layout_config = get_best_layout(channels=self.df.columns)
 
         for coords, labels in layout_config.grid.items():
-            self.biplot_layout.add_biplot(self.new_biplot(labels), coords)
-
-        biplot_container.setLayout(self.biplot_layout)
-        biplot_container.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
-        )
+            self.biplot_grid.add_biplot(self.new_biplot(labels), coords)
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(palette)
-        layout.addWidget(biplot_container)
+        layout.addWidget(self.biplot_grid)
         layout.addStretch()
         self.setLayout(layout)
 
@@ -419,7 +413,7 @@ class Painter(QWidget):
 
     def update_layout(self, layout: LayoutConfig) -> None:
         for coords, labels in layout.grid.items():
-            layout_item = self.biplot_layout.itemAtPosition(*coords)
+            layout_item = self.biplot_grid.itemAtPosition(*coords)
             if layout_item is not None:
                 x_label, y_label = labels
                 x_label = x_label if x_label in self.data.channels else None
@@ -428,7 +422,7 @@ class Painter(QWidget):
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
             else:
-                self.biplot_layout(self.new_biplot(labels), coords)
+                self.biplot_grid(self.new_biplot(labels), coords)
 
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
@@ -442,12 +436,11 @@ class Painter(QWidget):
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.dataUpdated.connect(biplot.set_data)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
-        self.resizeTriggered.connect(biplot.resize)
         biplot.plot.set_active_color(self.active_color)
         return biplot
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
-        return self.biplot_layout.to_yaml()
+        return self.biplot_grid.to_yaml()
 
     def add_biplot_row(self) -> None:
         n_rows, ok = add_row_dialog(self)
@@ -456,16 +449,14 @@ class Painter(QWidget):
             return
 
         col_range = range(
-            self.biplot_layout.columns if self.biplot_layout.columns > 0 else 1
+            self.biplot_grid.columns if self.biplot_grid.columns > 0 else 1
         )
         row_range = range(n_rows)
         new_row_coords = [
-            (row + self.biplot_layout.rows, col)
-            for row in row_range
-            for col in col_range
+            (row + self.biplot_grid.rows, col) for row in row_range for col in col_range
         ]
         for coords in new_row_coords:
-            self.biplot_layout.add_biplot(self.new_biplot(), coords)
+            self.biplot_grid.add_biplot(self.new_biplot(), coords)
 
     def add_biplot_column(self) -> None:
         n_cols, ok = add_column_dialog(self)
@@ -473,31 +464,29 @@ class Painter(QWidget):
         if not ok:
             return
 
-        row_range = range(self.biplot_layout.rows if self.biplot_layout.rows > 0 else 1)
+        row_range = range(self.biplot_grid.rows if self.biplot_grid.rows > 0 else 1)
         col_range = range(n_cols)
         new_col_coords = [
-            (row, col + self.biplot_layout.columns)
+            (row, col + self.biplot_grid.columns)
             for col in col_range
             for row in row_range
         ]
 
         for coords in new_col_coords:
-            self.biplot_layout.add_biplot(self.new_biplot(), coords)
+            self.biplot_grid.add_biplot(self.new_biplot(), coords)
 
     def fill_empty_cells(self) -> None:
-        for coords in self.biplot_layout.empty_coords:
-            self.biplot_layout.add_biplot(self.new_biplot(), coords)
+        for coords in self.biplot_grid.empty_coords:
+            self.biplot_grid.add_biplot(self.new_biplot(), coords)
 
     def remove_empty_biplots(self) -> None:
         empty_biplots = [
-            biplot
-            for biplot in self.biplot_layout.get_biplots()
-            if None in biplot.labels
+            biplot for biplot in self.biplot_grid.get_biplots() if None in biplot.labels
         ]
-        self.biplot_layout.setEnabled(False)
+        self.biplot_grid.setEnabled(False)
 
         for biplot in empty_biplots:
-            self.biplot_layout.remove_biplot(biplot)
+            self.biplot_grid.remove_biplot(biplot)
 
-        self.biplot_layout.setEnabled(True)
-        self.biplot_layout.update()
+        self.biplot_grid.setEnabled(True)
+        self.biplot_grid.update()
