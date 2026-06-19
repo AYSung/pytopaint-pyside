@@ -65,7 +65,7 @@ class FlowData:
 
     @property
     def name(self) -> str:
-        if self.tube is not None:
+        if 'src' in self.sample.metadata:
             return f'{self.id} {self.tube}'
         else:
             return f'{self.id}'

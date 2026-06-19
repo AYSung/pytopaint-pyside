@@ -408,14 +408,9 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
-        self.biplot_layout.setEnabled(False)
-
         self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
         self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
         self.emit_changes()
-
-        self.biplot_layout.setEnabled(True)
-        self.biplot_layout.update()
 
     @Slot()
     def handle_rescale(self) -> None:

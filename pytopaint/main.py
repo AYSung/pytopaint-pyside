@@ -20,8 +20,8 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QGridLayout,
     QMainWindow,
-    QTabWidget,
     QWidget,
+    QLayout,
 )
 
 from pytopaint.actions import MenuAction
@@ -38,6 +38,7 @@ from pytopaint.widgets.dialogs import (
     subsample_dialog,
 )
 from pytopaint.widgets.painter import Painter
+from pytopaint.widgets.paintertabs import PainterTabs
 
 
 class MainWindow(QMainWindow):
@@ -50,11 +51,7 @@ class MainWindow(QMainWindow):
 
         # self.setStyleSheet('QMainWindow { background-color: #121010; }')
 
-        self.painter_tabs = QTabWidget()
-        self.painter_tabs.setTabsClosable(True)
-        self.painter_tabs.setMovable(True)
-        self.painter_tabs.setElideMode(Qt.TextElideMode.ElideMiddle)
-        self.painter_tabs.tabCloseRequested.connect(self.handle_tab_close)
+        self.painter_tabs = PainterTabs()
 
         self.configure_menu_bar()
         self.configure_shortcuts()
@@ -64,9 +61,9 @@ class MainWindow(QMainWindow):
         central_layout.setSpacing(0)
         central_layout.addWidget(self.painter_tabs, 0, 0)
         central_widget.setLayout(central_layout)
+        self.layout().setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
         self.setCentralWidget(central_widget)
-        self.resize(600, 400)
         self.move(20, 40)
 
         self.setAcceptDrops(True)
@@ -89,8 +86,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
-            self.painter_tabs.addTab(painter, painter.data.name)
-            self.painter_tabs.setCurrentWidget(painter)
+            self.painter_tabs.add_painter(painter)
         except ValueError as e:
             raise e
 
@@ -180,17 +176,6 @@ class MainWindow(QMainWindow):
             appconfig.lower_arcsinh_limit = dialog.lower_arcsinh_limit
             self.rescaleTriggered.emit()
 
-    @Slot(int)
-    def handle_tab_close(self, index: int):
-        widget = self.painter_tabs.widget(index)
-        self.painter_tabs.removeTab(index)
-        if widget is not None:
-            widget.deleteLater()
-
-    def close_all_tabs(self):
-        while self.painter_tabs.count() > 0:
-            self.handle_tab_close(0)
-
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             event.acceptProposedAction()
@@ -212,7 +197,7 @@ class MainWindow(QMainWindow):
         )
 
         close_all_tabs_shortcut = QShortcut(QKeySequence('Ctrl+Shift+W'), self)
-        close_all_tabs_shortcut.activated.connect(self.close_all_tabs)
+        close_all_tabs_shortcut.activated.connect(self.painter_tabs.close_all_tabs)
 
     def configure_menu_bar(self):
         menu_bar = self.menuBar()
@@ -325,7 +310,6 @@ def main():
     app = QApplication(sys.argv)
     QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
     window = MainWindow()
-    # window.showMaximized()
     window.show()
 
     app.exec()
