@@ -5,6 +5,8 @@ from pathlib import Path
 
 import flowkit
 import pandas as pd
+from sklearn.preprocessing import RobustScaler
+from umap import UMAP
 
 from pytopaint.config import appconfig
 
@@ -260,3 +262,16 @@ def extract_case_number(filename: str) -> str:
         return f'IPxx-{int(match.group(1)):05}'
     else:
         return filename
+
+
+def add_umap_dims(df: pd.DataFrame) -> pd.DataFrame:
+    non_linear_df = df[
+        [
+            column
+            for column in df.columns
+            if column not in PHYSICAL_PARAMETERS + ['Time']
+        ]
+    ]
+    scaled_df = RobustScaler().fit_transform(non_linear_df)
+    umap_dims = UMAP().fit_transform(scaled_df)
+    return pd.concat([df, pd.DataFrame(umap_dims, columns=['UMAP1', 'UMAP2'])], axis=1)

@@ -2,9 +2,11 @@ import pytest
 import yaml
 
 import pandas as pd
+from pathlib import Path
 
 
 from pytopaint.flowdata import (
+    FlowData,
     bin_df,
     sort_channels,
     _clean_marker_name,
@@ -17,6 +19,7 @@ from pytopaint.flowdata import (
     bin_series,
     get_axis_ticks,
     extract_case_number,
+    add_umap_dims,
 )
 
 LOWER_ASINH = -1
@@ -321,3 +324,12 @@ def test_extract_case_number():
     assert extract_case_number('Y 24-1234 SMITH1') == 'IP24-01234'
     assert extract_case_number('Z-24-1234 JOHN-SMITH') == 'IP24-01234'
     assert extract_case_number('Y 1234 SMITH') == 'IPxx-01234'
+
+
+def test_add_umap_dims():
+    df = FlowData.from_path(Path('tests/resources/normal_01_B.fcs')).xform_df
+
+    df_with_umap = add_umap_dims(df)
+
+    assert df_with_umap.columns.to_list() == df.columns.to_list() + ['UMAP1', 'UMAP2']
+    assert df_with_umap.shape[0] == df.shape[0]
