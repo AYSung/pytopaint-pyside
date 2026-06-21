@@ -19,7 +19,7 @@ from pytopaint.flowdata import (
     bin_series,
     get_axis_ticks,
     extract_case_number,
-    add_umap_dims,
+    umap_transform,
 )
 
 LOWER_ASINH = -1
@@ -178,6 +178,7 @@ def df_1() -> pd.DataFrame:
         'SSC-H': linear_param_values,
         'CD5': [-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 4, 3, 4, 5, 6, 7, 5, 5, 6, 5],
         'CD10': [0, 1, 2, 3, 4, 5, 6, 4, 5, 3, 6, 4, 5, 3, 2, 2, 4, 3, 14, 15],
+        'UMAP1': [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10],
         'Time': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
     })
 
@@ -190,6 +191,7 @@ def test_lower_clip_limits(df_1):
     assert lower_clip_limit(df_1['Time']) == 0
     assert lower_clip_limit(df_1['CD5']) < LOWER_ASINH
     assert lower_clip_limit(df_1['CD10']) == LOWER_ASINH
+    assert lower_clip_limit(df_1['UMAP1']) == -1.05
 
 
 def test_upper_clip_limits(df_1):
@@ -200,6 +202,7 @@ def test_upper_clip_limits(df_1):
     assert upper_clip_limit(df_1['Time']) == df_1['Time'].max()
     assert upper_clip_limit(df_1['CD5']) == UPPER_ASINH
     assert upper_clip_limit(df_1['CD10']) > UPPER_ASINH
+    assert upper_clip_limit(df_1['UMAP1']) == 10.5
 
 
 def test_clip_series(test_df_1):
@@ -326,10 +329,10 @@ def test_extract_case_number():
     assert extract_case_number('Y 1234 SMITH') == 'IPxx-01234'
 
 
-def test_add_umap_dims():
+def test_umap_transform():
     df = FlowData.from_path(Path('tests/resources/normal_01_B.fcs')).xform_df
 
-    df_with_umap = add_umap_dims(df)
+    df_with_umap = umap_transform(df)
 
-    assert df_with_umap.columns.to_list() == df.columns.to_list() + ['UMAP1', 'UMAP2']
+    assert df_with_umap.columns.to_list() == ['UMAP1', 'UMAP2']
     assert df_with_umap.shape[0] == df.shape[0]

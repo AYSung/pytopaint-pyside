@@ -70,9 +70,21 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object)
-    def set_data(self, df: pd.DataFrame):
+    @Slot(object, dict)
+    def set_data(self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]):
         self.df = df
+
+        channels = sort_channels([col for col in df.columns if col not in ['color']])
+        if (self.x_axis.channels != channels) or (self.y_axis.channels != channels):
+            self.x_axis.channels = channels
+            self.y_axis.channels = channels
+
+        if (self.x_axis.axis_ticks != axis_ticks) or (
+            self.y_axis.axis_ticks != axis_ticks
+        ):
+            self.x_axis.axis_ticks = axis_ticks
+            self.y_axis.axis_ticks = axis_ticks
+
         self.update_plot_data()
 
     def update_plot_data(self):
@@ -360,6 +372,9 @@ class XAxis(QLabel):
     def resize(self, pixels: int, axis_ticks: dict[str, list[tuple[int, str]]]) -> None:
         self.setPixmap(QPixmap(pixels, 45))
         self.axis_ticks = axis_ticks
+        if self.label not in self.axis_ticks.keys():
+            self.label = None
+            self.labelChanged.emit()
         self.update_axis()
 
     def draw_axis(
@@ -453,6 +468,9 @@ class YAxis(QLabel):
     def resize(self, pixels: int, axis_ticks: dict[str, list[tuple[int, str]]]) -> None:
         self.setPixmap(QPixmap(45, pixels))
         self.axis_ticks = axis_ticks
+        if self.label not in self.axis_ticks.keys():
+            self.label = None
+            self.labelChanged.emit()
         self.update_axis()
 
     def draw_axis(

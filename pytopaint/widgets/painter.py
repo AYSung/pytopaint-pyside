@@ -31,7 +31,7 @@ from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
 
 class Painter(QWidget):
     activeColorChanged = Signal(int)
-    dataUpdated = Signal(object)
+    dataUpdated = Signal(object, dict)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int, dict)
     colorStateReturned = Signal(int, object)
@@ -342,6 +342,11 @@ class Painter(QWidget):
     def subsample_df(self, n: int):
         self.df = self.df.sample(n, random_state=42)
 
+    def add_umap(self):
+        self.data.add_umap_dims(index=self.df.index)
+        self.df = self.data.binned_df.assign(color=self.df.color)
+        self.emit_changes()
+
     @record_action
     def reset_df(self):
         self.df = self.data.binned_df.assign(color=Color.GREY)
@@ -389,7 +394,7 @@ class Painter(QWidget):
         self.emit_changes()
 
     def emit_changes(self):
-        self.dataUpdated.emit(self.df)
+        self.dataUpdated.emit(self.df, self.data.axis_ticks)
 
     @Slot(int)
     def handle_highlights(self, color: Color):
@@ -402,6 +407,7 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
+        self.data.update_bins()
         self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
         self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
         self.emit_changes()

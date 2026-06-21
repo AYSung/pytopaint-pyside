@@ -11,6 +11,8 @@ from umap import UMAP
 from pytopaint.config import appconfig
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
+ADDED_PARAMETERS = ['UMAP1', 'UMAP2']
+NON_IP_PARAMETERS = PHYSICAL_PARAMETERS + ['Time'] + ADDED_PARAMETERS
 UPPER_PHYSICAL = 255_000
 
 
@@ -20,7 +22,7 @@ class FlowData:
         self.tube = tube
         self.id = id
 
-        self.update_scale()
+        self.reset()
 
     @classmethod
     def from_path(cls, filepath: Path):
@@ -54,8 +56,24 @@ class FlowData:
         ]
 
     @property
-    def axis_ticks(self) -> dict[str, list[tuple[int, str]]]:
-        return {
+    def name(self) -> str:
+        if 'src' in self.sample.metadata:
+            return f'{self.id} {self.tube}'
+        else:
+            return f'{self.id}'
+
+    def update_scale(self) -> None:
+        self.xform_df = to_xform_df(
+            self.sample, scaling_factor=appconfig.scaling_factor
+        )
+        self.clip_limits = get_clip_limits(self.xform_df)
+
+    def update_bins(self) -> None:
+        self.binned_df = bin_df(
+            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+        ).astype('uint8')
+
+        self.axis_ticks = {
             channel: get_axis_ticks(
                 channel,
                 n_bins=appconfig.resolution,
@@ -65,31 +83,20 @@ class FlowData:
             for channel in self.xform_df.columns
         }
 
-    @property
-    def name(self) -> str:
-        if 'src' in self.sample.metadata:
-            return f'{self.id} {self.tube}'
-        else:
-            return f'{self.id}'
+    def add_umap_dims(self, index: pd.Index) -> None:
+        self.xform_df = self.xform_df.loc[index]
 
-    @property
-    def binned_df(self) -> pd.DataFrame:
-        return bin_df(
-            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
-        ).astype('uint8')
-
-    def update_scale(self) -> None:
-        self.xform_df = to_xform_df(
-            self.sample, scaling_factor=appconfig.scaling_factor
+        umap_df = self.xform_df.pipe(umap_transform)
+        self.xform_df = self.xform_df.assign(
+            UMAP1=umap_df['UMAP1'], UMAP2=umap_df['UMAP2']
         )
+        self.clip_limits = self.clip_limits | get_clip_limits(umap_df)
 
-        self.clip_limits = {
-            channel: (
-                lower_clip_limit(self.xform_df[channel]),
-                upper_clip_limit(self.xform_df[channel]),
-            )
-            for channel in self.xform_df.columns
-        }
+        self.update_bins()
+
+    def reset(self) -> None:
+        self.update_scale()
+        self.update_bins()
 
 
 def bin_df(
@@ -112,12 +119,18 @@ def get_axis_ticks(
         quarter = n_bins / 4
         ticks = [(i * quarter) for i in range(5)]
         return [(tick, None) for tick in ticks]
-    if channel in PHYSICAL_PARAMETERS:
+    elif channel in PHYSICAL_PARAMETERS:
         ticks = [0, 50_000, 100_000, 150_000, 200_000, 250_000]
         scaled_ticks = bin_series(
             pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
         )
         return list(zip(scaled_ticks, ['0', None, '1e5', None, '2e5', None, '3e5']))
+    elif channel in ADDED_PARAMETERS:
+        ticks = [0]
+        scaled_ticks = bin_series(
+            pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
+        )
+        return list(zip(scaled_ticks, ['0']))
     else:
         ticks = list(
             filter(
@@ -216,9 +229,21 @@ def _get_compensation(metadata: dict[str, str]) -> str | None:
     return metadata.get('spill') or metadata.get('spillover')
 
 
+def get_clip_limits(df: pd.DataFrame):
+    return {
+        channel: (
+            lower_clip_limit(df[channel]),
+            upper_clip_limit(df[channel]),
+        )
+        for channel in df.columns
+    }
+
+
 def lower_clip_limit(s: pd.Series):
     if s.name in PHYSICAL_PARAMETERS + ['Time']:
         return 0
+    elif s.name in ADDED_PARAMETERS:
+        return 1.05 * s.min()
     else:
         return min(appconfig.lower_arcsinh_limit, s.quantile(0.05) - 0.5)
 
@@ -226,8 +251,10 @@ def lower_clip_limit(s: pd.Series):
 def upper_clip_limit(s: pd.Series):
     if s.name == 'Time':
         return s.max()
-    if s.name in PHYSICAL_PARAMETERS:
+    elif s.name in PHYSICAL_PARAMETERS:
         return UPPER_PHYSICAL
+    elif s.name in ADDED_PARAMETERS:
+        return 1.05 * s.max()
     else:
         return max(appconfig.upper_arcsinh_limit, s.quantile(0.95) + 0.5)
 
@@ -264,14 +291,10 @@ def extract_case_number(filename: str) -> str:
         return filename
 
 
-def add_umap_dims(df: pd.DataFrame) -> pd.DataFrame:
+def umap_transform(df: pd.DataFrame) -> pd.DataFrame:
     non_linear_df = df[
-        [
-            column
-            for column in df.columns
-            if column not in PHYSICAL_PARAMETERS + ['Time']
-        ]
+        [column for column in df.columns if column not in NON_IP_PARAMETERS]
     ]
     scaled_df = RobustScaler().fit_transform(non_linear_df)
     umap_dims = UMAP().fit_transform(scaled_df)
-    return pd.concat([df, pd.DataFrame(umap_dims, columns=['UMAP1', 'UMAP2'])], axis=1)
+    return pd.DataFrame(umap_dims, columns=['UMAP1', 'UMAP2'])

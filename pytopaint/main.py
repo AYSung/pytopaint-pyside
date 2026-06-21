@@ -255,6 +255,13 @@ class MainWindow(QMainWindow):
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
         layout_menu.addSeparator()
+        resize_action = QAction('Adjust Size', self)
+        resize_action.triggered.connect(self.resize_plots)
+        layout_menu.addAction(resize_action)
+        rescale_action = QAction('Adjust Scaling', self)
+        rescale_action.triggered.connect(self.rescale_plots)
+        layout_menu.addAction(rescale_action)
+        layout_menu.addSeparator()
         add_biplot_row_action = QAction('Add Row(s)', self)
         add_biplot_row_action.triggered.connect(
             lambda: self.get_active_painter().add_biplot_row()
@@ -276,14 +283,10 @@ class MainWindow(QMainWindow):
         )
         layout_menu.addAction(remove_empty_cells_action)
 
-        plot_menu = menu_bar.addMenu('&Plot')
-        resize_action = QAction('Adjust Size', self)
-        resize_action.triggered.connect(self.resize_plots)
-        plot_menu.addAction(resize_action)
-
-        rescale_action = QAction('Adjust Scaling', self)
-        rescale_action.triggered.connect(self.rescale_plots)
-        plot_menu.addAction(rescale_action)
+        analyze_menu = menu_bar.addMenu('&Analyze')
+        umap_action = QAction('UMAP', self)
+        umap_action.triggered.connect(lambda: self.get_active_painter().add_umap())
+        analyze_menu.addAction(umap_action)
 
         help_menu = menu_bar.addMenu('&Help')
 
