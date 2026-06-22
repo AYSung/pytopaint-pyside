@@ -35,9 +35,7 @@ class FlowData:
         )
 
         sample.metadata = sample._get_metadata_for_export(source='raw') | {
-            k: v
-            for k, v in sample.metadata.items()
-            if k in ['spill', 'spillover', 'tube name']
+            k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
         }
         return cls(sample, id, tube)
 
@@ -57,7 +55,7 @@ class FlowData:
 
     @property
     def name(self) -> str:
-        if 'src' in self.sample.metadata:
+        if self.tube is not None:
             return f'{self.id} {self.tube}'
         else:
             return f'{self.id}'
@@ -296,5 +294,5 @@ def umap_transform(df: pd.DataFrame) -> pd.DataFrame:
         [column for column in df.columns if column not in NON_IP_PARAMETERS]
     ]
     scaled_df = RobustScaler().fit_transform(non_linear_df)
-    umap_dims = UMAP().fit_transform(scaled_df)
+    umap_dims = UMAP(init='pca', min_dist=0.5, n_neighbors=10).fit_transform(scaled_df)
     return pd.DataFrame(umap_dims, columns=['UMAP1', 'UMAP2'])

@@ -104,7 +104,7 @@ class MainWindow(QMainWindow):
 
         painter = self.get_active_painter()
         sample = painter.data.sample
-        metadata = sample._get_metadata_for_export(source='raw', include_all=True)
+        metadata = sample.get_metadata()
         event_mask = np.isin(np.arange(sample.event_count), painter.df.index)
         df = sample.as_dataframe(source='raw', event_mask=event_mask)
 
