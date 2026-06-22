@@ -343,7 +343,7 @@ class Painter(QWidget):
         self.df = self.df.sample(n, random_state=42)
 
     def add_umap(self):
-        self.data.add_umap_dims(index=self.df.index)
+        self.data.add_umap_dims()
         self.df = self.data.binned_df.assign(color=self.df.color)
         self.emit_changes()
 

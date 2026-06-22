@@ -81,10 +81,8 @@ class FlowData:
             for channel in self.xform_df.columns
         }
 
-    def add_umap_dims(self, index: pd.Index) -> None:
-        self.xform_df = self.xform_df.loc[index]
-
-        umap_df = self.xform_df.pipe(umap_transform)
+    def add_umap_dims(self) -> None:
+        umap_df = umap_transform(self.xform_df)
         self.xform_df = self.xform_df.assign(
             UMAP1=umap_df['UMAP1'], UMAP2=umap_df['UMAP2']
         )
@@ -261,7 +259,7 @@ def bin_series(s: pd.Series, n_bins: int, clip_limits: dict[str, tuple[float, fl
     lower_limit, upper_limit = clip_limits[s.name]
 
     bin_borders = (
-        [lower_limit]
+        [float('-inf')]
         + [
             lower_limit + (((n + 1) / n_bins) * (upper_limit - lower_limit))
             for n in range(n_bins - 1)
@@ -294,5 +292,7 @@ def umap_transform(df: pd.DataFrame) -> pd.DataFrame:
         [column for column in df.columns if column not in NON_IP_PARAMETERS]
     ]
     scaled_df = RobustScaler().fit_transform(non_linear_df)
-    umap_dims = UMAP(init='pca', min_dist=0.5, n_neighbors=10).fit_transform(scaled_df)
-    return pd.DataFrame(umap_dims, columns=['UMAP1', 'UMAP2'])
+    umap = UMAP(init='pca', min_dist=0.5, n_neighbors=15)
+    umap.fit(pd.DataFrame(scaled_df).sample(min(20_000, df.shape[0])))
+
+    return pd.DataFrame(umap.transform(scaled_df), columns=['UMAP1', 'UMAP2'])
