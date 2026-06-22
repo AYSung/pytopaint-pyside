@@ -1,3 +1,4 @@
+from multiprocessing import freeze_support
 import sys
 from io import BytesIO
 from pathlib import Path
@@ -310,6 +311,8 @@ class MainWindow(QMainWindow):
 
 
 def main():
+    freeze_support()
+
     app = QApplication(sys.argv)
     QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
     window = MainWindow()
