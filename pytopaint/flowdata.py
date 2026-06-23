@@ -292,7 +292,7 @@ def umap_transform(df: pd.DataFrame) -> pd.DataFrame:
         [column for column in df.columns if column not in NON_IP_PARAMETERS]
     ]
     scaled_df = RobustScaler().fit_transform(non_linear_df)
-    umap = UMAP(init='pca', min_dist=0.5, n_neighbors=15)
+    umap = UMAP(init='pca', min_dist=0.4, n_neighbors=15)
     umap.fit(pd.DataFrame(scaled_df).sample(min(20_000, df.shape[0])))
 
     return pd.DataFrame(umap.transform(scaled_df), columns=['UMAP1', 'UMAP2'])
