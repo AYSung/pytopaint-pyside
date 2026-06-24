@@ -49,23 +49,24 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     layout.addWidget(QLabel('<b>Mouse Controls (within biplots):</b>'))
     layout.addWidget(
         _shortcut_table([
-            ('Paint events', 'Left-Click'),
-            ('Paint non-grey events', 'Shift + Left-Click'),
-            ('Paint grey events', 'Ctrl+Left-Click'),
-            ('Override paint colors', 'Ctrl+Shift+Left-Click'),
+            ('Paint Events', 'Left-Click'),
+            ('Paint Non-Grey Events', 'Shift + Left-Click'),
+            ('Paint Grey Events', 'Ctrl+Left-Click'),
+            ('Override Paint Colors', 'Ctrl+Shift+Left-Click'),
         ])
     )
     layout.addWidget(
         _shortcut_table([
-            ('Exact zap from selection', 'Right-Click'),
-            ('Zap from selection', 'Shift + Right-Click'),
-            ('Paint grey', 'Ctrl+Right-Click'),
+            ('Exact Zap from Selection', 'Right-Click'),
+            ('Zap from Selection', 'Shift + Right-Click'),
+            ('Paint Grey', 'Ctrl+Right-Click'),
         ])
     )
     layout.addWidget(
         _shortcut_table([
-            ('Exact zap color', 'Middle-Click'),
-            ('Zap color', 'Shift + Middle-Click'),
+            ('Exact Zap Current Color', 'Middle-Click'),
+            ('Zap Current Color', 'Shift + Middle-Click'),
+            ('Zap All', 'Ctrl + Middle-Click'),
         ])
     )
     layout.addWidget(_hline())
@@ -82,6 +83,9 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Magenta', 'Shift + D'),
             ('Paint Yellow', 'Shift + S'),
             ('Paint White', 'A'),
+            ('Exact Zap Current Color', 'E'),
+            ('Zap Current Color', 'Ctrl E'),
+            ('Zap All', 'Ctrl + Shift + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
             ('Unhide Events', 'Ctrl + R'),

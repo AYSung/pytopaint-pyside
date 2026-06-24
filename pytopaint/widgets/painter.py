@@ -142,6 +142,22 @@ class Painter(QWidget):
                 MenuAction.SET_ACTIVE, dict(color=Color.WHITE)
             )
         )
+        exact_zap_current_color = QShortcut(QKeySequence('E'), self)
+        exact_zap_current_color.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.EXACT_ZAP, dict(color=self.active_color)
+            )
+        )
+        zap_current_color = QShortcut(QKeySequence('Ctrl+E'), self)
+        zap_current_color.activated.connect(
+            lambda: self.handle_menu_action(
+                MenuAction.ZAP, dict(color=self.active_color)
+            )
+        )
+        zap_all = QShortcut(QKeySequence('Ctrl+Shift+E'), self)
+        zap_all.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.ZAP_ALL, dict())
+        )
 
         undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
         undo_shortcut.activated.connect(
