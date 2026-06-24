@@ -1,7 +1,6 @@
 from PySide6.QtCore import Slot, Signal
 from PySide6.QtWidgets import (
     QGridLayout,
-    QLayout,
     QWidget,
 )
 
@@ -16,7 +15,6 @@ class BiplotGrid(QWidget):
         super().__init__()
         self.grid_layout = QGridLayout(self)
         self.grid_layout.setSpacing(5)
-        self.grid_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
         self.setLayout(self.grid_layout)
 
