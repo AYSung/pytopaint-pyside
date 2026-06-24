@@ -33,7 +33,7 @@ class Painter(QWidget):
     activeColorChanged = Signal(int)
     dataUpdated = Signal(object, dict)
     highlightsUpdated = Signal(list)
-    resizeTriggered = Signal(int, dict)
+    resizeTriggered = Signal(int)
     colorStateReturned = Signal(int, object)
     memoryStateReturned = Signal(int, object)
 
@@ -409,7 +409,7 @@ class Painter(QWidget):
     def handle_resize(self) -> None:
         self.data.update_bins()
         self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
-        self.resizeTriggered.emit(appconfig.resolution, self.data.axis_ticks)
+        self.resizeTriggered.emit(appconfig.resolution)
         self.emit_changes()
 
     @Slot()

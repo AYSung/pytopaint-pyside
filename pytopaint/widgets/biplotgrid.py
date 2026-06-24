@@ -10,7 +10,7 @@ from pytopaint.widgets.biplot import Biplot
 
 
 class BiplotGrid(QWidget):
-    resizeTriggered = Signal(int, dict)
+    resizeTriggered = Signal(int)
 
     def __init__(self) -> None:
         super().__init__()
