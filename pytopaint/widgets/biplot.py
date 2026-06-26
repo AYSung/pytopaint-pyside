@@ -19,7 +19,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pytopaint.colors import BACKGROUND, COLOR_RGB_MAP, Color, indices_by_color
+from pytopaint.colors import BACKGROUND, COLOR_RGB_MAPS, Color, indices_by_color
 from pytopaint.config import appconfig
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
@@ -109,11 +109,13 @@ class Biplot(QWidget):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
-                color_map = COLOR_RGB_MAP
+                color_map = COLOR_RGB_MAPS[appconfig.color_palette]
                 axis_color = '#bababa'
             case 'light':
                 background_color = '#ffffff'
-                color_map = COLOR_RGB_MAP | {Color.WHITE: '#000000'}
+                color_map = COLOR_RGB_MAPS[appconfig.color_palette] | {
+                    Color.WHITE: '#000000'
+                }
                 axis_color = '#000000'
 
         canvas = QPixmap(
@@ -250,9 +252,9 @@ class DotPlot(QLabel):
         painter = QPainter(canvas)
         pen = QPen()
         if e.buttons() == Qt.MouseButton.LeftButton:
-            pen.setColor(COLOR_RGB_MAP[self.active_color])
+            pen.setColor(COLOR_RGB_MAPS[appconfig.color_palette][self.active_color])
         elif e.buttons() == Qt.MouseButton.RightButton:
-            pen.setColor(COLOR_RGB_MAP[Color.GREY])
+            pen.setColor(COLOR_RGB_MAPS[appconfig.color_palette][Color.GREY])
         painter.setPen(pen)
         painter.drawLine(self.last_x, self.last_y, pos.x(), pos.y())
         painter.end()
@@ -349,7 +351,7 @@ class DotPlot(QLabel):
             self.draw_dots(
                 canvas,
                 origin=(0, appconfig.resolution - 1),
-                color_map=COLOR_RGB_MAP,
+                color_map=COLOR_RGB_MAPS[appconfig.color_palette],
             )
         self.setPixmap(canvas)
 

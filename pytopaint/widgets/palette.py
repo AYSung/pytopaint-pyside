@@ -14,18 +14,19 @@ from PySide6.QtWidgets import (
     QMenu,
     QStyle,
     QStyleOption,
-    QWidget,
     QToolButton,
+    QWidget,
 )
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    COLOR_RGB_MAP,
+    COLOR_RGB_MAPS,
     Color,
     events_by_color,
-    ratios_by_color,
     is_zappable,
+    ratios_by_color,
 )
+from pytopaint.config import appconfig
 
 
 class Palette(QWidget):
@@ -33,6 +34,7 @@ class Palette(QWidget):
     menuActionTriggered = Signal(int, dict)
     eventsUpdated = Signal(object, int)
     highlightsUpdated = Signal(list)
+    colorPaletteChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -52,6 +54,7 @@ class Palette(QWidget):
             self.highlightsUpdated.connect(color_label.update_highlight)
             self.activeColorChanged.connect(color_label.update_active_color)
             self.eventsUpdated.connect(color_label.update_label)
+            self.colorPaletteChanged.connect(color_label.update_palette)
 
         save_state_label = QLabel('Snapshots:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
@@ -107,7 +110,7 @@ class ColorLabel(QWidget):
 
         self.box = QLabel()
         self.box.setFixedSize(12, 12)
-        self.box.setStyleSheet(f'background-color: {COLOR_RGB_MAP[color]}')
+        self.update_palette()
 
         self.label = QLabel()
 
@@ -169,6 +172,12 @@ class ColorLabel(QWidget):
     def update_active_color(self, color: Color):
         self.label.setStyleSheet(
             f'font-weight: {"bold" if self.color == color else "normal"};'
+        )
+
+    @Slot()
+    def update_palette(self):
+        self.box.setStyleSheet(
+            f'background-color: {COLOR_RGB_MAPS[appconfig.color_palette][self.color]}'
         )
 
     def context_menu(self, pos):
@@ -313,7 +322,7 @@ def _color_icon(color: Color) -> QIcon:
     pixmap = QPixmap(16, 12)
     pixmap.fill('#00000000')
     painter = QPainter(pixmap)
-    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAP[color])
+    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAPS[appconfig.color_palette][color])
     painter.end()
     return QIcon(pixmap)
 

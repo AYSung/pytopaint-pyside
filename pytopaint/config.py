@@ -18,6 +18,7 @@ class AppConfig:
     scaling_factor: int
     upper_arcsinh_limit: float
     lower_arcsinh_limit: float
+    color_palette: str = 'Default'
 
 
 def import_config() -> AppConfig:

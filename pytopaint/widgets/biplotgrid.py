@@ -17,6 +17,7 @@ from pytopaint.widgets.biplot import Biplot
 
 class BiplotGrid(QWidget):
     resizeTriggered = Signal(int)
+    colorPaletteChanged = Signal()
 
     def __init__(self) -> None:
         super().__init__()
@@ -29,6 +30,7 @@ class BiplotGrid(QWidget):
         row, col = coords
         biplot.removeTriggered.connect(self.remove_biplot)
         self.resizeTriggered.connect(biplot.resize)
+        self.colorPaletteChanged.connect(biplot.plot.update_plot)
         self.grid_layout.addWidget(biplot, row, col)
 
     @Slot(object)

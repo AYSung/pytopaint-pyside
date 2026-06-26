@@ -27,16 +27,29 @@ class Color(IntEnum):
         return self.name.title()
 
 
-COLOR_RGB_MAP = {
-    Color.GREY: '#828282',
-    Color.BLUE: '#4060ff',
-    Color.GREEN: '#46D829',
-    Color.RED: '#d12f2f',
-    Color.YELLOW: '#EBE824',
-    Color.MAGENTA: '#d24fef',
-    Color.CYAN: '#43EBF7',
-    Color.WHITE: '#E9E9E9',
+COLOR_RGB_MAPS = {
+    'Default': {
+        Color.GREY: '#828282',
+        Color.BLUE: '#2b4cf1',
+        Color.GREEN: '#46D829',
+        Color.RED: '#d12f2f',
+        Color.YELLOW: '#EBE824',
+        Color.MAGENTA: '#d24fef',
+        Color.CYAN: '#43EBF7',
+        Color.WHITE: '#E9E9E9',
+    },
+    'Okabe-Ito': {
+        Color.GREY: '#828282',
+        Color.BLUE: '#0072B2',
+        Color.GREEN: '#009E73',
+        Color.RED: '#D55E00',
+        Color.YELLOW: '#F0E442',
+        Color.MAGENTA: '#CC79A7',
+        Color.CYAN: '#56B4E9',
+        Color.WHITE: '#E9E9E9',
+    },
 }
+
 
 ZAPPABLE_COLORS = {
     Color.GREY: [],

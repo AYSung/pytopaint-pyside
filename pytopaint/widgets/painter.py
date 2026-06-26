@@ -43,6 +43,7 @@ class Painter(QWidget):
     resizeTriggered = Signal(int)
     colorStateReturned = Signal(int, object)
     memoryStateReturned = Signal(int, object)
+    colorPaletteChanged = Signal()
 
     def __init__(self, data: FlowData):
         super().__init__()
@@ -87,9 +88,11 @@ class Painter(QWidget):
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.dataUpdated.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
+        self.colorPaletteChanged.connect(palette.colorPaletteChanged)
 
         self.biplot_grid = BiplotGrid()
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
+        self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
 
         layout_config = get_best_layout(channels=self.df.columns)
 

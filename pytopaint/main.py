@@ -30,6 +30,7 @@ from PySide6.QtWidgets import (
     QMainWindow,
     QWidget,
     QLayout,
+    QMenu,
 )
 
 from pytopaint.actions import MenuAction
@@ -47,11 +48,13 @@ from pytopaint.widgets.dialogs import (
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
+from pytopaint.colors import COLOR_RGB_MAPS
 
 
 class MainWindow(QMainWindow):
     resizeTriggered = Signal()
     rescaleTriggered = Signal()
+    colorPaletteChanged = Signal()
 
     def __init__(self):
         super().__init__()
@@ -94,6 +97,7 @@ class MainWindow(QMainWindow):
 
             self.resizeTriggered.connect(painter.handle_resize)
             self.rescaleTriggered.connect(painter.handle_rescale)
+            self.colorPaletteChanged.connect(painter.colorPaletteChanged)
             self.painter_tabs.add_painter(painter)
         except ValueError as e:
             raise e
@@ -208,6 +212,19 @@ class MainWindow(QMainWindow):
         close_all_tabs_shortcut.activated.connect(self.painter_tabs.close_all_tabs)
 
     def configure_menu_bar(self):
+        def _palette_option(palette: str) -> QAction:
+            action = QAction(
+                palette,
+                self,
+                checkable=True,
+                checked=(appconfig.color_palette == palette),
+            )
+            action.triggered.connect(lambda: self.set_color_mode(action.text()))
+            self.colorPaletteChanged.connect(
+                lambda: action.setChecked(appconfig.color_palette == action.text())
+            )
+            return action
+
         menu_bar = self.menuBar()
         # menu_bar.setNativeMenuBar(False)
         file_menu = menu_bar.addMenu('&File')
@@ -224,6 +241,15 @@ class MainWindow(QMainWindow):
         )
         file_menu.addAction(export_fcs_action)
 
+        file_menu.addSeparator()
+        color_palette_menu = QMenu('Color Palette')
+
+        palette_options = [
+            _palette_option(palette) for palette in COLOR_RGB_MAPS.keys()
+        ]
+        color_palette_menu.addActions(palette_options)
+
+        file_menu.addMenu(color_palette_menu)
         file_menu.addSeparator()
 
         file_info_action = QAction('File Info', self, enabled=False)
@@ -315,6 +341,11 @@ class MainWindow(QMainWindow):
             save_config()
 
         return super().closeEvent(event)
+
+    def set_color_mode(self, palette: str) -> None:
+        print(f'{palette} clicked')
+        appconfig.color_palette = palette
+        self.colorPaletteChanged.emit()
 
 
 def main():
