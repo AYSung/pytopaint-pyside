@@ -107,6 +107,7 @@ class Painter(QWidget):
         layout.addStretch()
         self.setLayout(layout)
 
+        self.activeColorChanged.emit(self.active_color)
         self.emit_changes()
 
     def configure_shortcuts(self) -> None:
