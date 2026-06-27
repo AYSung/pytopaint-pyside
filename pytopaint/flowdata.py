@@ -10,7 +10,9 @@ import re
 from functools import partial
 from pathlib import Path
 
-import flowkit
+import flowio
+import flowutils
+import numpy as np
 import pandas as pd
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
@@ -29,7 +31,7 @@ UPPER_PHYSICAL = 255_000
 
 
 class FlowData:
-    def __init__(self, sample: flowkit.Sample, id: str, tube: str):
+    def __init__(self, sample: flowio.FlowData, id: str, tube: str):
         self.sample = sample
         self.tube = tube
         self.id = id
@@ -38,16 +40,20 @@ class FlowData:
 
     @classmethod
     def from_path(cls, filepath: Path):
-        sample = flowkit.Sample(filepath)
-        tube = sample.metadata.get('tube name', None)
+        sample = flowio.FlowData(filepath)
+        tube = sample.text.get('tube name', None)
         id = (
-            extract_case_number(sample.metadata['src'])
-            if 'src' in sample.metadata
+            extract_case_number(sample.text['src'])
+            if 'src' in sample.text
             else filepath.stem
         )
 
-        sample.metadata = sample._get_metadata_for_export(source='raw') | {
-            k: v for k, v in sample.metadata.items() if k in ['spill', 'spillover']
+        sample.text = {
+            k: v
+            for k, v in sample.text.items()
+            if k
+            in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS
+            + ['spill', 'spillover']
         }
         return cls(sample, id, tube)
 
@@ -156,24 +162,33 @@ def get_axis_ticks(
 
 
 def to_xform_df(
-    sample: flowkit.Sample,
+    sample: flowio.FlowData,
     scaling_factor: float,
 ):
-    compensation = _get_compensation(sample.metadata)
+    event_data = np.reshape(sample.events, (sample.event_count, sample.channel_count))
+    compensation = _get_compensation(sample.text)
     if compensation is not None:
-        sample.apply_compensation(compensation)
+        spill_matrix, _ = flowutils.compensate.get_spill(compensation)
+        event_data = flowutils.compensate.compensate(
+            event_data=event_data,
+            spill_matrix=spill_matrix,
+            fluoro_indices=sample.fluoro_indices,
+        )
 
-    sample.apply_transform(_arcsinh_transformer(scaling_factor))
-    df = sample.as_dataframe(source='xform', col_names=_get_channels(sample.channels))
-    if empty_channels := _get_empty_channels(sample.channels):
+    xformed_event_data = flowutils.transforms.asinh(
+        data=event_data,
+        channel_indices=sample.fluoro_indices,
+        t=scaling_factor * math.sinh(1),
+        m=1 / math.log(10),
+        a=0,
+    )
+
+    df = pd.DataFrame(
+        xformed_event_data, columns=_get_channels(sample.pnn_labels, sample.pns_labels)
+    )
+    if empty_channels := _get_empty_channels(sample.pnn_labels, sample.pns_labels):
         df = df.drop(columns=empty_channels)
     return df
-
-
-def _arcsinh_transformer(factor) -> flowkit.transforms.AsinhTransform:
-    return flowkit.transforms.AsinhTransform(
-        param_t=factor * math.sinh(1), param_m=1 / math.log(10), param_a=0
-    )
 
 
 def sort_channels(channels: list[str] | set[str]) -> list[str]:
@@ -216,17 +231,17 @@ def _clean_marker_name(marker: str) -> str:
             return marker
 
 
-def _get_channels(df: pd.DataFrame) -> list[str]:
+def _get_channels(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
     return [
         f'{_clean_marker_name(marker)}' if marker else fluor
-        for fluor, marker in df[['pnn', 'pns']].to_records(index=False)
+        for fluor, marker in zip(pnn_labels, pns_labels)
     ]
 
 
-def _get_empty_channels(df: pd.DataFrame) -> list[str]:
+def _get_empty_channels(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
     return [
         fluor
-        for fluor, marker in df[['pnn', 'pns']].to_records(index=False)
+        for fluor, marker in zip(pnn_labels, pns_labels)
         if not marker and fluor not in PHYSICAL_PARAMETERS + ['Time']
     ]
 
