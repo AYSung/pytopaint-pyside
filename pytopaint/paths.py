@@ -17,5 +17,17 @@ config_dir = user_config_path(appname='PytoPaint', ensure_exists=True)
 layout_dir = config_dir / 'layouts'
 layout_dir.mkdir(parents=True, exist_ok=True)
 
+
 if not any(layout_dir.iterdir()):
     shutil.copytree(src=default_layout_dir, dst=layout_dir, dirs_exist_ok=True)
+else:
+    user_layout_filenames = [
+        entry.name for entry in layout_dir.iterdir() if entry.is_file()
+    ]
+    missing_layout_files = [
+        entry
+        for entry in default_layout_dir.iterdir()
+        if entry.is_file() and entry.name not in user_layout_filenames
+    ]
+    for layout_file in missing_layout_files:
+        shutil.copy(src=layout_file, dst=layout_dir)
