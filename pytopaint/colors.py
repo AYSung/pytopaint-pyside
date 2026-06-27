@@ -9,6 +9,8 @@ from enum import IntEnum
 
 import pandas as pd
 
+from pytopaint.config import get_color_palette
+
 BACKGROUND = '#121010'
 
 
@@ -49,6 +51,10 @@ COLOR_RGB_MAPS = {
         Color.WHITE: '#E9E9E9',
     },
 }
+
+
+def get_color_map() -> dict[Color, str]:
+    return COLOR_RGB_MAPS[get_color_palette()]
 
 
 ZAPPABLE_COLORS = {

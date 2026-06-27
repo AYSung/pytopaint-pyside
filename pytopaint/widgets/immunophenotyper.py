@@ -13,9 +13,9 @@ from PySide6.QtWidgets import (
     QLayout,
 )
 
-from pytopaint.colors import BACKGROUND, COLOR_RGB_MAPS, Color
+from pytopaint.colors import BACKGROUND, get_color_map, Color
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels, ADDED_PARAMETERS
-from pytopaint.config import get_resolution, get_color_palette
+from pytopaint.config import get_resolution
 
 
 class Immunophenotyper(QDialog):
@@ -98,7 +98,7 @@ class Histogram(QLabel):
         pen = QPen()
 
         painter.translate(0, 10)
-        pen.setColor(COLOR_RGB_MAPS[get_color_palette()][target_color])
+        pen.setColor(get_color_map()[target_color])
         painter.setPen(pen)
         painter.drawLines([
             QLine(x, -count, x, count)
@@ -110,7 +110,7 @@ class Histogram(QLabel):
         painter.translate(0, 20)
         other_colors = [color for color in Color if color != target_color]
         for color in other_colors:
-            pen.setColor(COLOR_RGB_MAPS[get_color_palette()][color])
+            pen.setColor(get_color_map()[color])
             painter.setPen(pen)
             painter.drawLines([
                 QLine(x, -count, x, count)

@@ -19,8 +19,13 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pytopaint.colors import BACKGROUND, COLOR_RGB_MAPS, Color, indices_by_color
-from pytopaint.config import get_color_palette, get_resolution
+from pytopaint.colors import (
+    BACKGROUND,
+    Color,
+    indices_by_color,
+    get_color_map,
+)
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 AXIS_WIDTH = 45
@@ -109,13 +114,11 @@ class Biplot(QWidget):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
-                color_map = COLOR_RGB_MAPS[get_color_palette()]
+                color_map = get_color_map()
                 axis_color = '#bababa'
             case 'light':
                 background_color = '#ffffff'
-                color_map = COLOR_RGB_MAPS[get_color_palette()] | {
-                    Color.WHITE: '#000000'
-                }
+                color_map = get_color_map() | {Color.WHITE: '#000000'}
                 axis_color = '#000000'
 
         canvas = QPixmap(get_resolution() + AXIS_WIDTH, get_resolution() + AXIS_WIDTH)
@@ -250,9 +253,9 @@ class DotPlot(QLabel):
         painter = QPainter(canvas)
         pen = QPen()
         if e.buttons() == Qt.MouseButton.LeftButton:
-            pen.setColor(COLOR_RGB_MAPS[get_color_palette()][self.active_color])
+            pen.setColor(get_color_map()[self.active_color])
         elif e.buttons() == Qt.MouseButton.RightButton:
-            pen.setColor(COLOR_RGB_MAPS[get_color_palette()][Color.GREY])
+            pen.setColor(get_color_map()[Color.GREY])
         painter.setPen(pen)
         painter.drawLine(self.last_x, self.last_y, pos.x(), pos.y())
         painter.end()
@@ -349,7 +352,7 @@ class DotPlot(QLabel):
             self.draw_dots(
                 canvas,
                 origin=(0, get_resolution() - 1),
-                color_map=COLOR_RGB_MAPS[get_color_palette()],
+                color_map=get_color_map(),
             )
         self.setPixmap(canvas)
 

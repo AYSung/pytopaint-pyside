@@ -20,13 +20,12 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    COLOR_RGB_MAPS,
     Color,
     events_by_color,
+    get_color_map,
     is_zappable,
     ratios_by_color,
 )
-from pytopaint.config import get_color_palette
 
 
 class Palette(QWidget):
@@ -176,9 +175,7 @@ class ColorLabel(QWidget):
 
     @Slot()
     def update_palette(self):
-        self.box.setStyleSheet(
-            f'background-color: {COLOR_RGB_MAPS[get_color_palette()][self.color]}'
-        )
+        self.box.setStyleSheet(f'background-color: {get_color_map()[self.color]}')
 
     def context_menu(self, pos):
         def _merge_action(color: Color) -> QAction:
@@ -333,7 +330,7 @@ def _color_icon(color: Color) -> QIcon:
     pixmap = QPixmap(16, 12)
     pixmap.fill('#00000000')
     painter = QPainter(pixmap)
-    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAPS[get_color_palette()][color])
+    painter.fillRect(0, 0, 12, 12, get_color_map()[color])
     painter.end()
     return QIcon(pixmap)
 
