@@ -169,7 +169,7 @@ def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
     dialog = QDialog(parent)
     dialog.setWindowTitle('File Info')
 
-    file_name = QLabel(f'File Name: {data.sample.current_filename}')
+    file_name = QLabel(f'File Name: {data.sample.name}')
     event_count = QLabel(f'Event Count: {data.sample.event_count:,}')
     channels = data.channel_details
     channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
