@@ -105,7 +105,7 @@ class Painter(QWidget):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(palette)
-        layout.addWidget(self.biplot_grid)
+        layout.addLayout(self.biplot_grid)
         layout.addStretch()
         self.setLayout(layout)
 
@@ -451,13 +451,13 @@ class Painter(QWidget):
             layout_item = self.biplot_grid.itemAtPosition(*coords)
             if layout_item is not None:
                 x_label, y_label = labels
-                x_label = x_label if x_label in self.data.channels else None
-                y_label = y_label if y_label in self.data.channels else None
+                x_label = x_label if x_label in self.data.sorted_channels else None
+                y_label = y_label if y_label in self.data.sorted_channels else None
 
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
             else:
-                self.biplot_grid(self.new_biplot(labels), coords)
+                self.biplot_grid.add_biplot(self.new_biplot(labels), coords)
 
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels

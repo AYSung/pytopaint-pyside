@@ -6,85 +6,70 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QGridLayout, QWidget, QSizePolicy
+from PySide6.QtWidgets import QGridLayout, QLayout
 
 from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
 
 
-class BiplotGrid(QWidget):
+class BiplotGrid(QGridLayout):
     resizeTriggered = Signal(int)
     colorPaletteChanged = Signal()
 
     def __init__(self) -> None:
         super().__init__()
-        self.grid_layout = QGridLayout(self)
-        self.grid_layout.setSpacing(5)
-        self.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-
-        self.setLayout(self.grid_layout)
+        self.setSpacing(5)
+        self.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
     def add_biplot(self, biplot: Biplot, coords: tuple[int, int]) -> None:
         row, col = coords
         biplot.removeTriggered.connect(self.remove_biplot)
         self.resizeTriggered.connect(biplot.resize)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
-        self.grid_layout.addWidget(biplot, row, col)
+        self.addWidget(biplot, row, col)
 
     @Slot(object)
     def remove_biplot(self, biplot: Biplot) -> None:
-        self.grid_layout.setEnabled(False)
+        self.setEnabled(False)
 
-        self.grid_layout.removeWidget(biplot)
+        self.removeWidget(biplot)
         biplot.deleteLater()
 
-        self.grid_layout.setEnabled(True)
-        self.grid_layout.update()
+        self.setEnabled(True)
+        self.update()
 
     @property
     def rows(self) -> int:
-        if self.grid_layout.count() == 0:
+        if self.count() == 0:
             return 0
-        return (
-            max(
-                self.grid_layout.getItemPosition(i)[0]
-                for i in range(self.grid_layout.count())
-            )
-            + 1
-        )
+        return max(self.getItemPosition(i)[0] for i in range(self.count())) + 1
 
     @property
     def columns(self) -> int:
-        if self.grid_layout.count() == 0:
+        if self.count() == 0:
             return 0
-        return (
-            max(
-                self.grid_layout.getItemPosition(i)[1]
-                for i in range(self.grid_layout.count())
-            )
-            + 1
-        )
+        return max(self.getItemPosition(i)[1] for i in range(self.count())) + 1
 
     def _to_dict(self) -> dict[tuple[int, int], tuple[str, str]]:
         return {
             self._get_biplot_coords(i): self._get_biplot_labels(i)
-            for i in range(self.grid_layout.count())
+            for i in range(self.count())
         }
 
     def to_yaml(self) -> list[list[list[str, str]]]:
         return dict_to_yaml(self._to_dict())
 
     def _get_biplot(self, index: int) -> Biplot:
-        return self.grid_layout.itemAt(index).widget()
+        return self.itemAt(index).widget()
 
     def _get_biplot_labels(self, index: int) -> tuple[str, str]:
         return self._get_biplot(index).labels
 
     def _get_biplot_coords(self, index: int) -> tuple[int, int]:
-        return self.grid_layout.getItemPosition(index)[:2]
+        return self.getItemPosition(index)[:2]
 
     def position_empty(self, coords: tuple[int, int]):
-        return self.grid_layout.itemAtPosition(*coords) is None
+        return self.itemAtPosition(*coords) is None
 
     @property
     def empty_coords(self) -> list[tuple[int, int]]:
@@ -96,4 +81,4 @@ class BiplotGrid(QWidget):
         ]
 
     def get_biplots(self) -> list[Biplot]:
-        return [self._get_biplot(i) for i in range(self.grid_layout.count())]
+        return [self._get_biplot(i) for i in range(self.count())]
