@@ -77,6 +77,9 @@ class MainWindow(QMainWindow):
         # self.setStyleSheet('QMainWindow { background-color: #121010; }')
 
         self.painter_tabs = PainterTabs()
+        self.resizeTriggered.connect(self.painter_tabs.handle_resize)
+        self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
+        self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.configure_menu_bar()
         self.configure_shortcuts()
@@ -108,11 +111,8 @@ class MainWindow(QMainWindow):
             flowdata = FlowData.from_path(file_path)
 
             painter = Painter(flowdata)
-
-            self.resizeTriggered.connect(painter.handle_resize)
-            self.rescaleTriggered.connect(painter.handle_rescale)
-            self.colorPaletteChanged.connect(painter.colorPaletteChanged)
             self.painter_tabs.add_painter(painter)
+
         except ValueError as e:
             raise e
 
