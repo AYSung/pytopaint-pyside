@@ -301,6 +301,17 @@ class ColorLabel(QWidget):
         ]
         menu.addActions(ratio_labels)
 
+        menu.addSeparator()
+        immunophenotyper_action = QAction(
+            'Immunophenotype', self, enabled=self.has_events
+        )
+        immunophenotyper_action.triggered.connect(
+            lambda: self.menuActionTriggered.emit(
+                MenuAction.IMMUNOPHENOTYPE, dict(color=self.color)
+            )
+        )
+        menu.addAction(immunophenotyper_action)
+
         menu.exec(self.mapToGlobal(pos))
 
     def remember_state(self, color_state: pd.Series):

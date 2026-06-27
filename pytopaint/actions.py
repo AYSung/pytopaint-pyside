@@ -29,3 +29,4 @@ class MenuAction(IntEnum):
     STORE_COLOR = auto()
     STORE_COLOR_AND_CLEAR = auto()
     RECALL_COLOR = auto()
+    IMMUNOPHENOTYPE = auto()

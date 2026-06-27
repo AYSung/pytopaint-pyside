@@ -34,6 +34,7 @@ from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.palette import Palette
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
+from pytopaint.widgets.immunophenotyper import Immunophenotyper
 
 
 class Painter(QWidget):
@@ -70,6 +71,7 @@ class Painter(QWidget):
             MenuAction.STORE_COLOR: self.store_color,
             MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
             MenuAction.RECALL_COLOR: self.recall_color,
+            MenuAction.IMMUNOPHENOTYPE: self.open_immunophenotyper_dialog,
         }
 
         self.data = data
@@ -523,3 +525,10 @@ class Painter(QWidget):
 
         self.biplot_grid.setEnabled(True)
         self.biplot_grid.update()
+
+    def open_immunophenotyper_dialog(self, color: Color):
+        dialog = Immunophenotyper(
+            df=self.df, axis_ticks=self.data.axis_ticks, color=color, parent=self
+        )
+        dialog.exec()
+        # if dialog.exec() == QDialog.DialogCode.Accepted:

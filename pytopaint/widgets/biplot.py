@@ -212,7 +212,7 @@ class Biplot(QWidget):
 
     def sizeHint(self):
         return QSize(
-            AXIS_WIDTH + get_resolution() + 5,
+            AXIS_WIDTH + get_resolution(),
             AXIS_WIDTH + get_resolution() + 10 + self.title_label.height(),
         )
 
