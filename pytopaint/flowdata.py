@@ -304,10 +304,8 @@ def clip_series(s: pd.Series, clip_limits: dict[str, tuple[float, float]]):
 
 
 def extract_case_number(filename: str) -> str:
-    if match := re.match(r'\w[- ](\d{2})[- ](\d{4,}) [\w\- ]+$', filename):
-        return f'IP{match.group(1)}-{int(match.group(2)):05}'
-    elif match := re.match(r'\w[- ](\d{4,}) [\w\- ]+', filename):
-        return f'IPxx-{int(match.group(1)):05}'
+    if match := re.match(r'\w[- ](\d{2})?[- ]?(\d{4,}) [\w\- ]+$', filename):
+        return f'IP{match.group(1) or "xx"}-{int(match.group(2)):05}'
     else:
         return filename
 

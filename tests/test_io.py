@@ -89,7 +89,7 @@ def test_get_channels():
         columns=['pnn', 'pns'],
     )
 
-    assert _get_channels(test_df) == [
+    assert _get_channels(test_df.pnn.to_list(), test_df.pns.to_list()) == [
         'FSC-A',
         'FSC-H',
         'SSC-A',
