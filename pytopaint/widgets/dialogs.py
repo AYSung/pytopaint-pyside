@@ -103,6 +103,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Unhide Events', 'Ctrl + R'),
             ('Reset Events', 'Ctrl + Shift + R'),
             ('Open File(s)', 'Ctrl + O'),
+            ('Load Layout', 'Ctrl + L'),
             ('Close Tab', 'Ctrl + W'),
             ('Close Application', 'Ctrl + Q'),
         ])

@@ -300,6 +300,7 @@ class MainWindow(QMainWindow):
         layout_menu.addAction(save_layout_action)
 
         load_layout_action = QAction('Load Layout', self)
+        load_layout_action.setShortcut('Ctrl+L')
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
         layout_menu.addSeparator()
