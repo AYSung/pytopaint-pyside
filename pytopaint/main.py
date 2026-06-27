@@ -5,15 +5,20 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from multiprocessing import freeze_support
 import sys
 from io import BytesIO
+from multiprocessing import freeze_support
 from pathlib import Path
 
 import flowio
 import numpy as np
 import yaml
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import (
+    QCoreApplication,
+    Qt,
+    Signal,
+    Slot,
+)
 from PySide6.QtGui import (
     QAction,
     QDragEnterEvent,
@@ -27,14 +32,24 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QGridLayout,
-    QMainWindow,
-    QWidget,
     QLayout,
+    QMainWindow,
     QMenu,
+    QWidget,
 )
 
 from pytopaint.actions import MenuAction
-from pytopaint.config import appconfig, import_config, save_config
+from pytopaint.colors import COLOR_RGB_MAPS
+from pytopaint.config import (
+    get_color_palette,
+    get_window_position,
+    set_color_palette,
+    set_lower_asinh_bound,
+    set_resolution,
+    set_scaling_factor,
+    set_upper_asinh_bound,
+    set_window_position,
+)
 from pytopaint.flowdata import FlowData
 from pytopaint.layout import read_yaml
 from pytopaint.widgets.dialogs import (
@@ -42,13 +57,11 @@ from pytopaint.widgets.dialogs import (
     about_dialog,
     file_info_dialog,
     resize_plot_dialog,
-    save_config_dialog,
     shortcut_dialog,
     subsample_dialog,
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
-from pytopaint.colors import COLOR_RGB_MAPS
 
 
 class MainWindow(QMainWindow):
@@ -75,7 +88,7 @@ class MainWindow(QMainWindow):
         self.layout().setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
         self.setCentralWidget(central_widget)
-        self.move(20, 40)
+        self.load_position()
 
         self.setAcceptDrops(True)
 
@@ -176,16 +189,16 @@ class MainWindow(QMainWindow):
     def resize_plots(self) -> None:
         pixels, ok = resize_plot_dialog(self)
         if ok:
-            appconfig.resolution = pixels
+            set_resolution(pixels)
             self.resizeTriggered.emit()
 
     def rescale_plots(self) -> None:
         dialog = PlotScaleDialog(self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            appconfig.scaling_factor = dialog.scaling_factor
-            appconfig.upper_arcsinh_limit = dialog.upper_arcsinh_limit
-            appconfig.lower_arcsinh_limit = dialog.lower_arcsinh_limit
+            set_scaling_factor(dialog.scaling_factor)
+            set_upper_asinh_bound(dialog.upper_arcsinh_limit)
+            set_lower_asinh_bound(dialog.lower_arcsinh_limit)
             self.rescaleTriggered.emit()
 
     def dragEnterEvent(self, event: QDragEnterEvent):
@@ -217,11 +230,11 @@ class MainWindow(QMainWindow):
                 palette,
                 self,
                 checkable=True,
-                checked=(appconfig.color_palette == palette),
+                checked=(palette == get_color_palette()),
             )
-            action.triggered.connect(lambda: self.set_color_mode(action.text()))
+            action.triggered.connect(lambda: self.set_color_palette(action.text()))
             self.colorPaletteChanged.connect(
-                lambda: action.setChecked(appconfig.color_palette == action.text())
+                lambda: action.setChecked(get_color_palette() == action.text())
             )
             return action
 
@@ -334,22 +347,24 @@ class MainWindow(QMainWindow):
         help_menu.addAction(about_action)
 
     def closeEvent(self, event):
-        if appconfig == import_config():
-            return
-
-        if save_config_dialog(self):
-            save_config()
-
+        set_window_position(self.pos())
         return super().closeEvent(event)
 
-    def set_color_mode(self, palette: str) -> None:
-        print(f'{palette} clicked')
-        appconfig.color_palette = palette
-        self.colorPaletteChanged.emit()
+    def set_color_palette(self, palette: str) -> None:
+        if palette != get_color_palette():
+            set_color_palette(palette)
+            self.colorPaletteChanged.emit()
+
+    def load_position(self) -> None:
+        position = get_window_position()
+        self.move(position.x(), position.y())
 
 
 def main():
     freeze_support()
+
+    QCoreApplication.setOrganizationName('AYSung')
+    QCoreApplication.setApplicationName('PytoPaint')
 
     app = QApplication(sys.argv)
     QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)

@@ -26,7 +26,7 @@ from pytopaint.colors import (
     is_zappable,
     ratios_by_color,
 )
-from pytopaint.config import appconfig
+from pytopaint.config import get_color_palette
 
 
 class Palette(QWidget):
@@ -177,7 +177,7 @@ class ColorLabel(QWidget):
     @Slot()
     def update_palette(self):
         self.box.setStyleSheet(
-            f'background-color: {COLOR_RGB_MAPS[appconfig.color_palette][self.color]}'
+            f'background-color: {COLOR_RGB_MAPS[get_color_palette()][self.color]}'
         )
 
     def context_menu(self, pos):
@@ -322,7 +322,7 @@ def _color_icon(color: Color) -> QIcon:
     pixmap = QPixmap(16, 12)
     pixmap.fill('#00000000')
     painter = QPainter(pixmap)
-    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAPS[appconfig.color_palette][color])
+    painter.fillRect(0, 0, 12, 12, COLOR_RGB_MAPS[get_color_palette()][color])
     painter.end()
     return QIcon(pixmap)
 

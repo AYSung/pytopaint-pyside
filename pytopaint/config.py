@@ -5,38 +5,53 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from dataclasses import asdict, dataclass
 
-import yaml
-
-from pytopaint.paths import config_file
+from PySide6.QtCore import QSettings, QPoint
 
 
-@dataclass
-class AppConfig:
-    resolution: int
-    scaling_factor: int
-    upper_arcsinh_limit: float
-    lower_arcsinh_limit: float
-    color_palette: str = 'Default'
+def get_color_palette() -> str:
+    return QSettings().value('Plot/color_palette', 'Default')
 
 
-def import_config() -> AppConfig:
-    with open(config_file) as stream:
-        config = yaml.safe_load(stream)
-
-    return AppConfig(**config)
+def set_color_palette(palette: str) -> None:
+    QSettings().setValue('Plot/color_palette', palette)
 
 
-appconfig = import_config()
+def get_resolution() -> int:
+    return int(QSettings().value('Plot/resolution', 208))
 
 
-def save_config() -> None:
-    with open(config_file, 'w') as handle:
-        yaml.safe_dump(
-            asdict(appconfig),
-            handle,
-            default_flow_style=False,
-            sort_keys=False,
-            explicit_start=True,
-        )
+def set_resolution(pixels: int) -> None:
+    QSettings().setValue('Plot/resolution', pixels)
+
+
+def get_scaling_factor() -> float:
+    return float(QSettings().value('Plot/scaling_factor', 150))
+
+
+def set_scaling_factor(scaling_factor: float) -> None:
+    QSettings().setValue('Plot/scaling_factor', scaling_factor)
+
+
+def get_upper_asinh_bound() -> float:
+    return float(QSettings().value('Plot/upper_asinh_bound', 8))
+
+
+def set_upper_asinh_bound(bound: float) -> None:
+    QSettings().setValue('Plot/upper_asinh_bound', bound)
+
+
+def get_lower_asinh_bound() -> float:
+    return float(QSettings().value('Plot/lower_asinh_bound', -1))
+
+
+def set_lower_asinh_bound(bound: float) -> None:
+    QSettings().setValue('Plot/lower_asinh_bound', bound)
+
+
+def get_window_position() -> QPoint:
+    return QSettings().value('MainWindow/position', QPoint(20, 40))
+
+
+def set_window_position(pos: QPoint) -> None:
+    QSettings().setValue('MainWindow/position', pos)

@@ -21,7 +21,12 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from pytopaint.config import appconfig
+from pytopaint.config import (
+    get_resolution,
+    get_scaling_factor,
+    get_upper_asinh_bound,
+    get_lower_asinh_bound,
+)
 from pytopaint.flowdata import sort_channels, FlowData
 
 
@@ -120,17 +125,17 @@ class PlotScaleDialog(QDialog):
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.scaling_factor_input = QSpinBox(singleStep=10)
         self.scaling_factor_input.setRange(20, 1200)
-        self.scaling_factor_input.setValue(appconfig.scaling_factor)
+        self.scaling_factor_input.setValue(get_scaling_factor())
         self.scaling_factor_input.setFixedWidth(field_width)
         self.scaling_factor_input.setToolTip('between 20 and 1200')
         self.upper_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
         self.upper_arcsinh_limit_input.setRange(5, 15)
-        self.upper_arcsinh_limit_input.setValue(appconfig.upper_arcsinh_limit)
+        self.upper_arcsinh_limit_input.setValue(get_upper_asinh_bound())
         self.upper_arcsinh_limit_input.setFixedWidth(field_width)
         self.upper_arcsinh_limit_input.setToolTip('between 5 and 15')
         self.lower_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
         self.lower_arcsinh_limit_input.setRange(-5, 4)
-        self.lower_arcsinh_limit_input.setValue(appconfig.lower_arcsinh_limit)
+        self.lower_arcsinh_limit_input.setValue(get_lower_asinh_bound())
         self.lower_arcsinh_limit_input.setFixedWidth(field_width)
         self.lower_arcsinh_limit_input.setToolTip('between -5 and 4')
         layout.addRow('Scaling Factor:', self.scaling_factor_input)
@@ -186,18 +191,6 @@ def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
     return dialog
 
 
-def save_config_dialog(parent: QWidget) -> bool:
-    reply = QMessageBox().question(
-        parent,
-        'Confirm',
-        'Save changes to configuration?',
-        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-        QMessageBox.StandardButton.No,
-    )
-
-    return reply == QMessageBox.StandardButton.Yes
-
-
 def subsample_dialog(parent: QWidget, total_events: int) -> tuple[int, bool]:
     return QInputDialog.getInt(
         parent,
@@ -215,7 +208,7 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
         parent,
         'Size',
         'Pixels per dimension (128-256)',
-        value=appconfig.resolution,
+        value=get_resolution(),
         minValue=128,
         maxValue=256,
         step=16,

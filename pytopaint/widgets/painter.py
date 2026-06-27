@@ -26,7 +26,7 @@ from pytopaint.colors import (
     merge_colors,
     subtract_color_from_selection,
 )
-from pytopaint.config import appconfig
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import FlowData
 from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
@@ -436,7 +436,7 @@ class Painter(QWidget):
     def handle_resize(self) -> None:
         self.data.update_bins()
         self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
-        self.resizeTriggered.emit(appconfig.resolution)
+        self.resizeTriggered.emit(get_resolution())
         self.emit_changes()
 
     @Slot()

@@ -1,6 +1,0 @@
----
-resolution: 208
-scaling_factor: 150
-upper_arcsinh_limit: 8
-lower_arcsinh_limit: -1
-color_palette: Default

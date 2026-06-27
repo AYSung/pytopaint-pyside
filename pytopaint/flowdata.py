@@ -15,7 +15,12 @@ import pandas as pd
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
 
-from pytopaint.config import appconfig
+from pytopaint.config import (
+    get_lower_asinh_bound,
+    get_resolution,
+    get_scaling_factor,
+    get_upper_asinh_bound,
+)
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 ADDED_PARAMETERS = ['UMAP1', 'UMAP2']
@@ -68,21 +73,19 @@ class FlowData:
             return f'{self.id}'
 
     def update_scale(self) -> None:
-        self.xform_df = to_xform_df(
-            self.sample, scaling_factor=appconfig.scaling_factor
-        )
+        self.xform_df = to_xform_df(self.sample, scaling_factor=get_scaling_factor())
         self.clip_limits = get_clip_limits(self.xform_df)
 
     def update_bins(self) -> None:
         self.binned_df = bin_df(
-            self.xform_df, n_bins=appconfig.resolution, clip_limits=self.clip_limits
+            self.xform_df, n_bins=get_resolution(), clip_limits=self.clip_limits
         ).astype('uint8')
 
         self.axis_ticks = {
             channel: get_axis_ticks(
                 channel,
-                n_bins=appconfig.resolution,
-                scaling_factor=appconfig.scaling_factor,
+                n_bins=get_resolution(),
+                scaling_factor=get_scaling_factor(),
                 clip_limits=self.clip_limits,
             )
             for channel in self.xform_df.columns
@@ -248,7 +251,7 @@ def lower_clip_limit(s: pd.Series):
     elif s.name in ADDED_PARAMETERS:
         return 1.05 * s.min()
     else:
-        return min(appconfig.lower_arcsinh_limit, s.quantile(0.05) - 0.5)
+        return min(get_lower_asinh_bound(), s.quantile(0.05) - 0.5)
 
 
 def upper_clip_limit(s: pd.Series):
@@ -259,7 +262,7 @@ def upper_clip_limit(s: pd.Series):
     elif s.name in ADDED_PARAMETERS:
         return 1.05 * s.max()
     else:
-        return max(appconfig.upper_arcsinh_limit, s.quantile(0.95) + 0.5)
+        return max(get_upper_asinh_bound(), s.quantile(0.95) + 0.5)
 
 
 def bin_series(s: pd.Series, n_bins: int, clip_limits: dict[str, tuple[float, float]]):
