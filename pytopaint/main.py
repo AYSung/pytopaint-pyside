@@ -62,6 +62,7 @@ from pytopaint.widgets.dialogs import (
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
+from pytopaint.paths import layout_dir
 
 
 class MainWindow(QMainWindow):
@@ -149,7 +150,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save Layout',
-            dir='./pytopaint/resources/layouts/',
+            dir=str(layout_dir),
             filter='YAML (*.yml)',
         )
         if not file_path:
@@ -166,7 +167,7 @@ class MainWindow(QMainWindow):
 
     def load_layout(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
-            None, 'Load Layout', './pytopaint/resources/layouts/', 'YAML (*.yml)'
+            None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'
         )
         if not file_path:
             return
