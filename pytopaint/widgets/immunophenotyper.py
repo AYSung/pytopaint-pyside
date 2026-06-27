@@ -1,3 +1,4 @@
+from itertools import batched
 import pandas as pd
 
 from PySide6.QtCore import QPoint, QRect, Qt, QLine
@@ -8,6 +9,8 @@ from PySide6.QtWidgets import (
     QWidget,
     QDialog,
     QVBoxLayout,
+    QHBoxLayout,
+    QLayout,
 )
 
 from pytopaint.colors import BACKGROUND, COLOR_RGB_MAPS, Color
@@ -28,17 +31,25 @@ class Immunophenotyper(QDialog):
 
         channels = get_ip_channels(sort_channels(df.columns))
 
-        layout = QVBoxLayout()
-        layout.setSpacing(0)
-        for channel in channels:
-            layout.addWidget(
-                ImmunophenotypePlot(
-                    df=df[[channel, 'color']],
-                    channel=channel,
-                    axis_ticks=axis_ticks[channel],
-                    target_color=color,
+        layout = QHBoxLayout()
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        layout.setSpacing(20)
+        ROWS_PER_COLUMN = 6
+        columns = batched(channels, ROWS_PER_COLUMN)
+        for column in columns:
+            column_layout = QVBoxLayout()
+            column_layout.setSpacing(0)
+            for channel in column:
+                column_layout.addWidget(
+                    ImmunophenotypePlot(
+                        df=df[[channel, 'color']],
+                        channel=channel,
+                        axis_ticks=axis_ticks[channel],
+                        target_color=color,
+                    )
                 )
-            )
+            column_layout
+            layout.addLayout(column_layout)
         self.setLayout(layout)
 
 
