@@ -99,6 +99,7 @@ class ColorLabel(QWidget):
         self.highlight = False
         self.event_count = 0
         self.zappable = False
+        self.others_zappable = False
         self.memory = None
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
@@ -132,6 +133,9 @@ class ColorLabel(QWidget):
             self.label.setText(f'{_format_percent(percent)} ({self.event_count})')
 
         self.zappable = is_zappable(self.color, events)
+        self.others_zappable = any(
+            v for k, v in events.items() if k not in [self.color, Color.GREY]
+        )
         self.ratios = ratios_by_color(
             self.color,
             {color: n / total_events for color, n in sorted(events.items())},
@@ -228,6 +232,16 @@ class ColorLabel(QWidget):
             )
             menu.addAction(exact_zap)
 
+            zap_all_but = QAction(
+                'Zap Others', enabled=self.others_zappable and self.zappable
+            )
+            zap_all_but.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.ZAP_ALL_BUT, dict(color=self.color)
+                )
+            )
+            menu.addAction(zap_all_but)
+
             merge_menu = QMenu('Merge with...')
             merge_menu.setEnabled(self.has_events)
 
@@ -238,6 +252,12 @@ class ColorLabel(QWidget):
             for merge_action in merge_actions:
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
+        else:
+            zap_all = QAction('Zap all')
+            zap_all.triggered.connect(
+                lambda: self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+            )
+            menu.addAction(zap_all)
 
         menu.addSeparator()
         menu.addSection('Filter')
@@ -256,58 +276,61 @@ class ColorLabel(QWidget):
         )
         menu.addAction(isolate)
 
-        menu.addSeparator()
-        remember = QAction('Remember', self, enabled=self.has_events)
-        remember.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_COLOR, dict(color=self.color)
+        if self.color != Color.GREY:
+            menu.addSeparator()
+            remember = QAction('Remember', self, enabled=self.has_events)
+            remember.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.STORE_COLOR, dict(color=self.color)
+                )
             )
-        )
-        menu.addAction(remember)
+            menu.addAction(remember)
 
-        remember_and_clear = QAction('Remember && Clear', self, enabled=self.has_events)
-        # shortcut?
-        remember_and_clear.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_COLOR_AND_CLEAR, dict(color=self.color)
+            remember_and_clear = QAction(
+                'Remember && Clear', self, enabled=self.has_events
             )
-        )
-        menu.addAction(remember_and_clear)
-
-        recall = QAction('Recall', self, enabled=self.memory is not None)
-        recall.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.RECALL_COLOR, dict(color_state=self.memory)
+            # shortcut?
+            remember_and_clear.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.STORE_COLOR_AND_CLEAR, dict(color=self.color)
+                )
             )
-        )
-        menu.addAction(recall)
+            menu.addAction(remember_and_clear)
 
-        clear_memory = QAction('Forget', self, enabled=self.memory is not None)
-        clear_memory.triggered.connect(self.clear_memory)
-        menu.addAction(clear_memory)
-
-        menu.addSection('Ratios')
-
-        ratio_labels = [
-            QAction(
-                _color_icon(color),
-                f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
-                enabled=False,
+            recall = QAction('Recall', self, enabled=self.memory is not None)
+            recall.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.RECALL_COLOR, dict(color_state=self.memory)
+                )
             )
-            for color, label_info in self.ratios.items()
-        ]
-        menu.addActions(ratio_labels)
+            menu.addAction(recall)
 
-        menu.addSeparator()
-        immunophenotyper_action = QAction(
-            'Immunophenotype', self, enabled=self.has_events
-        )
-        immunophenotyper_action.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.IMMUNOPHENOTYPE, dict(color=self.color)
+            clear_memory = QAction('Forget', self, enabled=self.memory is not None)
+            clear_memory.triggered.connect(self.clear_memory)
+            menu.addAction(clear_memory)
+
+            menu.addSection('Ratios')
+
+            ratio_labels = [
+                QAction(
+                    _color_icon(color),
+                    f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
+                    enabled=False,
+                )
+                for color, label_info in self.ratios.items()
+            ]
+            menu.addActions(ratio_labels)
+
+            menu.addSeparator()
+            immunophenotyper_action = QAction(
+                'Immunophenotype', self, enabled=self.has_events
             )
-        )
-        menu.addAction(immunophenotyper_action)
+            immunophenotyper_action.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.IMMUNOPHENOTYPE, dict(color=self.color)
+                )
+            )
+            menu.addAction(immunophenotyper_action)
 
         menu.exec(self.mapToGlobal(pos))
 

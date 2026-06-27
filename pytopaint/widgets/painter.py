@@ -55,6 +55,7 @@ class Painter(QWidget):
             MenuAction.ZAP: self.zap_color,
             MenuAction.EXACT_ZAP: self.exact_zap_color,
             MenuAction.ZAP_ALL: self.zap_all,
+            MenuAction.ZAP_ALL_BUT: self.zap_all_but,
             MenuAction.MERGE_COLOR: self.merge_color,
             MenuAction.UNHIDE_ALL: self.unhide_all,
             MenuAction.HIDE: self.hide_color,
@@ -314,6 +315,10 @@ class Painter(QWidget):
     @record_action
     def zap_all(self):
         self.df['color'] = Color.GREY
+
+    @record_action
+    def zap_all_but(self, color: Color):
+        self.df.loc[self.df.color != color, 'color'] = Color.GREY
 
     @record_action
     def replace_state(self, color_state: pd.Series):
