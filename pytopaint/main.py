@@ -129,17 +129,20 @@ class MainWindow(QMainWindow):
 
         painter = self.get_active_painter()
         sample = painter.data.sample
-        metadata = sample.get_metadata()
-        event_mask = np.isin(np.arange(sample.event_count), painter.df.index)
-        df = sample.as_dataframe(source='raw', event_mask=event_mask)
+        event_mask: np.ndarray = np.isin(
+            np.arange(sample.event_count), painter.df.index
+        )
+        event_matrix: np.ndarray = np.reshape(
+            sample.events, (-1, sample.channel_count)
+        )[event_mask]
 
         stream = BytesIO()
         flowio.create_fcs(
             stream,
-            df.to_numpy().flatten().tolist(),
+            event_matrix.flatten(),
             sample.pnn_labels,
             opt_channel_names=sample.pns_labels,
-            metadata_dict=metadata,
+            metadata_dict=sample.text,
         )
         stream.seek(0)
 

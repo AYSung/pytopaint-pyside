@@ -65,10 +65,9 @@ class FlowData:
     def channel_details(self) -> list[str]:
         return [
             f'{marker} ({fluor})' if marker else fluor
-            for fluor, marker in self.sample.channels[['pnn', 'pns']].to_records(
-                index=False
-            )
-            if fluor not in _get_empty_channels(self.sample.channels)
+            for fluor, marker in zip(self.sample.pnn_labels, self.sample.pns_labels)
+            if fluor
+            not in _get_empty_channels(self.sample.pnn_labels, self.sample.pns_labels)
         ]
 
     @property
