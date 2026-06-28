@@ -77,31 +77,36 @@ class Immunophenotyper(QDialog):
 
     def copy_report_template(self) -> None:
         clipboard = QApplication.clipboard()
-        clipboard.setText(self.generate_report_template())
+        clipboard.setText(generate_report_template(self.channels, self.percent))
 
-    def generate_report_template(self) -> str:
-        def _add_marker_smartlist(channel) -> str:
-            if channel in ['Kappa', 'Lambda']:
-                return f'{{surface/IC:46754}} {channel.lower()} light chain ({{+/-:40630}})'
-            return f'{channel} ({{+/-:40630}})'
 
-        def _join_list(channels: list[str]) -> str:
-            if not channels:
-                return ''
-            elif len(channels) == 1:
-                return _add_marker_smartlist(channels[0])
-            elif len(channels) == 2:
-                return f'{_add_marker_smartlist(channels[0])} and {_add_marker_smartlist(channels[1])}'
+def generate_report_template(ip_channels: list[str], percent_events: float) -> str:
+    immunophenotype_markers = [
+        _add_marker_smartlist(channel)
+        for channel in ip_channels
+        if channel not in PHYSICAL_PARAMETERS
+    ]
 
-            return f'{", ".join(map(_add_marker_smartlist, channels[:-1]))}, and {_add_marker_smartlist(channels[-1])}'
+    template = f"""Immunophenotypic analysis reveals a population of {{cell lineage selection:40658}} cells ({_format_percent(percent_events)} of total events) with {{light scatter strength:40657}} forward light scatter, {{light scatter strength:40657}} orthogonal light scatter, and the following immunophenotype: {_join_list(immunophenotype_markers)}"""
 
-        channels = [
-            channel for channel in self.channels if channel not in PHYSICAL_PARAMETERS
-        ]
+    return template
 
-        template = f"""Immunophenotypic analysis reveals a population of {{cell lineage selection:40658}} cells ({_format_percent(self.percent)} of total events) with {{light scatter strength:40657}} forward light scatter, {{light scatter strength:40657}} orthogonal light scatter, and the following immunophenotype: {_join_list(channels)}"""
 
-        return template
+def _add_marker_smartlist(channel) -> str:
+    if channel in ['Kappa', 'Lambda']:
+        return f'{{surface/IC:46754}} {channel.lower()} light chain ({{+/-:40630}})'
+    return f'{channel} ({{+/-:40630}})'
+
+
+def _join_list(_list: list[str]) -> str:
+    if not _list:
+        return ''
+    elif len(_list) == 1:
+        return _list[0]
+    elif len(_list) == 2:
+        return ' and '.join(_list)
+
+    return f'{", ".join(_list[:-1])}, and {_list[-1]}'
 
 
 class ImmunophenotypePlot(QWidget):
