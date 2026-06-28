@@ -14,10 +14,7 @@ from PySide6.QtGui import (
     QMouseEvent,
     QShortcut,
 )
-from PySide6.QtWidgets import (
-    QVBoxLayout,
-    QWidget,
-)
+from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
@@ -96,6 +93,11 @@ class Painter(QWidget):
         self.biplot_grid = BiplotGrid()
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
+        biplot_grid_container = QWidget()
+        biplot_grid_container.setSizePolicy(
+            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        )
+        biplot_grid_container.setLayout(self.biplot_grid)
 
         layout_config = get_best_layout(channels=self.df.columns)
 
@@ -106,7 +108,7 @@ class Painter(QWidget):
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.addWidget(palette)
-        layout.addLayout(self.biplot_grid)
+        layout.addWidget(biplot_grid_container)
         layout.addStretch()
         self.setLayout(layout)
 

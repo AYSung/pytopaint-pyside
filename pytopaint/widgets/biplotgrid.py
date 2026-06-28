@@ -6,7 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from PySide6.QtCore import Slot, Signal
-from PySide6.QtWidgets import QGridLayout, QLayout
+from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
@@ -19,7 +19,6 @@ class BiplotGrid(QGridLayout):
     def __init__(self) -> None:
         super().__init__()
         self.setSpacing(5)
-        self.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
     def add_biplot(self, biplot: Biplot, coords: tuple[int, int]) -> None:
         row, col = coords
