@@ -1,21 +1,24 @@
 from itertools import batched
-import pandas as pd
 
-from PySide6.QtCore import QPoint, QRect, Qt, QLine
+import pandas as pd
+from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
-    QGridLayout,
-    QLabel,
-    QWidget,
+    QApplication,
     QDialog,
-    QVBoxLayout,
+    QGridLayout,
     QHBoxLayout,
+    QLabel,
     QLayout,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
 )
 
-from pytopaint.colors import BACKGROUND, get_color_map, Color
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels, ADDED_PARAMETERS
+from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
+from pytopaint.flowdata import ADDED_PARAMETERS, PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.widgets.palette import _format_percent
 
 
 class Immunophenotyper(QDialog):
@@ -29,13 +32,16 @@ class Immunophenotyper(QDialog):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
 
-        channels = get_ip_channels(sort_channels(df.columns))
+        self.channels = get_ip_channels(sort_channels(df.columns))
 
-        layout = QHBoxLayout()
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-        layout.setSpacing(20)
+        self.percent = df.color.loc[df.color == color].size / df.color.size
+
+        layout = QVBoxLayout()
+        ip_layout = QHBoxLayout()
+        ip_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        ip_layout.setSpacing(20)
         ROWS_PER_COLUMN = 6
-        columns = batched(channels, ROWS_PER_COLUMN)
+        columns = batched(self.channels, ROWS_PER_COLUMN)
         for column in columns:
             column_layout = QVBoxLayout()
             column_layout.setSpacing(0)
@@ -49,8 +55,53 @@ class Immunophenotyper(QDialog):
                     )
                 )
             column_layout
-            layout.addLayout(column_layout)
+            ip_layout.addLayout(column_layout)
+        layout.addLayout(ip_layout)
+
+        copy_button = QPushButton('Copy Report Template', self)
+        copy_button.setFixedWidth(200)
+        copy_button.clicked.connect(lambda: self.copy_clicked(copy_button))
+        layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.setLayout(layout)
+
+    def copy_clicked(self, button: QPushButton) -> None:
+        def restore_button():
+            button.setEnabled(True)
+            button.setText('Copy Report Template')
+
+        self.copy_report_template()
+        button.setEnabled(False)
+        button.setText('Copied!')
+        QTimer.singleShot(2000, restore_button)
+
+    def copy_report_template(self) -> None:
+        clipboard = QApplication.clipboard()
+        clipboard.setText(self.generate_report_template())
+
+    def generate_report_template(self) -> str:
+        def _add_marker_smartlist(channel) -> str:
+            if channel in ['Kappa', 'Lambda']:
+                return f'{{surface/IC:46754}} {channel.lower()} light chain ({{+/-:40630}})'
+            return f'{channel} ({{+/-:40630}})'
+
+        def _join_list(channels: list[str]) -> str:
+            if not channels:
+                return ''
+            elif len(channels) == 1:
+                return _add_marker_smartlist(channels[0])
+            elif len(channels) == 2:
+                return f'{_add_marker_smartlist(channels[0])} and {_add_marker_smartlist(channels[1])}'
+
+            return f'{", ".join(map(_add_marker_smartlist, channels[:-1]))}, and {_add_marker_smartlist(channels[-1])}'
+
+        channels = [
+            channel for channel in self.channels if channel not in PHYSICAL_PARAMETERS
+        ]
+
+        template = f"""Immunophenotypic analysis reveals a population of {{cell lineage selection:40658}} cells ({_format_percent(self.percent)} of total events) with {{light scatter strength:40657}} forward light scatter, {{light scatter strength:40657}} orthogonal light scatter, and the following immunophenotype: {_join_list(channels)}"""
+
+        return template
 
 
 class ImmunophenotypePlot(QWidget):
