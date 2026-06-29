@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "anndata>=0.12.18",
     "flowio>=1.4.0",
     "flowutils>=1.2.2",
     "geopandas>=1.1.3",
