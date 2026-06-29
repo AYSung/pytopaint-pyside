@@ -99,14 +99,10 @@ def _add_marker_smartlist(channel) -> str:
 
 
 def _join_list(_list: list[str]) -> str:
-    if not _list:
-        return ''
-    elif len(_list) == 1:
-        return _list[0]
-    elif len(_list) == 2:
+    if len(_list) <= 2:
         return ' and '.join(_list)
-
-    return f'{", ".join(_list[:-1])}, and {_list[-1]}'
+    else:
+        return f'{", ".join(_list[:-1])}, and {_list[-1]}'
 
 
 class ImmunophenotypePlot(QWidget):
