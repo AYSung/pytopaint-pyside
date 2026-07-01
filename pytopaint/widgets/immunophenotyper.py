@@ -8,6 +8,7 @@
 
 from itertools import batched
 
+import anndata as ad
 import pandas as pd
 from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
@@ -32,34 +33,39 @@ from pytopaint.widgets.palette import _format_percent
 class Immunophenotyper(QDialog):
     def __init__(
         self,
-        df: pd.DataFrame,
-        axis_ticks: dict[str, tuple[int, str]],
+        data: ad.AnnData,
         color: Color,
         parent=None,
     ):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
 
-        self.channels = get_ip_channels(sort_channels(df.columns))
+        channels = sort_channels(get_ip_channels(data.var_names))
+        df = (
+            pd
+            .DataFrame(data[:, channels].layers['bin'], columns=channels)
+            .assign(color=data.obs[['color']].to_numpy())
+            .astype('uint8')
+        )
 
-        self.percent = df.color.loc[df.color == color].size / df.color.size
+        self.percent = data.obs['color'].loc[lambda s: s == color].size / data.n_obs
 
         layout = QVBoxLayout()
         ip_layout = QHBoxLayout()
         ip_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout.setSpacing(20)
         ROWS_PER_COLUMN = 6
-        columns = batched(self.channels, ROWS_PER_COLUMN)
+        columns = batched(channels, ROWS_PER_COLUMN)
         for column in columns:
             column_layout = QVBoxLayout()
             column_layout.setSpacing(0)
             for channel in column:
                 column_layout.addWidget(
-                    ImmunophenotypePlot(
-                        df=df[[channel, 'color']],
+                    immunophenotype_plot(
+                        data=df[[channel, 'color']],
                         channel=channel,
-                        axis_ticks=axis_ticks[channel],
                         target_color=color,
+                        axis_ticks=data.uns['axis_ticks'][channel],
                     )
                 )
             column_layout
@@ -113,86 +119,76 @@ def _join_list(_list: list[str]) -> str:
         return f'{", ".join(_list[:-1])}, and {_list[-1]}'
 
 
-class ImmunophenotypePlot(QWidget):
-    def __init__(
-        self,
-        df: pd.DataFrame,
-        channel: str,
-        axis_ticks: tuple[int, str],
-        target_color: Color,
-        parent=None,
-    ):
-        super().__init__(parent)
-        self.channel = channel
+def immunophenotype_plot(
+    data: pd.DataFrame,
+    channel: str,
+    target_color: Color,
+    axis_ticks: list[tuple[int, str]],
+) -> QWidget:
+    plot = QWidget()
+    layout = QGridLayout()
+    layout.setSpacing(0)
+    layout.setContentsMargins(0, 0, 0, 6)
+    channel_label = QLabel(channel)
+    channel_label.setStyleSheet('font-weight: bold; margin-bottom: 6px;')
 
-        layout = QGridLayout()
-        layout.setSpacing(0)
-        layout.setContentsMargins(0, 0, 0, 6)
-        channel_label = QLabel(channel)
-        channel_label.setStyleSheet('font-weight: bold; margin-bottom: 6px;')
+    layout.addWidget(channel_label, 0, 0)
+    layout.addWidget(histogram(data=data, target_color=target_color), 1, 0)
+    layout.addWidget(histogram_axis(channel, axis_ticks), 2, 0)
 
-        layout.addWidget(channel_label, 0, 0)
-        layout.addWidget(
-            Histogram(df=df, channel=channel, target_color=target_color), 1, 0
-        )
-        layout.addWidget(histogram_axis(channel, axis_ticks), 2, 0)
-
-        self.setLayout(layout)
+    plot.setLayout(layout)
+    return plot
 
 
-class Histogram(QLabel):
-    def __init__(
-        self, df: pd.DataFrame, channel: str, target_color: Color, parent=None
-    ):
-        super().__init__(parent)
-        canvas = QPixmap(get_resolution(), 40)
-        canvas.fill(BACKGROUND)
-        painter = QPainter(canvas)
-        self.draw_histogram(painter, df, channel, target_color)
-        painter.end()
-        self.setPixmap(canvas)
+def histogram(data: pd.DataFrame, target_color: Color) -> QLabel:
+    histogram = QLabel()
+    MAX_HEIGHT = 9
 
-    def draw_histogram(
-        self, painter: QPainter, df: pd.DataFrame, channel: str, target_color: Color
-    ) -> None:
-        pen = QPen()
+    canvas = QPixmap(get_resolution(), 40)
+    canvas.fill(BACKGROUND)
+    painter = QPainter(canvas)
+    pen = QPen()
 
-        painter.translate(0, 10)
-        pen.setColor(get_color_map()[target_color])
+    df = (
+        data
+        .groupby('color')
+        .value_counts()
+        .groupby('color')
+        .transform(lambda x: x / x.max() * MAX_HEIGHT)
+        .reset_index()
+        .groupby('color')
+    )
+
+    painter.translate(0, 10)
+    pen.setColor(get_color_map()[target_color])
+    painter.setPen(pen)
+    painter.drawLines([
+        QLine(x, -count, x, count)
+        for x, count in df
+        .get_group(target_color)
+        .drop(columns='color')
+        .to_records(index=False)
+    ])
+
+    painter.translate(0, 20)
+    other_colors = [color for color in data['color'].unique() if color != target_color]
+    for color in other_colors:
+        pen.setColor(get_color_map()[color])
         painter.setPen(pen)
         painter.drawLines([
             QLine(x, -count, x, count)
-            for x, count in to_histogram_values(
-                df=df, channel=channel, color=target_color
-            )
+            for x, count in df
+            .get_group(color)
+            .drop(columns='color')
+            .to_records(index=False)
         ])
 
-        painter.translate(0, 20)
-        other_colors = [color for color in Color if color != target_color]
-        for color in other_colors:
-            pen.setColor(get_color_map()[color])
-            painter.setPen(pen)
-            painter.drawLines([
-                QLine(x, -count, x, count)
-                for x, count in to_histogram_values(df=df, channel=channel, color=color)
-            ])
+    painter.end()
+    histogram.setPixmap(canvas)
+    return histogram
 
 
-def to_histogram_values(
-    df: pd.DataFrame, channel: str, color: Color
-) -> tuple[int, int]:
-    MAX_HEIGHT = 9
-    return (
-        df
-        .loc[df.color == color, channel]
-        .value_counts()
-        .reset_index()
-        .assign(count=lambda x: x['count'] / x['count'].max() * MAX_HEIGHT)
-        .to_records(index=False)
-    )
-
-
-def histogram_axis(channel: str, axis_ticks: tuple[int, str]) -> QLabel:
+def histogram_axis(channel: str, axis_ticks: list[tuple[int, str]]) -> QLabel:
     axis = QLabel()
 
     canvas = QPixmap(get_resolution(), 20)
@@ -233,5 +229,5 @@ def get_ip_channels(channels: list[str]) -> list[str]:
     return [
         channel
         for channel in channels
-        if channel not in ['FSC-H', 'SSC-H', 'Time', 'color'] + ADDED_PARAMETERS
+        if channel not in ['FSC-H', 'SSC-H', 'Time'] + ADDED_PARAMETERS
     ]

@@ -5,8 +5,9 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import anndata as ad
 import pandas as pd
-from PySide6.QtCore import QPoint, QRect, Qt, Signal, Slot, QSize
+from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal, Slot
 from PySide6.QtGui import QAction, QFont, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -22,8 +23,8 @@ from PySide6.QtWidgets import (
 from pytopaint.colors import (
     BACKGROUND,
     Color,
-    indices_by_color,
     get_color_map,
+    indices_by_color,
 )
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
@@ -37,23 +38,23 @@ class Biplot(QWidget):
 
     def __init__(
         self,
-        df: pd.DataFrame,
+        data: ad.AnnData,
         x_label: str,
         y_label: str,
-        axis_ticks: dict[str, tuple[int, str]],
     ):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
-        self.df = df
-        channels = sort_channels([col for col in df.columns if col not in ['color']])
+        self.data = data
+
+        channels = sort_channels([col for col in data.var_names])
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.x_axis = XAxis(x_label, channels, axis_ticks)
+        self.x_axis = XAxis(x_label, channels, data.uns['axis_ticks'])
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.update_title)
-        self.y_axis = YAxis(y_label, channels, axis_ticks)
+        self.y_axis = YAxis(y_label, channels, data.uns['axis_ticks'])
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
 
@@ -84,14 +85,14 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object, dict)
-    def set_data(self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]):
-        self.df = df
-
-        channels = sort_channels([col for col in df.columns if col not in ['color']])
+    @Slot(object)
+    def set_data(self, _: ad.AnnData):
+        channels = sort_channels([col for col in self.data.var_names])
         if (self.x_axis.channels != channels) or (self.y_axis.channels != channels):
             self.x_axis.channels = channels
             self.y_axis.channels = channels
+
+        axis_ticks = self.data.uns['axis_ticks']
 
         self.x_axis.set_axis_ticks(axis_ticks)
         self.y_axis.set_axis_ticks(axis_ticks)
@@ -103,7 +104,13 @@ class Biplot(QWidget):
             self.plot.clear()
             return
 
-        df = self.df[[self.x_axis.label, self.y_axis.label, 'color']].drop_duplicates()
+        data = self.data[self.data.obs['visible']]
+        df = pd.DataFrame({
+            self.x_axis.label: data[:, self.x_axis.label].layers['bin'].flatten(),
+            self.y_axis.label: data[:, self.y_axis.label].layers['bin'].flatten(),
+            'color': data.obs['color'],
+        }).drop_duplicates()
+
         self.plot.set_working_data(
             x_data=df[self.x_axis.label],
             y_data=df[self.y_axis.label],

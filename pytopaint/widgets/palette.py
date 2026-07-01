@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import anndata as ad
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QMouseEvent, QPainter, QPixmap
@@ -68,9 +69,9 @@ class Palette(QWidget):
         self.setLayout(layout)
 
     @Slot(object)
-    def update_labels(self, df: pd.DataFrame):
-        events = events_by_color(df.color)
-        total_events = df.color.size
+    def update_labels(self, data: ad.AnnData):
+        events = events_by_color(data.obs['color'])
+        total_events = data.obs['visible'].sum()
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
         self.eventsUpdated.emit(events, total_events)
@@ -126,7 +127,7 @@ class ColorLabel(QWidget):
     @Slot(object, int)
     def update_label(self, events: dict[Color, int], total_events: int):
         self.event_count = events.get(self.color, 0)
-        percent = self.event_count / total_events
+        percent = self.event_count / total_events if total_events > 0 else 0
         if (self.event_count >= 100) or (self.event_count == 0):
             self.label.setText(_format_percent(percent))
         else:
@@ -375,6 +376,10 @@ class MemorySlot(QToolButton):
         return self.memory is not None
 
     def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.memory is None:
+            super().mouseReleaseEvent(e)
+            return
+
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
@@ -425,12 +430,12 @@ class MemorySlot(QToolButton):
 
     def replace_state(self):
         self.menuActionTriggered.emit(
-            MenuAction.REPLACE_STATE, dict(color_state=self.memory)
+            MenuAction.REPLACE_STATE, dict(memory_state=self.memory)
         )
 
     def merge_state(self):
         self.menuActionTriggered.emit(
-            MenuAction.MERGE_STATE, dict(color_state=self.memory)
+            MenuAction.MERGE_STATE, dict(memory_state=self.memory)
         )
 
     def store_state(self, color_state: pd.Series):

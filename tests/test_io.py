@@ -10,7 +10,7 @@ from pytopaint.flowdata import (
     bin_df,
     sort_channels,
     _clean_marker_name,
-    _get_channels,
+    _get_channel_names,
     _get_compensation,
     UPPER_PHYSICAL,
     lower_clip_limit,
@@ -89,7 +89,7 @@ def test_get_channels():
         columns=['pnn', 'pns'],
     )
 
-    assert _get_channels(test_df.pnn.to_list(), test_df.pns.to_list()) == [
+    assert _get_channel_names(test_df.pnn.to_list(), test_df.pns.to_list()) == [
         'FSC-A',
         'FSC-H',
         'SSC-A',

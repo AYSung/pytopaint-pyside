@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import anndata as ad
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -22,12 +23,12 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.config import (
+    get_lower_asinh_bound,
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
-    get_lower_asinh_bound,
 )
-from pytopaint.flowdata import sort_channels, FlowData
+from pytopaint.flowdata import sort_channels
 
 
 def about_dialog(parent: QWidget) -> None:
@@ -165,13 +166,18 @@ class PlotScaleDialog(QDialog):
         return self.lower_arcsinh_limit_input.value()
 
 
-def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
+def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
     dialog = QDialog(parent)
     dialog.setWindowTitle('File Info')
 
-    file_name = QLabel(f'File Name: {data.sample.name}')
-    event_count = QLabel(f'Event Count: {data.sample.event_count:,}')
-    channels = data.channel_details
+    file_name = QLabel(f'File Name: {data.uns["filename"]}')
+    event_count = QLabel(f'Event Count: {data.n_obs}')
+    channels = [
+        f'{marker} ({fluor})'
+        for fluor, marker in data.var.loc[
+            data.var['channel_type'] == 'fluoro', ['pnn_label', 'pns_label']
+        ].to_records(index=False)
+    ]
     channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
 
     button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok)
@@ -179,8 +185,8 @@ def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
 
     layout = QVBoxLayout()
     layout.addWidget(file_name)
-    if data.tube is not None:
-        tube_label = QLabel(f'Tube: {data.tube}')
+    if tube := data.uns.get('tube') is not None:
+        tube_label = QLabel(f'Tube: {tube}')
         layout.addWidget(tube_label)
     layout.addWidget(event_count)
     layout.addWidget(channels_label)

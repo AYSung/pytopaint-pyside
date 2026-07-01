@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
+import anndata as ad
 from functools import wraps
 
 from PySide6.QtCore import Qt, Signal, Slot
@@ -19,12 +20,13 @@ from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
-    add_color_to_selection,
+    _add_color_to_series,
     merge_colors,
-    subtract_color_from_selection,
+    _subtract_color_from_series,
 )
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import FlowData
+
+from pytopaint.flowdata import set_scale, set_size
 from pytopaint.layout import get_best_layout, LayoutConfig
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
@@ -36,14 +38,14 @@ from pytopaint.widgets.immunophenotyper import Immunophenotyper
 
 class Painter(QWidget):
     activeColorChanged = Signal(int)
-    dataUpdated = Signal(object, dict)
+    dataUpdated = Signal(object)
     highlightsUpdated = Signal(list)
     resizeTriggered = Signal(int)
     colorStateReturned = Signal(int, object)
     memoryStateReturned = Signal(int, object)
     colorPaletteChanged = Signal()
 
-    def __init__(self, data: FlowData):
+    def __init__(self, data: ad.AnnData):
         super().__init__()
         self.configure_shortcuts()
 
@@ -73,9 +75,7 @@ class Painter(QWidget):
         }
 
         self.data = data
-
-        self.df = self.data.binned_df.assign(color=Color.GREY)
-        self.undo_history = [self.df.color.copy()]
+        self.undo_history = [self.data.obs.copy()]
         self.redo_history = []
         self.active_color = Color.BLUE
 
@@ -99,7 +99,7 @@ class Painter(QWidget):
         )
         biplot_grid_container.setLayout(self.biplot_grid)
 
-        layout_config = get_best_layout(channels=self.df.columns)
+        layout_config = get_best_layout(channels=self.data.var_names)
 
         for coords, labels in layout_config.grid.items():
             self.biplot_grid.add_biplot(self.new_biplot(labels), coords)
@@ -216,37 +216,48 @@ class Painter(QWidget):
         e: QMouseEvent,
     ):
         modifiers = e.modifiers()
+
+        if e.button() == Qt.MouseButton.MiddleButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.exact_zap_color(self.active_color)
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.zap_color(self.active_color)
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                self.zap_all()
+            return
+
         selection = get_selection_index(
             selection_geometry,
-            self.df,
+            self.data,
             x_label=x_label,
             y_label=y_label,
-        )
+        ).intersection(self.data.obs.loc[lambda x: x['visible']].index)
+        if selection.empty:
+            return
 
         if e.button() == Qt.MouseButton.LeftButton:
-            # if not selection.empty:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
-                self.df = add_color_to_selection(self.df, self.active_color, selection)
+                self.data.obs.loc[selection, 'color'] = _add_color_to_series(
+                    self.data.obs.loc[selection, 'color'], self.active_color
+                )
 
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # ignore unselected points (paint composite color)
-                self.df = add_color_to_selection(
-                    self.df,
-                    self.active_color,
-                    selection.difference(
-                        self.df.color.loc[lambda s: s == Color.GREY].index
-                    ),
+                selection = selection.difference(
+                    self.data.obs.loc[lambda x: x['color'] == Color.GREY, 'color'].index
+                )
+                self.data.obs.loc[selection, 'color'] = _add_color_to_series(
+                    self.data.obs.loc[selection, 'color'], self.active_color
                 )
 
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # ignore painted
-                self.df = add_color_to_selection(
-                    self.df,
-                    self.active_color,
-                    selection.intersection(
-                        self.df.color.loc[lambda s: s == Color.GREY].index
-                    ),
+                selection = selection.intersection(
+                    self.data.obs.loc[lambda x: x['color'] == Color.GREY].index
+                )
+                self.data.obs.loc[selection, 'color'] = _add_color_to_series(
+                    self.data.obs.loc[selection, 'color'], self.active_color
                 )
 
             elif (
@@ -255,35 +266,26 @@ class Painter(QWidget):
                 | Qt.KeyboardModifier.ShiftModifier
             ):
                 # override colors
-                self.df.loc[selection, 'color'] = self.active_color
+                self.data.obs.loc[selection, 'color'] = self.active_color
 
         elif e.button() == Qt.MouseButton.RightButton:
             # if not selection.empty:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # zap color from selection
-                self.df = subtract_color_from_selection(
-                    self.df,
-                    self.active_color,
-                    selection.intersection(
-                        self.df.color.loc[lambda s: s == self.active_color].index
-                    ),
+                selection = selection.intersection(
+                    self.data.obs.loc[lambda x: x['color'] == self.active_color].index
                 )
+                self.data.obs.loc[selection, 'color'] = Color.GREY
+
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # exact zap color from selection
-                self.df = subtract_color_from_selection(
-                    self.df, self.active_color, selection
+                self.data.obs.loc[selection, 'color'] = _subtract_color_from_series(
+                    self.data.obs.loc[selection, 'color'], self.active_color
                 )
 
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # subtract all
-                self.df.loc[selection, 'color'] = Color.GREY
-        elif e.button() == Qt.MouseButton.MiddleButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.exact_zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                self.zap_all()
+                self.data.obs.loc[selection, 'color'] = Color.GREY
 
         self.record_current_state()
         self.emit_changes()
@@ -308,35 +310,36 @@ class Painter(QWidget):
 
     @record_action
     def zap_color(self, color: Color):
-        self.df = subtract_color_from_selection(self.df, color, self.df.index)
+        self.data.obs['color'] = _subtract_color_from_series(
+            self.data.obs['color'], color
+        )
 
     @record_action
     def exact_zap_color(self, color: Color):
-        self.df.loc[self.df.color == color, 'color'] = Color.GREY
+        self.data.obs.loc[lambda x: x['visible'] & (x['color'] == color), 'color'] = (
+            Color.GREY
+        )
 
     @record_action
     def zap_all(self):
-        self.df['color'] = Color.GREY
+        self.data.obs.loc[lambda x: x['visible'], 'color'] = Color.GREY
 
     @record_action
     def zap_all_but(self, color: Color):
-        self.df.loc[self.df.color != color, 'color'] = Color.GREY
+        self.data.obs.loc[
+            lambda x: lambda x: x['visible'] & (x['color'] != color), 'color'
+        ] = Color.GREY
 
     @record_action
-    def replace_state(self, color_state: pd.Series):
-        self.df = self.data.binned_df.loc[color_state.index].assign(color=color_state)
+    def replace_state(self, memory_state: pd.DataFrame):
+        self.data.obs = memory_state.copy()
 
     @record_action
-    def merge_state(self, color_state: pd.Series):
-        current_colors = self.df.color.copy()
-        self.df = self.data.binned_df.loc[
-            color_state.index.union(self.df.index)
-        ].assign(color=Color.GREY)
-        self.df.color.update(current_colors.loc[current_colors != Color.GREY])
-        self.df.color.update(color_state.loc[color_state != Color.GREY])
+    def merge_state(self, memory_state: pd.DataFrame):
+        self.data.obs.update(memory_state.loc[lambda x: x['color'] != Color.GREY])
 
     def store_state(self, slot: int):
-        self.memoryStateReturned.emit(slot, self.df.color.copy())
+        self.memoryStateReturned.emit(slot, self.data.obs.copy())
 
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
@@ -344,7 +347,7 @@ class Painter(QWidget):
 
     def store_color(self, color: Color):
         self.colorStateReturned.emit(
-            color, self.df.color.loc[lambda s: s == color].copy()
+            color, self.data.obs.loc[lambda x: x['color'] == color, 'color'].copy()
         )
 
     def store_color_and_clear(self, color: Color):
@@ -353,47 +356,49 @@ class Painter(QWidget):
 
     @record_action
     def recall_color(self, color_state: pd.Series):
-        self.df.color.update(color_state)
+        self.data.obs['color'].update(color_state)
 
     @record_action
     def merge_color(self, source_color: Color, target_color: Color):
-        self.df = merge_colors(self.df, [source_color], target_color)
+        self.data.obs = merge_colors(self.data.obs, [source_color], target_color)
 
     @record_action
     def unhide_all(self) -> None:
-        current_colors = self.df.color.copy()
-        self.df = self.data.binned_df.assign(color=Color.GREY)
-        self.df.color.update(current_colors)
+        self.data.obs['visible'] = True
 
     @record_action
     def hide_color(self, color: Color):
-        self.df = self.df.loc[self.df.color != color]
+        self.data.obs.loc[lambda x: x['color'] == color, 'visible'] = False
 
     @record_action
     def isolate_color(self, color: Color):
-        if (self.df.color == color).any():
-            self.df = self.df.loc[self.df.color == color].assign(color=Color.GREY)
+        if any(self.data.obs['color'] == color):
+            self.data.obs.loc[lambda x: x['color'] != color, 'visible'] = False
+            self.data.obs.loc[lambda x: x['visible'], 'color'] = Color.GREY
 
     @record_action
     def subsample_df(self, n: int):
-        self.df = self.df.sample(n, random_state=42)
+        subsample_indices = (
+            self.data.obs.loc[lambda x: x['visible']].sample(n, random_state=42).index
+        )
+        self.data.obs.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
+        raise NotImplementedError
         self.data.add_umap_dims()
         self.df = self.data.binned_df.assign(color=self.df.color)
         self.emit_changes()
 
     @record_action
     def reset_df(self):
-        self.df = self.data.binned_df.assign(color=Color.GREY)
-        self.record_current_state()
-        self.emit_changes()
+        self.data.obs['color'] = Color.GREY
+        self.data.obs['visible'] = True
 
     def record_current_state(self):
-        if self.df.color.equals(self.undo_history[-1]):
+        if self.data.obs.equals(self.undo_history[-1]):
             return
 
-        self.undo_history += [self.df.color.copy()]
+        self.undo_history += [self.data.obs.copy()]
         self.redo_history = []
 
     @Slot()
@@ -401,15 +406,10 @@ class Painter(QWidget):
         if len(self.undo_history) <= 1:
             return
 
-        current_state = self.undo_history.pop()
-        previous_state = self.undo_history[-1]
+        current_state: pd.DataFrame = self.undo_history.pop()
+        previous_state: pd.DataFrame = self.undo_history[-1]
         self.redo_history += [current_state]
-        if len(self.df.index) != len(previous_state):
-            self.df = self.data.binned_df.loc[previous_state.index].assign(
-                color=previous_state
-            )
-        else:
-            self.df['color'] = previous_state
+        self.data.obs = previous_state.copy()
 
         self.emit_changes()
 
@@ -418,19 +418,14 @@ class Painter(QWidget):
         if not self.redo_history:
             return
 
-        previous_state = self.redo_history.pop()
+        previous_state: pd.DataFrame = self.redo_history.pop()
         self.undo_history += [previous_state]
-        if len(self.df.index) != len(previous_state):
-            self.df = self.data.binned_df.loc[previous_state.index].assign(
-                color=previous_state
-            )
-        else:
-            self.df['color'] = previous_state
+        self.data.obs = previous_state.copy()
 
         self.emit_changes()
 
     def emit_changes(self):
-        self.dataUpdated.emit(self.df, self.data.axis_ticks)
+        self.dataUpdated.emit(self.data[self.data.obs['visible']])
 
     @Slot(int)
     def handle_highlights(self, color: Color):
@@ -443,14 +438,13 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
-        self.data.update_bins()
-        self.df = self.data.binned_df.loc[self.df.index].assign(color=self.df['color'])
+        set_size(self.data)
         self.resizeTriggered.emit(get_resolution())
         self.emit_changes()
 
     @Slot()
     def handle_rescale(self) -> None:
-        self.data.update_scale()
+        set_scale(self.data)
         self.handle_resize()
 
     def update_layout(self, layout: LayoutConfig) -> None:
@@ -458,8 +452,8 @@ class Painter(QWidget):
             layout_item = self.biplot_grid.itemAtPosition(*coords)
             if layout_item is not None:
                 x_label, y_label = labels
-                x_label = x_label if x_label in self.data.sorted_channels else None
-                y_label = y_label if y_label in self.data.sorted_channels else None
+                x_label = x_label if x_label in self.data.var_names else None
+                y_label = y_label if y_label in self.data.var_names else None
 
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
@@ -469,10 +463,9 @@ class Painter(QWidget):
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
         biplot = Biplot(
-            df=self.df,
+            data=self.data,
             x_label=x_label,
             y_label=y_label,
-            axis_ticks=self.data.axis_ticks,
         )
         biplot.pointsSelected.connect(self.handle_selection)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
@@ -535,7 +528,8 @@ class Painter(QWidget):
 
     def open_immunophenotyper_dialog(self, color: Color):
         dialog = Immunophenotyper(
-            df=self.df, axis_ticks=self.data.axis_ticks, color=color, parent=self
+            data=self.data[self.data.obs['visible'], :],
+            color=color,
+            parent=self,
         )
         dialog.exec()
-        # if dialog.exec() == QDialog.DialogCode.Accepted:

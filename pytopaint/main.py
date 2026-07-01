@@ -6,6 +6,9 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import sys
+import cProfile
+import pstats
+
 from io import BytesIO
 from multiprocessing import freeze_support
 from pathlib import Path
@@ -50,7 +53,7 @@ from pytopaint.config import (
     set_upper_asinh_bound,
     set_window_position,
 )
-from pytopaint.flowdata import FlowData
+from pytopaint.flowdata import read_fcs
 from pytopaint.layout import read_yaml
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
@@ -107,10 +110,9 @@ class MainWindow(QMainWindow):
 
     def open_file(self, file: Path):
         try:
-            file_path = Path(file)
-            flowdata = FlowData.from_path(file_path)
+            data = read_fcs(Path(file))
 
-            painter = Painter(flowdata)
+            painter = Painter(data)
             self.painter_tabs.add_painter(painter)
 
         except ValueError as e:
@@ -128,10 +130,8 @@ class MainWindow(QMainWindow):
             return
 
         painter = self.get_active_painter()
-        sample = painter.data.sample
-        event_mask: np.ndarray = np.isin(
-            np.arange(sample.event_count), painter.df.index
-        )
+        sample: flowio.FlowData = painter.data.uns['fcs']
+        event_mask = painter.data.obs['visible'].to_numpy()
         event_matrix: np.ndarray = np.reshape(
             sample.events, (-1, sample.channel_count)
         )[event_mask]
@@ -183,7 +183,7 @@ class MainWindow(QMainWindow):
 
     def subsample(self) -> None:
         n, ok = subsample_dialog(
-            self, total_events=self.get_active_painter().df.shape[0]
+            self, total_events=self.get_active_painter().data.obs['visible'].sum()
         )
         if ok:
             self.get_active_painter().handle_menu_action(
@@ -376,8 +376,18 @@ def main():
     window = MainWindow()
     window.show()
 
-    app.exec()
+    profiler = cProfile.Profile()
+    profiler.enable()
+
+    exit_code = app.exec()
     app.clipboard().clear()
+
+    profiler.disable()
+    stats = pstats.Stats(profiler).sort_stats('cumulative')
+    stats.print_stats(30)
+    profiler.dump_stats('app.prof')
+
+    sys.exit(exit_code)
 
 
 if __name__ == '__main__':

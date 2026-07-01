@@ -18,7 +18,7 @@ class BiplotGrid(QGridLayout):
 
     def __init__(self) -> None:
         super().__init__()
-        self.setSpacing(5)
+        self.setSpacing(0)
 
     def add_biplot(self, biplot: Biplot, coords: tuple[int, int]) -> None:
         row, col = coords

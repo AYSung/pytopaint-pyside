@@ -9,14 +9,15 @@ import math
 import re
 from functools import partial
 from pathlib import Path
-
 import flowio
 import flowutils
 import numpy as np
 import pandas as pd
+import anndata as ad
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
 
+from pytopaint.colors import Color
 from pytopaint.config import (
     get_lower_asinh_bound,
     get_resolution,
@@ -28,6 +29,236 @@ PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 ADDED_PARAMETERS = ['UMAP1', 'UMAP2']
 NON_IP_PARAMETERS = PHYSICAL_PARAMETERS + ['Time'] + ADDED_PARAMETERS
 UPPER_PHYSICAL = 255_000
+
+
+def read_fcs(filepath: Path) -> ad.AnnData:
+    fcs = flowio.FlowData(filepath)
+    fcs.text = scrub_metadata(fcs.text)
+
+    cleaned_channel_names = clean_channel_names(fcs)
+    empty_channel_mask = cleaned_channel_names != ''
+    adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask])
+
+    adata.uns['fcs'] = fcs
+    adata.uns['filename'] = fcs.name
+    adata.uns['id'] = extract_case_number(filepath.stem)
+    adata.uns['tube'] = fcs.text.get('tube name')
+
+    adata.var_names = cleaned_channel_names[empty_channel_mask]
+    adata.var['channel_type'] = np.select(
+        [
+            adata.var_names.isin(cleaned_channel_names[fcs.scatter_indices]),
+            adata.var_names == cleaned_channel_names[fcs.time_index],
+        ],
+        ['scatter', 'time'],
+        default='fluoro',
+    )
+    adata.var['pnn_label'] = np.array(fcs.pnn_labels)[empty_channel_mask]
+    adata.var['pns_label'] = np.array(fcs.pns_labels)[empty_channel_mask]
+
+    adata.obs['color'] = Color.GREY
+    adata.obs['visible'] = True
+
+    set_scale(adata)
+    set_size(adata)
+
+    return adata
+
+
+def set_scale(adata: ad.AnnData) -> None:
+    adata.layers['xform'] = asinh_transform(adata, scaling_factor=get_scaling_factor())
+    adata.var['lower_bound'] = lower_clip_limits(adata)
+    adata.var['upper_bound'] = upper_clip_limits(adata)
+
+
+def set_size(adata: ad.AnnData) -> None:
+    adata.layers['bin'] = discretize_data(adata, bins=get_resolution())
+    adata.uns['axis_ticks'] = get_axis_ticks(
+        adata, bins=get_resolution(), scaling_factor=get_scaling_factor()
+    )
+
+
+def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
+    return np.where(
+        np.isin(
+            np.arange(0, fcs.channel_count), fcs.scatter_indices + [fcs.time_index]
+        ),
+        fcs.pnn_labels,
+        list(map(_clean_marker_name, fcs.pns_labels)),
+    )
+
+
+def compensate(fcs: flowio.FlowData) -> np.ndarray:
+    if spill := fcs.text.get('spill') or fcs.text.get('spillover'):
+        spill_matrix, _ = flowutils.compensate.get_spill(spill)
+        return flowutils.compensate.compensate(
+            fcs.as_array(), spill_matrix, fcs.fluoro_indices
+        )
+
+    return fcs.as_array().astype(np.float32)
+
+
+def scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
+    return {
+        k: v
+        for k, v in metadata.items()
+        if k
+        in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS + ['spill', 'spillover']
+    }
+
+
+def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:
+    return flowutils.transforms.asinh(
+        adata.X,
+        channel_indices=np.arange(0, adata.n_vars)[
+            adata.var['channel_type'] == 'fluoro'
+        ],
+        t=scaling_factor / math.sinh(1),
+        m=1 / math.log(10),
+        a=0,
+    ).astype(np.float32)
+
+
+# TODO: adjust floor with config
+def lower_clip_limits(adata: ad.AnnData) -> np.ndarray:
+    return np.where(
+        adata.var['channel_type'] == 'fluoro',
+        np.minimum(
+            get_lower_asinh_bound(),
+            np.quantile(adata.layers['xform'], q=0.05, axis=0) - 0.5,
+        ),
+        0,
+    )
+
+
+# TODO: adjust ceiling with config
+def upper_clip_limits(adata: ad.AnnData) -> np.ndarray:
+    return np.where(
+        adata.var['channel_type'] != 'time',
+        np.where(
+            adata.var['channel_type'] == 'fluoro',
+            np.maximum(
+                get_upper_asinh_bound(),
+                np.quantile(adata.layers['xform'], q=0.95, axis=0) + 0.5,
+            ),
+            np.maximum(255_000.0, np.quantile(adata.layers['xform'], q=0.95, axis=0)),
+        ),
+        np.max(adata.X, axis=0),
+    )
+
+
+def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
+    a_min = adata.var['lower_bound']
+    a_max = adata.var['upper_bound']
+
+    return np.clip(adata.layers['xform'], a_min=a_min, a_max=a_max)
+
+
+def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
+    arr = clip_xform_data(adata)
+    bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
+    return np.array([
+        discretize_array(**bounds[i], bins=bins, arr=row) for i, row in enumerate(arr.T)
+    ]).T.astype(np.uint8)
+
+
+def discretize_array(
+    lower_bound: float, upper_bound: float, bins: int, arr: np.ndarray
+) -> np.ndarray:
+    bins = np.linspace(lower_bound, upper_bound, num=bins)
+    return np.searchsorted(bins, arr, side='left')
+
+
+# TODO: refactor
+def get_axis_ticks(
+    adata: ad.AnnData,
+    bins: int,
+    scaling_factor: float,
+) -> dict[str, list[tuple[int, str]]]:
+    bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
+
+    scatter_axis_ticks = {
+        channel_name: list(
+            zip(
+                discretize_array(
+                    **bounds[channel_name],
+                    bins=bins,
+                    arr=np.arange(
+                        0,
+                        50_000 * (bounds[channel_name]['upper_bound'] // 50_000),
+                        50_000,
+                    ),
+                ),
+                ['0', None, '1e5', None, '2e5', None, '3e5'],
+            )
+        )
+        for channel_name in adata.var_names[adata.var['channel_type'] == 'scatter']
+    }
+    fluoro_axis_ticks = _fluoro_axis_ticks(
+        bins=bins,
+        scaling_factor=scaling_factor,
+        channels=adata.var_names[adata.var['channel_type'] == 'fluoro'],
+        bounds=bounds,
+    )
+
+    time_axis_ticks = {
+        'Time': list(
+            zip(
+                discretize_array(
+                    **bounds['Time'],
+                    bins=bins,
+                    arr=np.linspace(0, bounds['Time']['upper_bound'], 5),
+                ),
+                [None, None, None, None, None],
+            )
+        )
+    }
+    return scatter_axis_ticks | fluoro_axis_ticks | time_axis_ticks
+
+
+def _scatter_axis_ticks(
+    bins: int,
+    scaling_factor: float,
+    channels: list[str],
+    bounds: dict[int, dict[str, float]],
+) -> dict[str, list[tuple[int, str]]]:
+
+    return
+
+
+def _fluoro_axis_ticks(
+    bins: int,
+    scaling_factor: float,
+    channels: list[str],
+    bounds: dict[int, dict[str, float]],
+) -> dict[str, list[tuple[int, str]]]:
+    return {
+        channel_name: list(
+            zip(
+                discretize_array(
+                    **bounds[channel_name],
+                    bins=bins,
+                    arr=np.array(
+                        list(
+                            filter(
+                                lambda x: x < bounds[channel_name]['upper_bound'],
+                                map(
+                                    lambda x: math.asinh(x / scaling_factor),
+                                    [-100, 0, 100, 1_000, 10_000, 100_000, 1_000_000],
+                                ),
+                            )
+                        )
+                    ),
+                ),
+                [None, '0', None, '1e3', '1e4', '1e5', '1e6', '1e7'],
+            )
+        )
+        for channel_name in channels
+    }
+
+
+def _time_axis_ticks() -> dict[str, list[tuple[int, str]]]:
+    return
 
 
 class FlowData:
@@ -118,53 +349,11 @@ def bin_df(
     )
 
 
-def get_axis_ticks(
-    channel: str,
-    n_bins: int,
-    scaling_factor: float,
-    clip_limits: dict[str, tuple[float, float]],
-) -> list[tuple[int, str]]:
-    lower_limit, upper_limit = clip_limits[channel]
-
-    if channel == 'Time':
-        quarter = n_bins / 4
-        ticks = [(i * quarter) for i in range(5)]
-        return [(tick, None) for tick in ticks]
-    elif channel in PHYSICAL_PARAMETERS:
-        ticks = [0, 50_000, 100_000, 150_000, 200_000, 250_000]
-        scaled_ticks = bin_series(
-            pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
-        )
-        return list(zip(scaled_ticks, ['0', None, '1e5', None, '2e5', None, '3e5']))
-    elif channel in ADDED_PARAMETERS:
-        ticks = [0]
-        scaled_ticks = bin_series(
-            pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
-        )
-        return list(zip(scaled_ticks, ['0']))
-    else:
-        ticks = list(
-            filter(
-                lambda x: (x >= lower_limit) and (x <= upper_limit),
-                map(
-                    lambda x: math.asinh(x / scaling_factor),
-                    [-100, 0, 100, 1_000, 10_000, 100_000, 1_000_000, 10_000_000],
-                ),
-            )
-        )
-        scaled_ticks = bin_series(
-            pd.Series(ticks, name=channel), n_bins=n_bins, clip_limits=clip_limits
-        )
-        return list(
-            zip(scaled_ticks, [None, '0', None, '1e3', '1e4', '1e5', '1e6', '1e7'])
-        )
-
-
 def to_xform_df(
     sample: flowio.FlowData,
     scaling_factor: float,
 ):
-    event_data = np.reshape(sample.events, (sample.event_count, sample.channel_count))
+    event_data = sample.as_array()
     compensation = _get_compensation(sample.text)
     if compensation is not None:
         spill_matrix, _ = flowutils.compensate.get_spill(compensation)
@@ -183,7 +372,8 @@ def to_xform_df(
     )
 
     df = pd.DataFrame(
-        xformed_event_data, columns=_get_channels(sample.pnn_labels, sample.pns_labels)
+        xformed_event_data,
+        columns=_get_channel_names(sample.pnn_labels, sample.pns_labels),
     )
     if empty_channels := _get_empty_channels(sample.pnn_labels, sample.pns_labels):
         df = df.drop(columns=empty_channels)
@@ -230,11 +420,20 @@ def _clean_marker_name(marker: str) -> str:
             return marker
 
 
-def _get_channels(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
+def _get_channel_names(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
     return [
         f'{_clean_marker_name(marker)}' if marker else fluor
         for fluor, marker in zip(pnn_labels, pns_labels)
     ]
+
+
+def _get_channel_types(
+    channel_count: int,
+    scatter_indices: list[int],
+    fluoro_indices: list[int],
+    time_index: list[int],
+) -> list[str]:
+    return
 
 
 def _get_empty_channels(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
@@ -303,7 +502,7 @@ def clip_series(s: pd.Series, clip_limits: dict[str, tuple[float, float]]):
 
 
 def extract_case_number(filename: str) -> str:
-    if match := re.match(r'\w[- ](\d{2})?[- ]?(\d{4,}) [\w\- ]+$', filename):
+    if match := re.match(r'[ZY][- ](\d{2})?[- ]?(\d{4,}) [\w\- ]+$', filename):
         return f'IP{match.group(1) or "xx"}-{int(match.group(2)):05}'
     else:
         return filename

@@ -39,7 +39,7 @@ class PainterTabs(QTabWidget):
         self.resizeTriggered.connect(painter.handle_resize)
         self.rescaleTriggered.connect(painter.handle_rescale)
         self.colorPaletteChanged.connect(painter.colorPaletteChanged)
-        self.addTab(painter, painter.data.name)
+        self.addTab(painter, painter.data.uns['id'])
         self.setCurrentWidget(painter)
 
     @Slot()
