@@ -429,7 +429,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.data.uns['axis_ticks'])
+        self.dataChanged.emit(self.df, self.data.uns['axis_ticks'])
 
     def state_changed(self):
         self.stateChanged.emit()
@@ -446,11 +446,11 @@ class Painter(QWidget):
     @Slot()
     def handle_resize(self) -> None:
         set_size(self.data)
-        self.resizeTriggered.emit(get_resolution())
         self.df = pd.DataFrame(
             self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
         )
-        self.data_changed(self.df, self.data.uns['axis_ticks'])
+        self.resizeTriggered.emit(get_resolution())
+        self.data_changed()
 
     @Slot()
     def handle_rescale(self) -> None:
