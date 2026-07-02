@@ -41,7 +41,7 @@ COLOR_RGB_MAPS = {
         Color.WHITE: '#E9E9E9',
     },
     'Okabe-Ito': {
-        Color.GREY: '#828282',
+        Color.GREY: '#999999',
         Color.BLUE: '#0072B2',
         Color.GREEN: '#009E73',
         Color.RED: '#D55E00',
