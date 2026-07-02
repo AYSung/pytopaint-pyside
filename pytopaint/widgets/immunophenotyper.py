@@ -41,11 +41,11 @@ class Immunophenotyper(QDialog):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
 
-        channels = sort_channels(get_ip_channels(df.columns))
+        self.channels = sort_channels(get_ip_channels(df.columns))
         df = df.loc[state['visible']].join(state[['color']]).astype('uint8')
 
         self.percent = (
-            state['color'].loc[lambda s: s == color] / state['visible'].sum()
+            state['color'].loc[lambda s: s == color].size / state['visible'].sum()
             if state['visible'].any()
             else 0
         )
@@ -55,7 +55,7 @@ class Immunophenotyper(QDialog):
         ip_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout.setSpacing(20)
         ROWS_PER_COLUMN = 6
-        columns = batched(channels, ROWS_PER_COLUMN)
+        columns = batched(self.channels, ROWS_PER_COLUMN)
         for column in columns:
             column_layout = QVBoxLayout()
             column_layout.setSpacing(0)
