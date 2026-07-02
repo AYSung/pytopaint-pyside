@@ -5,7 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import anndata as ad
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QMouseEvent, QPainter, QPixmap
@@ -36,8 +35,10 @@ class Palette(QWidget):
     highlightsUpdated = Signal(list)
     colorPaletteChanged = Signal()
 
-    def __init__(self):
+    def __init__(self, state: pd.DataFrame):
         super().__init__()
+
+        self.state = state
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
@@ -68,10 +69,10 @@ class Palette(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object)
-    def update_labels(self, data: ad.AnnData):
-        events = events_by_color(data.obs['color'])
-        total_events = data.obs['visible'].sum()
+    @Slot()
+    def update_labels(self):
+        events = events_by_color(self.state['color'])
+        total_events = self.state['visible'].sum()
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
         self.eventsUpdated.emit(events, total_events)

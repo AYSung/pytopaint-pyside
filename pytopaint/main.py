@@ -131,7 +131,7 @@ class MainWindow(QMainWindow):
 
         painter = self.get_active_painter()
         sample: flowio.FlowData = painter.data.uns['fcs']
-        event_mask = painter.data.obs['visible'].to_numpy()
+        event_mask = painter.state['visible']
         event_matrix: np.ndarray = np.reshape(
             sample.events, (-1, sample.channel_count)
         )[event_mask]

@@ -8,7 +8,6 @@
 
 from itertools import batched
 
-import anndata as ad
 import pandas as pd
 from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
@@ -33,22 +32,30 @@ from pytopaint.widgets.palette import _format_percent
 class Immunophenotyper(QDialog):
     def __init__(
         self,
-        data: ad.AnnData,
+        df: pd.DataFrame,
+        state: pd.DataFrame,
+        axis_ticks: dict[str, list[tuple[int, str]]],
         color: Color,
         parent=None,
     ):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
 
-        channels = sort_channels(get_ip_channels(data.var_names))
+        channels = sort_channels(get_ip_channels(df.columns))
+        df = df.join(state[['color']]).loc[state[['visible']]].astype('uint8')
         df = (
-            pd
-            .DataFrame(data[:, channels].layers['bin'], columns=channels)
-            .assign(color=data.obs[['color']].to_numpy())
-            .astype('uint8')
+            self
+            .df[[self.x_axis.label, self.y_axis.label]]
+            .loc[self.state['visible']]
+            .join(self.state[['color']])
+            .drop_duplicates()
         )
 
-        self.percent = data.obs['color'].loc[lambda s: s == color].size / data.n_obs
+        self.percent = (
+            state['color'].loc[lambda s: s == color] / state['visible'].sum()
+            if state['visible'].any()
+            else 0
+        )
 
         layout = QVBoxLayout()
         ip_layout = QHBoxLayout()
@@ -65,7 +72,7 @@ class Immunophenotyper(QDialog):
                         data=df[[channel, 'color']],
                         channel=channel,
                         target_color=color,
-                        axis_ticks=data.uns['axis_ticks'][channel],
+                        axis_ticks=axis_ticks,
                     )
                 )
             column_layout

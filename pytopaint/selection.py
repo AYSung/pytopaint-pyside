@@ -24,5 +24,5 @@ def get_selection_index(
             data[:, y_label].layers['bin'].flatten(),
         )
     )
-    selection_index = gdf[gdf.within(poly)].index.astype(str)
+    selection_index = gdf[gdf.within(poly)].index
     return selection_index
