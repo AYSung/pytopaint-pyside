@@ -5,35 +5,35 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import pandas as pd
-import anndata as ad
 from functools import wraps
 
+import anndata as ad
+import numpy as np
+import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
     QMouseEvent,
     QShortcut,
 )
-from PySide6.QtWidgets import QVBoxLayout, QWidget, QSizePolicy
+from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
     _add_color_to_series,
-    merge_colors,
     _subtract_color_from_series,
+    merge_colors,
 )
 from pytopaint.config import get_resolution
-
-from pytopaint.flowdata import set_scale, set_size
-from pytopaint.layout import get_best_layout, LayoutConfig
+from pytopaint.flowdata import add_umap_dims, set_scale, set_size, discretize_array
+from pytopaint.layout import LayoutConfig, get_best_layout
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
-from pytopaint.widgets.palette import Palette
 from pytopaint.widgets.biplotgrid import BiplotGrid
-from pytopaint.widgets.dialogs import add_row_dialog, add_column_dialog
+from pytopaint.widgets.dialogs import add_column_dialog, add_row_dialog
 from pytopaint.widgets.immunophenotyper import Immunophenotyper
+from pytopaint.widgets.palette import Palette
 
 
 class Painter(QWidget):
@@ -235,7 +235,7 @@ class Painter(QWidget):
 
         selection = get_selection_index(
             selection_geometry,
-            self.data,
+            self.df,
             x_label=x_label,
             y_label=y_label,
         ).intersection(self.state.loc[lambda x: x['visible']].index)
@@ -387,9 +387,13 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        raise NotImplementedError
-        self.data.add_umap_dims()
-        self.df = self.data.binned_df.assign(color=self.df.color)
+        add_umap_dims(self.data)
+        umap_df = pd.DataFrame(
+            self.data.obsm['umap_bins'],
+            columns=['UMAP1', 'UMAP2'],
+        )
+        self.df = self.df.join(umap_df)
+
         self.data_changed()
 
     @record_action

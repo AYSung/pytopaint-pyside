@@ -169,6 +169,42 @@ def discretize_array(
     return np.searchsorted(bins, arr, side='left')
 
 
+def add_umap_dims(adata: ad.AnnData) -> None:
+    adata.obsm['umap'] = umap_transform(
+        adata[:, adata.var['channel_type'] == 'fluoro'].layers['xform']
+    )
+    bins = get_resolution()
+    bounds = {
+        channel: dict(
+            lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
+            upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
+        )
+        for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
+    }
+    adata.obsm['umap_bins'] = np.array([
+        discretize_array(
+            **bounds[channel],
+            bins=bins,
+            arr=row,
+        )
+        for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
+    ]).T.astype(np.uint8)
+
+    adata.uns['axis_ticks'] = adata.uns['axis_ticks'] | _umap_axis_ticks(
+        bins=bins,
+        channels=['UMAP1', 'UMAP2'],
+        bounds=bounds,
+    )
+
+
+def umap_transform(arr: np.ndarray) -> np.array:
+    scaled_arr = RobustScaler().fit_transform(arr)
+    umap = UMAP(init='pca', verbose=True, min_dist=0.4, n_neighbors=15, random_state=42)
+    rng = np.random.default_rng(seed=42)
+    umap.fit(rng.choice(scaled_arr, size=min(20_000, arr.shape[0]), replace=False))
+    return umap.transform(scaled_arr)
+
+
 # TODO: refactor
 def get_axis_ticks(
     adata: ad.AnnData,
@@ -261,6 +297,26 @@ def _time_axis_ticks() -> dict[str, list[tuple[int, str]]]:
     return
 
 
+def _umap_axis_ticks(
+    bins: int,
+    channels: list[str],
+    bounds: dict[int, dict[str, float]],
+) -> dict[str, list[tuple[int, str]]]:
+    return {
+        channel_name: list(
+            zip(
+                discretize_array(
+                    **bounds[channel_name],
+                    bins=bins,
+                    arr=np.array([0]),
+                ),
+                ['0'],
+            )
+        )
+        for channel_name in channels
+    }
+
+
 class FlowData:
     def __init__(self, sample: flowio.FlowData, id: str, tube: str):
         self.sample = sample
@@ -326,15 +382,6 @@ class FlowData:
             )
             for channel in self.xform_df.columns
         }
-
-    def add_umap_dims(self) -> None:
-        umap_df = umap_transform(self.xform_df)
-        self.xform_df = self.xform_df.assign(
-            UMAP1=umap_df['UMAP1'], UMAP2=umap_df['UMAP2']
-        )
-        self.clip_limits = self.clip_limits | get_clip_limits(umap_df)
-
-        self.update_bins()
 
     def reset(self) -> None:
         self.update_scale()
@@ -506,14 +553,3 @@ def extract_case_number(filename: str) -> str:
         return f'IP{match.group(1) or "xx"}-{int(match.group(2)):05}'
     else:
         return filename
-
-
-def umap_transform(df: pd.DataFrame) -> pd.DataFrame:
-    non_linear_df = df[
-        [column for column in df.columns if column not in NON_IP_PARAMETERS]
-    ]
-    scaled_df = RobustScaler().fit_transform(non_linear_df)
-    umap = UMAP(init='pca', min_dist=0.4, n_neighbors=15)
-    umap.fit(pd.DataFrame(scaled_df).sample(min(20_000, df.shape[0])))
-
-    return pd.DataFrame(umap.transform(scaled_df), columns=['UMAP1', 'UMAP2'])
