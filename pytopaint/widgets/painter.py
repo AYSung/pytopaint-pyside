@@ -79,7 +79,9 @@ class Painter(QWidget):
         self.df = pd.DataFrame(
             self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
         )
-        self.state = self.data.obs.reset_index(drop=True).copy()
+        self.state = (
+            self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
+        )
         self.undo_history = [self.state.copy()]
         self.redo_history = []
         self.active_color = Color.BLUE
@@ -293,7 +295,6 @@ class Painter(QWidget):
                 self.state.loc[selection, 'color'] = Color.GREY
 
         self.record_current_state()
-        self.state_changed()
 
     @staticmethod
     def record_action(func):
