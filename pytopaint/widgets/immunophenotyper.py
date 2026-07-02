@@ -42,14 +42,7 @@ class Immunophenotyper(QDialog):
         self.setWindowTitle('Immunophenotyper')
 
         channels = sort_channels(get_ip_channels(df.columns))
-        df = df.join(state[['color']]).loc[state[['visible']]].astype('uint8')
-        df = (
-            self
-            .df[[self.x_axis.label, self.y_axis.label]]
-            .loc[self.state['visible']]
-            .join(self.state[['color']])
-            .drop_duplicates()
-        )
+        df = df.loc[state['visible']].join(state[['color']]).astype('uint8')
 
         self.percent = (
             state['color'].loc[lambda s: s == color] / state['visible'].sum()
@@ -72,10 +65,10 @@ class Immunophenotyper(QDialog):
                         data=df[[channel, 'color']],
                         channel=channel,
                         target_color=color,
-                        axis_ticks=axis_ticks,
+                        axis_ticks=axis_ticks[channel],
                     )
                 )
-            column_layout
+            column_layout.addStretch()
             ip_layout.addLayout(column_layout)
         layout.addLayout(ip_layout)
 
