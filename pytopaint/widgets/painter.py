@@ -8,7 +8,6 @@
 from functools import wraps
 
 import anndata as ad
-import numpy as np
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -26,7 +25,7 @@ from pytopaint.colors import (
     merge_colors,
 )
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import add_umap_dims, set_scale, set_size, discretize_array
+from pytopaint.flowdata import add_umap_dims, set_scale, set_size
 from pytopaint.layout import LayoutConfig, get_best_layout
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot

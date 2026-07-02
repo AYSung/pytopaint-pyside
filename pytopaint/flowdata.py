@@ -7,13 +7,12 @@
 
 import math
 import re
-from functools import partial
 from pathlib import Path
+
+import anndata as ad
 import flowio
 import flowutils
 import numpy as np
-import pandas as pd
-import anndata as ad
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
 
@@ -317,116 +316,6 @@ def _umap_axis_ticks(
     }
 
 
-class FlowData:
-    def __init__(self, sample: flowio.FlowData, id: str, tube: str):
-        self.sample = sample
-        self.tube = tube
-        self.id = id
-
-        self.reset()
-
-    @classmethod
-    def from_path(cls, filepath: Path):
-        sample = flowio.FlowData(filepath)
-        tube = sample.text.get('tube name', None)
-        id = (
-            extract_case_number(sample.text['src'])
-            if 'src' in sample.text
-            else filepath.stem
-        )
-
-        sample.text = {
-            k: v
-            for k, v in sample.text.items()
-            if k
-            in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS
-            + ['spill', 'spillover']
-        }
-        return cls(sample, id, tube)
-
-    @property
-    def sorted_channels(self) -> list[str]:
-        return sort_channels(self.xform_df.columns)
-
-    @property
-    def channel_details(self) -> list[str]:
-        return [
-            f'{marker} ({fluor})' if marker else fluor
-            for fluor, marker in zip(self.sample.pnn_labels, self.sample.pns_labels)
-            if fluor
-            not in _get_empty_channels(self.sample.pnn_labels, self.sample.pns_labels)
-        ]
-
-    @property
-    def name(self) -> str:
-        if self.tube is not None:
-            return f'{self.id} {self.tube}'
-        else:
-            return f'{self.id}'
-
-    def update_scale(self) -> None:
-        self.xform_df = to_xform_df(self.sample, scaling_factor=get_scaling_factor())
-        self.clip_limits = get_clip_limits(self.xform_df)
-
-    def update_bins(self) -> None:
-        self.binned_df = bin_df(
-            self.xform_df, n_bins=get_resolution(), clip_limits=self.clip_limits
-        ).astype('uint8')
-
-        self.axis_ticks = {
-            channel: get_axis_ticks(
-                channel,
-                n_bins=get_resolution(),
-                scaling_factor=get_scaling_factor(),
-                clip_limits=self.clip_limits,
-            )
-            for channel in self.xform_df.columns
-        }
-
-    def reset(self) -> None:
-        self.update_scale()
-        self.update_bins()
-
-
-def bin_df(
-    df: pd.DataFrame, n_bins: int, clip_limits=dict[str, tuple[float, float]]
-) -> pd.DataFrame:
-    return df.apply(partial(clip_series, clip_limits=clip_limits)).apply(
-        partial(bin_series, n_bins=n_bins, clip_limits=clip_limits)
-    )
-
-
-def to_xform_df(
-    sample: flowio.FlowData,
-    scaling_factor: float,
-):
-    event_data = sample.as_array()
-    compensation = _get_compensation(sample.text)
-    if compensation is not None:
-        spill_matrix, _ = flowutils.compensate.get_spill(compensation)
-        event_data = flowutils.compensate.compensate(
-            event_data=event_data,
-            spill_matrix=spill_matrix,
-            fluoro_indices=sample.fluoro_indices,
-        )
-
-    xformed_event_data = flowutils.transforms.asinh(
-        data=event_data,
-        channel_indices=sample.fluoro_indices,
-        t=scaling_factor * math.sinh(1),
-        m=1 / math.log(10),
-        a=0,
-    )
-
-    df = pd.DataFrame(
-        xformed_event_data,
-        columns=_get_channel_names(sample.pnn_labels, sample.pns_labels),
-    )
-    if empty_channels := _get_empty_channels(sample.pnn_labels, sample.pns_labels):
-        df = df.drop(columns=empty_channels)
-    return df
-
-
 def sort_channels(channels: list[str] | set[str]) -> list[str]:
     light_scatter_channels = sorted(
         list(filter(lambda x: x in PHYSICAL_PARAMETERS, channels))
@@ -465,87 +354,6 @@ def _clean_marker_name(marker: str) -> str:
             return 'MPO'
         else:
             return marker
-
-
-def _get_channel_names(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
-    return [
-        f'{_clean_marker_name(marker)}' if marker else fluor
-        for fluor, marker in zip(pnn_labels, pns_labels)
-    ]
-
-
-def _get_channel_types(
-    channel_count: int,
-    scatter_indices: list[int],
-    fluoro_indices: list[int],
-    time_index: list[int],
-) -> list[str]:
-    return
-
-
-def _get_empty_channels(pnn_labels: list[str], pns_labels: list[str]) -> list[str]:
-    return [
-        fluor
-        for fluor, marker in zip(pnn_labels, pns_labels)
-        if not marker and fluor not in PHYSICAL_PARAMETERS + ['Time']
-    ]
-
-
-def _get_compensation(metadata: dict[str, str]) -> str | None:
-    return metadata.get('spill') or metadata.get('spillover')
-
-
-def get_clip_limits(df: pd.DataFrame):
-    return {
-        channel: (
-            lower_clip_limit(df[channel]),
-            upper_clip_limit(df[channel]),
-        )
-        for channel in df.columns
-    }
-
-
-def lower_clip_limit(s: pd.Series):
-    if s.name in PHYSICAL_PARAMETERS + ['Time']:
-        return 0
-    elif s.name in ADDED_PARAMETERS:
-        return 1.05 * s.min()
-    else:
-        return min(get_lower_asinh_bound(), s.quantile(0.05) - 0.5)
-
-
-def upper_clip_limit(s: pd.Series):
-    if s.name == 'Time':
-        return s.max()
-    elif s.name in PHYSICAL_PARAMETERS:
-        return UPPER_PHYSICAL
-    elif s.name in ADDED_PARAMETERS:
-        return 1.05 * s.max()
-    else:
-        return max(get_upper_asinh_bound(), s.quantile(0.95) + 0.5)
-
-
-def bin_series(s: pd.Series, n_bins: int, clip_limits: dict[str, tuple[float, float]]):
-    lower_limit, upper_limit = clip_limits[s.name]
-
-    bin_borders = (
-        [float('-inf')]
-        + [
-            lower_limit + (((n + 1) / n_bins) * (upper_limit - lower_limit))
-            for n in range(n_bins - 1)
-        ]
-        + [float('inf')]
-    )
-
-    return pd.cut(
-        s, bins=bin_borders, include_lowest=True, labels=list(range(n_bins))
-    ).astype(int)
-
-
-def clip_series(s: pd.Series, clip_limits: dict[str, tuple[float, float]]):
-    lower_limit, upper_limit = clip_limits[s.name]
-
-    return s.clip(lower=lower_limit, upper=upper_limit)
 
 
 def extract_case_number(filename: str) -> str:
