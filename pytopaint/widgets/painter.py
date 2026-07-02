@@ -375,7 +375,9 @@ class Painter(QWidget):
 
     @record_action
     def isolate_color(self, color: Color):
-        if any(self.state['color'] == color):
+        if not self.state.loc[
+            lambda x: (x['color'] == color) & self.state['visible']
+        ].empty:
             self.state.loc[lambda x: x['color'] != color, 'visible'] = False
             self.state.loc[lambda x: x['visible'], 'color'] = Color.GREY
 
