@@ -248,7 +248,7 @@ def subtract_color_from_selection(
 def merge_colors(
     df: pd.DataFrame, source_colors: Color | list[Color], target_color: Color
 ) -> pd.DataFrame:
-    return df.assign(color=df.color.replace(source_colors, target_color))
+    return df.color.replace(source_colors, target_color)
 
 
 def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:

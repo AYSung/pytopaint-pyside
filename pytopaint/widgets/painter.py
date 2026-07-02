@@ -30,7 +30,11 @@ from pytopaint.layout import LayoutConfig, get_best_layout
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.biplotgrid import BiplotGrid
-from pytopaint.widgets.dialogs import add_column_dialog, add_row_dialog
+from pytopaint.widgets.dialogs import (
+    add_column_dialog,
+    add_row_dialog,
+    terminal_out_dialog,
+)
 from pytopaint.widgets.immunophenotyper import Immunophenotyper
 from pytopaint.widgets.palette import Palette
 
@@ -362,7 +366,7 @@ class Painter(QWidget):
 
     @record_action
     def merge_color(self, source_color: Color, target_color: Color):
-        self.state = merge_colors(self.state, [source_color], target_color)
+        self.state['color'] = merge_colors(self.state, [source_color], target_color)
 
     @record_action
     def unhide_all(self) -> None:
@@ -388,7 +392,8 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        add_umap_dims(self.data)
+        terminal_out_dialog(self, title='UMAP', func=lambda: add_umap_dims(self.data))
+
         umap_df = pd.DataFrame(
             self.data.obsm['umap_bins'],
             columns=['UMAP1', 'UMAP2'],
