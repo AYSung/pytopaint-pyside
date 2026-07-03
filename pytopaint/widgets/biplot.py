@@ -42,12 +42,14 @@ class Biplot(QWidget):
         state: pd.DataFrame,
         x_label: str,
         y_label: str,
+        active_color: Color,
     ):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         self.df = data
         self.state = state
+        self.active_color = active_color
 
         channels = sort_channels(data.columns)
         x_label = x_label if x_label in channels else None
@@ -60,7 +62,7 @@ class Biplot(QWidget):
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
 
-        self.plot = DotPlot()
+        self.plot = DotPlot(active_color=active_color)
         self.update_plot_data()
         self.plot.pointsSelected.connect(self.points_selected)
 
@@ -234,12 +236,13 @@ class Biplot(QWidget):
 class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
 
-    def __init__(self):
+    def __init__(self, active_color: Color):
         super().__init__()
         canvas = QPixmap(get_resolution(), get_resolution())
         canvas.fill(BACKGROUND)
         self.setPixmap(canvas)
         self.setCursor(Qt.CursorShape.CrossCursor)
+        self.active_color = active_color
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []

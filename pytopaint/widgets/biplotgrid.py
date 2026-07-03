@@ -5,37 +5,148 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Slot, Signal
+from functools import wraps
+
+import pandas as pd
+from PySide6.QtCore import Signal, Slot
+from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QGridLayout
 
-from pytopaint.layout import dict_to_yaml
+from pytopaint.colors import Color
+from pytopaint.layout import LayoutConfig, dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
 
 
 class BiplotGrid(QGridLayout):
     resizeTriggered = Signal(int)
     colorPaletteChanged = Signal()
+    highlightsUpdated = Signal(list)
+    activeColorChanged = Signal(int)
+    pointsSelected = Signal(object, str, str, QMouseEvent)
+    dataChanged = Signal(object, object)
+    stateChanged = Signal()
 
-    def __init__(self) -> None:
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        axis_ticks: dict[str, list[tuple[int, str]]],
+        state: pd.DataFrame,
+        active_color: Color,
+    ) -> None:
         super().__init__()
         self.setSpacing(0)
 
-    def add_biplot(self, biplot: Biplot, coords: tuple[int, int]) -> None:
-        row, col = coords
+        self.df = df
+        self.axis_ticks = axis_ticks
+        self.state = state
+        self.active_color = active_color
+
+        self.activeColorChanged.connect(self.update_active_color)
+
+    @staticmethod
+    def batch_update(func):
+        @wraps(func)
+        def wrapper(self: BiplotGrid, *args, **kwargs):
+            self.setEnabled(False)
+            func(self, *args, **kwargs)
+            self.setEnabled(True)
+            self.update()
+
+        return wrapper
+
+    @Slot(object, object)
+    def update_data(
+        self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]
+    ) -> None:
+        self.df = df
+        self.axis_ticks = axis_ticks
+
+    def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
+        x_label, y_label = labels
+
+        biplot = Biplot(
+            data=self.df,
+            axis_ticks=self.axis_ticks,
+            state=self.state,
+            active_color=self.active_color,
+            x_label=x_label,
+            y_label=y_label,
+        )
+        biplot.pointsSelected.connect(self.pointsSelected)
+        self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
+        self.stateChanged.connect(biplot.update_plot_data)
+        self.dataChanged.connect(biplot.set_data)
+        self.activeColorChanged.connect(biplot.plot.set_active_color)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.resizeTriggered.connect(biplot.resize)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
-        self.addWidget(biplot, row, col)
+        return biplot
+
+    def add_biplot(
+        self,
+        biplot: Biplot,
+        coords: tuple[int, int],
+    ) -> Biplot:
+        self.addWidget(biplot, *coords)
+
+    @batch_update
+    def add_rows(self, n_rows: int) -> None:
+        col_range = range(self.columns if self.columns > 0 else 1)
+        row_range = range(n_rows)
+        new_row_coords = [
+            (row + self.rows, col) for row in row_range for col in col_range
+        ]
+        for coords in new_row_coords:
+            self.add_biplot(self.new_biplot(), coords)
+
+    @batch_update
+    def add_columns(self, n_cols: int) -> None:
+        row_range = range(self.rows if self.rows > 0 else 1)
+        col_range = range(n_cols)
+        new_col_coords = [
+            (row, col + self.columns) for col in col_range for row in row_range
+        ]
+
+        for coords in new_col_coords:
+            self.add_biplot(self.new_biplot(), coords)
+
+    @batch_update
+    def remove_empty(self) -> None:
+        empty_biplots = [
+            biplot for biplot in self.get_biplots() if None in biplot.labels
+        ]
+
+        for biplot in empty_biplots:
+            self.remove_biplot(biplot)
+
+    @batch_update
+    def fill_empty(self) -> None:
+        for coords in self.empty_coords:
+            self.add_biplot(self.new_biplot(), coords)
+
+    @Slot(int)
+    def update_active_color(self, color: Color):
+        self.active_color = color
 
     @Slot(object)
+    @batch_update
     def remove_biplot(self, biplot: Biplot) -> None:
-        self.setEnabled(False)
-
         self.removeWidget(biplot)
         biplot.deleteLater()
 
-        self.setEnabled(True)
-        self.update()
+    @batch_update
+    def update_layout(self, layout: LayoutConfig) -> None:
+        for coords, labels in layout.grid.items():
+            layout_item = self.itemAtPosition(*coords)
+            if layout_item is not None:
+                x_label, y_label = labels
+                x_label = x_label if x_label in self.df.columns else None
+                y_label = y_label if y_label in self.df.columns else None
+
+                biplot: Biplot = layout_item.widget()
+                biplot.set_axes(x_label, y_label)
+            else:
+                self.add_biplot(self.new_biplot(labels), coords)
 
     @property
     def rows(self) -> int:

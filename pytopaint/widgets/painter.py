@@ -26,9 +26,8 @@ from pytopaint.colors import (
 )
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import add_umap_dims, set_scale, set_size
-from pytopaint.layout import LayoutConfig, get_best_layout
+from pytopaint.layout import get_best_layout
 from pytopaint.selection import get_selection_index
-from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
@@ -99,9 +98,20 @@ class Painter(QWidget):
         self.highlightsUpdated.connect(palette.highlightsUpdated)
         self.colorPaletteChanged.connect(palette.colorPaletteChanged)
 
-        self.biplot_grid = BiplotGrid()
+        self.biplot_grid = BiplotGrid(
+            df=self.df,
+            axis_ticks=self.data.uns['axis_ticks'],
+            state=self.state,
+            active_color=self.active_color,
+        )
+        self.biplot_grid.pointsSelected.connect(self.handle_selection)
+        self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
+        self.stateChanged.connect(self.biplot_grid.stateChanged)
+        self.dataChanged.connect(self.biplot_grid.dataChanged)
+        self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
+
         biplot_grid_container = QWidget()
         biplot_grid_container.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
@@ -109,9 +119,7 @@ class Painter(QWidget):
         biplot_grid_container.setLayout(self.biplot_grid)
 
         layout_config = get_best_layout(channels=self.data.var_names)
-
-        for coords, labels in layout_config.grid.items():
-            self.biplot_grid.add_biplot(self.new_biplot(labels), coords)
+        self.biplot_grid.update_layout(layout_config)
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -470,87 +478,26 @@ class Painter(QWidget):
         set_scale(self.data)
         self.handle_resize()
 
-    def update_layout(self, layout: LayoutConfig) -> None:
-        for coords, labels in layout.grid.items():
-            layout_item = self.biplot_grid.itemAtPosition(*coords)
-            if layout_item is not None:
-                x_label, y_label = labels
-                x_label = x_label if x_label in self.data.var_names else None
-                y_label = y_label if y_label in self.data.var_names else None
-
-                biplot: Biplot = layout_item.widget()
-                biplot.set_axes(x_label, y_label)
-            else:
-                self.biplot_grid.add_biplot(self.new_biplot(labels), coords)
-
-    def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
-        x_label, y_label = labels
-        biplot = Biplot(
-            data=self.df,
-            axis_ticks=self.data.uns['axis_ticks'],
-            state=self.state,
-            x_label=x_label,
-            y_label=y_label,
-        )
-        biplot.pointsSelected.connect(self.handle_selection)
-        self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
-        self.stateChanged.connect(biplot.update_plot_data)
-        self.dataChanged.connect(biplot.set_data)
-        self.activeColorChanged.connect(biplot.plot.set_active_color)
-        biplot.plot.set_active_color(self.active_color)
-        return biplot
-
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()
 
     def add_biplot_row(self) -> None:
         n_rows, ok = add_row_dialog(self)
 
-        if not ok:
-            return
-
-        col_range = range(
-            self.biplot_grid.columns if self.biplot_grid.columns > 0 else 1
-        )
-        row_range = range(n_rows)
-        new_row_coords = [
-            (row + self.biplot_grid.rows, col) for row in row_range for col in col_range
-        ]
-        for coords in new_row_coords:
-            self.biplot_grid.add_biplot(self.new_biplot(), coords)
+        if ok:
+            self.biplot_grid.add_rows(n_rows)
 
     def add_biplot_column(self) -> None:
         n_cols, ok = add_column_dialog(self)
 
-        if not ok:
-            return
-
-        row_range = range(self.biplot_grid.rows if self.biplot_grid.rows > 0 else 1)
-        col_range = range(n_cols)
-        new_col_coords = [
-            (row, col + self.biplot_grid.columns)
-            for col in col_range
-            for row in row_range
-        ]
-
-        for coords in new_col_coords:
-            self.biplot_grid.add_biplot(self.new_biplot(), coords)
+        if ok:
+            self.biplot_grid.add_columns(n_cols)
 
     def fill_empty_cells(self) -> None:
-        for coords in self.biplot_grid.empty_coords:
-            self.biplot_grid.add_biplot(self.new_biplot(), coords)
+        self.biplot_grid.fill_empty()
 
     def remove_empty_biplots(self) -> None:
-        empty_biplots = [
-            biplot for biplot in self.biplot_grid.get_biplots() if None in biplot.labels
-        ]
-        self.biplot_grid.setEnabled(False)
-
-        for biplot in empty_biplots:
-            self.biplot_grid.remove_biplot(biplot)
-
-        self.biplot_grid.setEnabled(True)
-        self.biplot_grid.update()
+        self.biplot_grid.remove_empty()
 
     def open_immunophenotyper_dialog(self, color: Color):
         dialog = Immunophenotyper(
