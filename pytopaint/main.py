@@ -59,10 +59,10 @@ from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     about_dialog,
     file_info_dialog,
+    report_generator_dialog,
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
-    report_generator_dialog,
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs

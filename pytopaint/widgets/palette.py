@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QStyleOption,
     QToolButton,
     QWidget,
+    QApplication,
 )
 
 from pytopaint.actions import MenuAction
@@ -317,10 +318,13 @@ class ColorLabel(QWidget):
                 QAction(
                     _color_icon(color),
                     f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
-                    enabled=False,
                 )
                 for color, label_info in self.ratios.items()
             ]
+            for color, ratio_label in zip(self.ratios.keys(), ratio_labels):
+                ratio_label.triggered.connect(
+                    lambda: copy_ratio_to_clipboard(self.ratios[color][0])
+                )
             menu.addActions(ratio_labels)
 
             menu.addSeparator()
@@ -341,6 +345,12 @@ class ColorLabel(QWidget):
 
     def clear_memory(self):
         self.memory = None
+
+
+def copy_ratio_to_clipboard(ratio: float):
+    clipboard = QApplication.clipboard()
+
+    clipboard.setText(_format_ratio(ratio).partition(':')[0].strip())
 
 
 def _format_percent(percent: float) -> str:
