@@ -543,7 +543,8 @@ class Painter(QWidget):
                 temp_state.index = temp_state.index.astype(str)
                 self.data.obsm[f'mem_{i}'] = temp_state
 
-        self.data.uns['layout'] = json.dumps(self.biplot_grid.to_yaml())
+        if self.biplot_grid._to_dict() != get_best_layout(self.data.var_names).grid:
+            self.data.uns['layout'] = json.dumps(self.biplot_grid.to_yaml())
 
     def load_memory_states(self) -> dict[int, pd.DataFrame]:
         def _get_memory_state(index: int) -> pd.DataFrame | None:
