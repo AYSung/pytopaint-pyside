@@ -45,7 +45,7 @@ class Painter(QWidget):
     highlightsUpdated = Signal(list)
     memoryStateReturned = Signal(int, object)
     resizeTriggered = Signal(int)
-    stateChanged = Signal()
+    stateChanged = Signal(object)
 
     def __init__(self, data: ad.AnnData):
         super().__init__()
@@ -89,7 +89,7 @@ class Painter(QWidget):
 
         self.highlighted_colors = []
 
-        palette = Palette(state=self.state)
+        palette = Palette()
         palette.menuActionTriggered.connect(self.handle_menu_action)
         self.colorStateReturned.connect(palette.update_color_memory)
         self.memoryStateReturned.connect(palette.update_memory_slot)
@@ -453,7 +453,7 @@ class Painter(QWidget):
         self.dataChanged.emit(self.df, self.data.uns['axis_ticks'])
 
     def state_changed(self):
-        self.stateChanged.emit()
+        self.stateChanged.emit(self.state)
 
     @Slot(int)
     def handle_highlights(self, color: Color):

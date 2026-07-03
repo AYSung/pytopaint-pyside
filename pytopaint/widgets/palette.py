@@ -9,6 +9,7 @@ import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QMouseEvent, QPainter, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
     QHBoxLayout,
     QLabel,
     QMenu,
@@ -16,7 +17,6 @@ from PySide6.QtWidgets import (
     QStyleOption,
     QToolButton,
     QWidget,
-    QApplication,
 )
 
 from pytopaint.actions import MenuAction
@@ -36,10 +36,8 @@ class Palette(QWidget):
     highlightsUpdated = Signal(list)
     colorPaletteChanged = Signal()
 
-    def __init__(self, state: pd.DataFrame):
+    def __init__(self):
         super().__init__()
-
-        self.state = state
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
@@ -70,10 +68,10 @@ class Palette(QWidget):
 
         self.setLayout(layout)
 
-    @Slot()
-    def update_labels(self):
-        events = events_by_color(self.state['color'].loc[self.state['visible']])
-        total_events = self.state['visible'].sum()
+    @Slot(object)
+    def update_labels(self, state: pd.DataFrame):
+        events = events_by_color(state['color'])
+        total_events = state['visible'].sum()
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
         self.eventsUpdated.emit(events, total_events)

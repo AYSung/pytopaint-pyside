@@ -103,8 +103,11 @@ class Biplot(QWidget):
 
         self.update_plot_data()
 
-    @Slot()
-    def update_plot_data(self):
+    @Slot(object)
+    def update_plot_data(self, state: pd.DataFrame = None):
+        if state is not None:
+            self.state = state
+
         if self.x_axis.label is None or self.y_axis.label is None:
             self.plot.clear()
             return
@@ -113,7 +116,7 @@ class Biplot(QWidget):
             self
             .df[[self.x_axis.label, self.y_axis.label]]
             .loc[self.state['visible']]
-            .join(self.state[['color']])
+            .join(self.state['color'])
             .drop_duplicates()
         )
 

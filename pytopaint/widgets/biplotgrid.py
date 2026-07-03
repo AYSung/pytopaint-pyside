@@ -24,13 +24,13 @@ class BiplotGrid(QGridLayout):
     highlightsUpdated = Signal(list)
     pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTriggered = Signal(int)
-    stateChanged = Signal()
+    stateChanged = Signal(object)
 
     def __init__(
         self,
         df: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
-        state: pd.DataFrame,
+        state: pd.Series,
         active_color: Color,
     ) -> None:
         super().__init__()
@@ -42,6 +42,8 @@ class BiplotGrid(QGridLayout):
         self.active_color = active_color
 
         self.activeColorChanged.connect(self.update_active_color)
+        self.dataChanged.connect(self.update_data)
+        self.stateChanged.connect(self.update_state)
 
     @staticmethod
     def batch_update(func):
@@ -60,6 +62,10 @@ class BiplotGrid(QGridLayout):
     ) -> None:
         self.df = df
         self.axis_ticks = axis_ticks
+
+    @Slot(object)
+    def update_state(self, state: pd.DataFrame) -> None:
+        self.state = state
 
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
