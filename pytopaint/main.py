@@ -52,7 +52,6 @@ from pytopaint.config import (
     set_upper_asinh_bound,
     set_window_position,
 )
-from pytopaint.flowdata import read_fcs
 from pytopaint.layout import read_yaml
 from pytopaint.paths import layout_dir
 from pytopaint.widgets.dialogs import (
@@ -100,19 +99,22 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
     @Slot()
-    def open_files(self):
+    def open_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             None, 'Select FCS Files', '', 'FCS (*.fcs)'
         )
+        self.open_files(files)
 
+    def open_files(self, files: list[str]):
         for file in files:
-            self.open_file(file)
+            match Path(file).suffix:
+                case '.fcs':
+                    self.open_fcs(file)
 
-    def open_file(self, file: Path):
+    def open_fcs(self, file: Path):
         try:
-            data = read_fcs(Path(file))
-
-            painter = Painter(data)
+            fcs = flowio.FlowData(file)
+            painter = Painter.from_fcs(fcs)
             self.painter_tabs.add_painter(painter)
 
         except ValueError as e:
@@ -120,6 +122,15 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def export_fcs(self) -> None:
+        def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
+            return {
+                k: v
+                for k, v in metadata.items()
+                if k
+                in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS
+                + ['spill', 'spillover']
+            }
+
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save File',
@@ -130,7 +141,7 @@ class MainWindow(QMainWindow):
             return
 
         painter = self.get_active_painter()
-        sample: flowio.FlowData = painter.data.uns['fcs']
+        sample: flowio.FlowData = painter.fcs
         event_mask = painter.state['visible']
         event_matrix: np.ndarray = np.reshape(
             sample.events, (-1, sample.channel_count)
@@ -142,7 +153,7 @@ class MainWindow(QMainWindow):
             event_matrix.flatten(),
             sample.pnn_labels,
             opt_channel_names=sample.pns_labels,
-            metadata_dict=sample.text,
+            metadata_dict=_scrub_metadata(sample.text),
         )
         stream.seek(0)
 
@@ -213,9 +224,7 @@ class MainWindow(QMainWindow):
 
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
-
-        for url in urls:
-            self.open_file(url.toLocalFile())
+        self.open_files([url.toLocalFile() for url in urls])
 
     def configure_shortcuts(self):
         close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
@@ -248,13 +257,16 @@ class MainWindow(QMainWindow):
 
         open_file_action = QAction('&Open FCS File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_file_action.triggered.connect(self.open_files)
+        open_file_action.triggered.connect(self.open_dialog)
         file_menu.addAction(open_file_action)
 
         export_fcs_action = QAction('&Export FCS File', self, enabled=False)
         export_fcs_action.triggered.connect(self.export_fcs)
         self.painter_tabs.currentChanged.connect(
-            lambda: export_fcs_action.setEnabled(self.painter_tabs.count())
+            lambda: export_fcs_action.setEnabled(
+                (self.painter_tabs.count() > 0)
+                and (self.get_active_painter().fcs is not None)
+            )
         )
         file_menu.addAction(export_fcs_action)
 

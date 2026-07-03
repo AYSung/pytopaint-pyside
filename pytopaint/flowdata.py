@@ -30,9 +30,7 @@ NON_IP_PARAMETERS = PHYSICAL_PARAMETERS + ['Time'] + ADDED_PARAMETERS
 UPPER_PHYSICAL = 255_000
 
 
-def read_fcs(filepath: Path) -> ad.AnnData:
-    fcs = flowio.FlowData(filepath)
-
+def read_fcs(fcs: flowio.FlowData) -> ad.AnnData:
     cleaned_channel_names = clean_channel_names(fcs)
     empty_channel_mask = cleaned_channel_names != ''
     adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask])
@@ -40,12 +38,10 @@ def read_fcs(filepath: Path) -> ad.AnnData:
     adata.uns['filename'] = fcs.name
     adata.uns['tube'] = fcs.text.get('tube name')
     adata.uns['id'] = (
-        f'{extract_case_number(filepath.stem)} {adata.uns["tube"]}'
+        f'{extract_case_number(Path(fcs.name).stem)} {adata.uns["tube"]}'
         if adata.uns['tube']
-        else f'{extract_case_number(filepath.stem)}'
+        else f'{extract_case_number(Path(fcs.name).stem)}'
     )
-    fcs.text = scrub_metadata(fcs.text)
-    adata.uns['fcs'] = fcs
 
     adata.var_names = cleaned_channel_names[empty_channel_mask]
     adata.var['channel_type'] = np.select(
@@ -99,15 +95,6 @@ def compensate(fcs: flowio.FlowData) -> np.ndarray:
         )
 
     return fcs.as_array().astype(np.float32)
-
-
-def scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
-    return {
-        k: v
-        for k, v in metadata.items()
-        if k
-        in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS + ['spill', 'spillover']
-    }
 
 
 def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:

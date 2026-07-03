@@ -8,6 +8,7 @@
 from functools import wraps
 
 import anndata as ad
+import flowio
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -25,7 +26,7 @@ from pytopaint.colors import (
     merge_colors,
 )
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import add_umap_dims, set_scale, set_size
+from pytopaint.flowdata import add_umap_dims, read_fcs, set_scale, set_size
 from pytopaint.layout import get_best_layout
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplotgrid import BiplotGrid
@@ -47,9 +48,11 @@ class Painter(QWidget):
     resizeTriggered = Signal(int)
     stateChanged = Signal(object)
 
-    def __init__(self, data: ad.AnnData):
+    def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
         self.configure_shortcuts()
+
+        self.fcs = fcs
 
         self.paint_actions = {
             MenuAction.SET_ACTIVE: self.change_color,
@@ -131,6 +134,11 @@ class Painter(QWidget):
 
         self.activeColorChanged.emit(self.active_color)
         self.state_changed()
+
+    @classmethod
+    def from_fcs(cls, fcs: flowio.FlowData):
+        data = read_fcs(fcs)
+        return cls(data, fcs)
 
     def configure_shortcuts(self) -> None:
         red_shortcut = QShortcut(QKeySequence('F'), self)
