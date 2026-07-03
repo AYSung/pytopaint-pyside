@@ -177,12 +177,9 @@ def discretize_array(
     return np.searchsorted(bins, arr, side='left')
 
 
-def add_umap_dims(
+def get_umap_dims(
     adata: ad.AnnData,
 ) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
-    adata.obsm['umap'] = umap_transform(
-        adata[:, adata.var['channel_type'] == 'fluoro'].layers['xform']
-    )
     bounds = {
         channel: dict(
             lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
@@ -207,7 +204,7 @@ def add_umap_dims(
     return adata.obsm['umap_bins'], umap_axis_ticks
 
 
-def umap_transform(arr: np.ndarray) -> np.array:
+def umap_transform(arr: np.ndarray) -> np.ndarray:
     scaled_arr = RobustScaler().fit_transform(arr)
     umap = UMAP(init='pca', verbose=True, min_dist=0.4, n_neighbors=15, random_state=42)
     rng = np.random.default_rng(seed=42)

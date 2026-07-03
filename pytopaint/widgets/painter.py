@@ -27,12 +27,13 @@ from pytopaint.colors import (
     merge_colors,
 )
 from pytopaint.flowdata import (
-    add_umap_dims,
     get_axis_ticks,
+    get_umap_dims,
     initialize,
     read_fcs,
     set_scale,
     set_size,
+    umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
 from pytopaint.selection import get_selection_index
@@ -93,11 +94,15 @@ class Painter(QWidget):
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
         self.axis_ticks = get_axis_ticks(self.data)
+
         self.undo_history = [self.state.copy()]
         self.redo_history = []
         self.active_color = Color.BLUE
         self.highlighted_colors = []
+
         self.memory_states = self.load_memory_states()
+        if 'umap' in self.data.obsm.keys():
+            self.load_umap()
 
         palette = Palette(memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.handle_menu_action)
@@ -421,15 +426,11 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        umap_arr, umap_axis_ticks = add_umap_dims(self.data)
-
-        umap_df = pd.DataFrame(
-            umap_arr,
-            columns=['UMAP1', 'UMAP2'],
+        self.data.obsm['umap'] = umap_transform(
+            self.data[:, self.data.var['channel_type' == 'fluoro']].layers['xform']
         )
-        self.axis_ticks = self.axis_ticks | umap_axis_ticks
-        self.df = self.df.join(umap_df)
 
+        self.load_umap()
         self.data_changed()
 
     @record_action
@@ -564,3 +565,13 @@ class Painter(QWidget):
             return get_best_layout(channels=self.data.var_names).grid
         else:
             return to_grid(json.loads(layout_grid))
+
+    def load_umap(self) -> None:
+        umap_arr, umap_axis_ticks = get_umap_dims(self.data)
+
+        umap_df = pd.DataFrame(
+            umap_arr,
+            columns=['UMAP1', 'UMAP2'],
+        )
+        self.axis_ticks = self.axis_ticks | umap_axis_ticks
+        self.df = self.df.join(umap_df)
