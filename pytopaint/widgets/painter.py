@@ -50,7 +50,6 @@ class Painter(QWidget):
     colorStateReturned = Signal(int, object)
     dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
-    memoryStateReturned = Signal(int, object)
     resizeTriggered = Signal(int)
     stateChanged = Signal(object)
 
@@ -99,10 +98,12 @@ class Painter(QWidget):
 
         self.highlighted_colors = []
 
-        palette = Palette()
+        # TODO: save layout
+        self.memory_states = self.get_memory_states()
+
+        palette = Palette(memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.handle_menu_action)
         self.colorStateReturned.connect(palette.update_color_memory)
-        self.memoryStateReturned.connect(palette.update_memory_slot)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.stateChanged.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
@@ -150,6 +151,7 @@ class Painter(QWidget):
 
     @classmethod
     def from_adata(cls, adata: ad.AnnData):
+        print(adata.obsm.get('mem_1'))
         return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
@@ -364,19 +366,19 @@ class Painter(QWidget):
         ] = Color.GREY
 
     @record_action
-    def replace_state(self, memory_state: pd.DataFrame):
-        self.state.update(memory_state)
+    def replace_state(self, slot: int):
+        self.state.update(self.memory_states[slot])
 
     @record_action
-    def merge_state(self, memory_state: pd.DataFrame):
+    def merge_state(self, slot: int):
         self.state.update(
-            memory_state.loc[
+            self.memory_states[slot].loc[
                 lambda x: self.state['visible'] & (x['color'] != Color.GREY)
             ]
         )
 
     def store_state(self, slot: int):
-        self.memoryStateReturned.emit(slot, self.state)
+        self.memory_states[slot] = self.state.copy()
 
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
@@ -537,4 +539,21 @@ class Painter(QWidget):
     def update_anndata_state(self) -> None:
         new_state = self.state.copy()
         new_state.index = new_state.index.astype(str)
+        for i, memory_state in self.memory_states.items():
+            if memory_state is not None:
+                temp_state = memory_state.copy()
+                temp_state.index = temp_state.index.astype(str)
+                self.data.obsm[f'mem_{i}'] = temp_state
         self.data.obs = new_state
+
+    def get_memory_states(self) -> dict[int, pd.DataFrame]:
+        def _get_memory_state(index: int) -> pd.DataFrame | None:
+            memory_state = self.data.obsm.get(f'mem_{index}')
+            return (
+                memory_state.reset_index(drop=True)
+                if memory_state is not None
+                else None
+            )
+
+        N_MEMORY_SLOTS = 5
+        return {i: _get_memory_state(i) for i in range(N_MEMORY_SLOTS)}

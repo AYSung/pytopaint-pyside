@@ -36,7 +36,7 @@ class Palette(QWidget):
     highlightsUpdated = Signal(list)
     colorPaletteChanged = Signal()
 
-    def __init__(self):
+    def __init__(self, memory_states: dict[int, pd.DataFrame]):
         super().__init__()
 
         layout = QHBoxLayout()
@@ -59,9 +59,13 @@ class Palette(QWidget):
         save_state_label = QLabel('Snapshots:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
         layout.addWidget(save_state_label)
-        self.memory_slots = {i: MemorySlot(i) for i in range(5)}
+        self.memory_slots = {
+            i: MemorySlot(i, memory_states[i] is not None) for i in memory_states.keys()
+        }
         for memory_slot in self.memory_slots.values():
-            layout.addWidget(memory_slot)
+            layout.addWidget(
+                memory_slot,
+            )
             memory_slot.menuActionTriggered.connect(self.menuActionTriggered)
 
         layout.addStretch()
@@ -85,10 +89,6 @@ class Palette(QWidget):
     @Slot(int, object)
     def update_color_memory(self, color: Color, color_state: pd.Series):
         self.color_labels[color].remember_state(color_state)
-
-    @Slot(int, object)
-    def update_memory_slot(self, slot: int, color_state: pd.Series):
-        self.memory_slots[slot].store_state(color_state)
 
 
 class ColorLabel(QWidget):
@@ -371,21 +371,17 @@ def _color_icon(color: Color) -> QIcon:
 class MemorySlot(QToolButton):
     menuActionTriggered = Signal(int, dict)
 
-    def __init__(self, id: int, parent=None):
+    def __init__(self, id: int, has_events: bool, parent=None):
         super().__init__(parent)
         self.id = id
+        self.has_events = has_events
         self.setText(str(id))
-        self.memory = None
         self.update_appearance()
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
-    @property
-    def has_events(self) -> bool:
-        return self.memory is not None
-
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if self.memory is None:
+        if not self.has_events:
             super().mouseReleaseEvent(e)
             return
 
@@ -418,18 +414,10 @@ class MemorySlot(QToolButton):
         menu.addSeparator()
 
         store_state_action = QAction('Remember', self)
-        store_state_action.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_STATE, dict(slot=self.id)
-            )
-        )
+        store_state_action.triggered.connect(self.store_state)
         menu.addAction(store_state_action)
         store_state_and_clear_action = QAction('Remember && Clear', self)
-        store_state_and_clear_action.triggered.connect(
-            lambda: self.menuActionTriggered.emit(
-                MenuAction.STORE_STATE_AND_CLEAR, dict(slot=self.id)
-            )
-        )
+        store_state_and_clear_action.triggered.connect(self.store_state_and_clear)
         menu.addAction(store_state_and_clear_action)
         clear_state_action = QAction('Forget', self, enabled=self.has_events)
         clear_state_action.triggered.connect(self.clear_state)
@@ -438,19 +426,23 @@ class MemorySlot(QToolButton):
         menu.exec(self.mapToGlobal(pos))
 
     def replace_state(self):
-        self.menuActionTriggered.emit(
-            MenuAction.REPLACE_STATE, dict(memory_state=self.memory)
-        )
+        self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, dict(slot=self.id))
 
     def merge_state(self):
-        self.menuActionTriggered.emit(
-            MenuAction.MERGE_STATE, dict(memory_state=self.memory)
-        )
+        self.menuActionTriggered.emit(MenuAction.MERGE_STATE, dict(slot=self.id))
 
-    def store_state(self, color_state: pd.DataFrame):
-        self.memory = color_state.copy()
+    def store_state(self):
+        self.has_events = True
+        self.menuActionTriggered.emit(MenuAction.STORE_STATE, dict(slot=self.id))
+        self.update_appearance()
+
+    def store_state_and_clear(self):
+        self.has_events = True
+        self.menuActionTriggered.emit(
+            MenuAction.STORE_STATE_AND_CLEAR, dict(slot=self.id)
+        )
         self.update_appearance()
 
     def clear_state(self):
-        self.memory = None
+        self.has_events = False
         self.update_appearance()
