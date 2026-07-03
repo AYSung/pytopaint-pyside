@@ -13,7 +13,7 @@ from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.colors import Color
-from pytopaint.layout import LayoutConfig, dict_to_yaml
+from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
 
 
@@ -149,8 +149,8 @@ class BiplotGrid(QGridLayout):
         biplot.deleteLater()
 
     @batch_update
-    def update_layout(self, layout: LayoutConfig) -> None:
-        for coords, labels in layout.grid.items():
+    def update_layout(self, grid: dict[tuple[int, int], tuple[str, str]]) -> None:
+        for coords, labels in grid.items():
             layout_item = self.itemAtPosition(*coords)
             if layout_item is not None:
                 x_label, y_label = labels

@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import json
 from functools import wraps
 
 import anndata as ad
@@ -33,7 +34,7 @@ from pytopaint.flowdata import (
     set_scale,
     set_size,
 )
-from pytopaint.layout import get_best_layout
+from pytopaint.layout import get_best_layout, to_grid
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
@@ -95,11 +96,8 @@ class Painter(QWidget):
         self.undo_history = [self.state.copy()]
         self.redo_history = []
         self.active_color = Color.BLUE
-
         self.highlighted_colors = []
-
-        # TODO: save layout
-        self.memory_states = self.get_memory_states()
+        self.memory_states = self.load_memory_states()
 
         palette = Palette(memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.handle_menu_action)
@@ -130,8 +128,7 @@ class Painter(QWidget):
         )
         biplot_grid_container.setLayout(self.biplot_grid)
 
-        layout_config = get_best_layout(channels=self.data.var_names)
-        self.biplot_grid.update_layout(layout_config)
+        self.biplot_grid.update_layout(self.load_grid_layout())
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -151,7 +148,6 @@ class Painter(QWidget):
 
     @classmethod
     def from_adata(cls, adata: ad.AnnData):
-        print(adata.obsm.get('mem_1'))
         return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
@@ -539,14 +535,17 @@ class Painter(QWidget):
     def update_anndata_state(self) -> None:
         new_state = self.state.copy()
         new_state.index = new_state.index.astype(str)
+        self.data.obs = new_state
+
         for i, memory_state in self.memory_states.items():
             if memory_state is not None:
                 temp_state = memory_state.copy()
                 temp_state.index = temp_state.index.astype(str)
                 self.data.obsm[f'mem_{i}'] = temp_state
-        self.data.obs = new_state
 
-    def get_memory_states(self) -> dict[int, pd.DataFrame]:
+        self.data.uns['layout'] = json.dumps(self.biplot_grid.to_yaml())
+
+    def load_memory_states(self) -> dict[int, pd.DataFrame]:
         def _get_memory_state(index: int) -> pd.DataFrame | None:
             memory_state = self.data.obsm.get(f'mem_{index}')
             return (
@@ -557,3 +556,10 @@ class Painter(QWidget):
 
         N_MEMORY_SLOTS = 5
         return {i: _get_memory_state(i) for i in range(N_MEMORY_SLOTS)}
+
+    def load_grid_layout(self) -> dict[tuple[int, int], tuple[str, str]]:
+        layout_grid = self.data.uns.get('layout')
+        if layout_grid is None:
+            return get_best_layout(channels=self.data.var_names).grid
+        else:
+            return to_grid(json.loads(layout_grid))
