@@ -74,6 +74,8 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('PytoPaint')
 
+        self.last_dir = QDir.homePath()
+
         self.setStyleSheet('QMainWindow { background-color: #242424; }')
 
         self.painter_tabs = PainterTabs()
@@ -99,7 +101,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def open_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select File(s)', QDir.homePath(), 'FCS (*.fcs);;H5AD (*.h5ad)'
+            None, 'Select File(s)', self.last_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
         )
         self.open_files(files)
 
@@ -116,6 +118,7 @@ class MainWindow(QMainWindow):
             fcs = flowio.FlowData(file)
             painter = Painter.from_fcs(fcs)
             self.painter_tabs.add_painter(painter)
+            self.last_dir = str(Path(file).parent)
 
         except ValueError as e:
             raise e
@@ -125,6 +128,7 @@ class MainWindow(QMainWindow):
             adata = ad.io.read_h5ad(file)
             painter = Painter.from_adata(adata)
             self.painter_tabs.add_painter(painter)
+            self.last_dir = str(Path(file).parent)
 
         except ValueError as e:
             raise e
@@ -136,7 +140,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save Session',
-            dir=QDir.homePath(),
+            dir=self.last_dir,
             filter='H5AD (*.h5ad)',
         )
         if not file_path:
@@ -160,7 +164,7 @@ class MainWindow(QMainWindow):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Export Deidentified FCS',
-            dir=QDir.homePath(),
+            dir=self.last_dir,
             filter='FCS (*.fcs)',
         )
         if not file_path:
