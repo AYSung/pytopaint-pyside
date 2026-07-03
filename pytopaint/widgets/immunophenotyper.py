@@ -8,51 +8,53 @@
 
 from itertools import batched
 
+import anndata as ad
 import pandas as pd
-from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
+from PySide6.QtCore import QLine, QPoint, QRect, Qt
 from PySide6.QtGui import QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
-    QApplication,
     QDialog,
     QGridLayout,
     QHBoxLayout,
     QLabel,
     QLayout,
-    QPushButton,
     QVBoxLayout,
     QWidget,
 )
 
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import ADDED_PARAMETERS, PHYSICAL_PARAMETERS, sort_channels
-from pytopaint.widgets.palette import _format_percent
+from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 
 class Immunophenotyper(QDialog):
     def __init__(
         self,
-        df: pd.DataFrame,
+        data: ad.AnnData,
         state: pd.DataFrame,
-        axis_ticks: dict[str, list[tuple[int, str]]],
         color: Color,
         parent=None,
     ):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
 
-        self.channels = sort_channels(get_ip_channels(df.columns))
-        df = df.loc[state['visible']].join(state[['color']]).astype('uint8')
+        self.channels = sort_channels(
+            ['FSC-A', 'SSC-A']
+            + data.var_names[data.var['channel_type'] == 'fluoro'].to_list()
+        )
+        axis_ticks = data.uns['axis_ticks']
 
-        self.percent = (
-            state['color'].loc[lambda s: s == color].size / state['visible'].sum()
-            if state['visible'].any()
-            else 0
+        df = (
+            pd
+            .DataFrame(data.layers['bin'], columns=data.var_names)
+            .join(state[['color']])
+            .astype('uint8')
+            .loc[state['visible']]
         )
 
         layout = QVBoxLayout()
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout = QHBoxLayout()
-        ip_layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout.setSpacing(20)
         ROWS_PER_COLUMN = 6
         columns = batched(self.channels, ROWS_PER_COLUMN)
@@ -71,52 +73,7 @@ class Immunophenotyper(QDialog):
             column_layout.addStretch()
             ip_layout.addLayout(column_layout)
         layout.addLayout(ip_layout)
-
-        copy_button = QPushButton('Copy Report Template', self)
-        copy_button.setFixedWidth(200)
-        copy_button.clicked.connect(lambda: self.copy_clicked(copy_button))
-        layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
         self.setLayout(layout)
-
-    def copy_clicked(self, button: QPushButton) -> None:
-        def restore_button():
-            button.setEnabled(True)
-            button.setText('Copy Report Template')
-
-        self.copy_report_template()
-        button.setEnabled(False)
-        button.setText('Copied!')
-        QTimer.singleShot(2000, restore_button)
-
-    def copy_report_template(self) -> None:
-        clipboard = QApplication.clipboard()
-        clipboard.setText(generate_report_template(self.channels, self.percent))
-
-
-def generate_report_template(ip_channels: list[str], percent_events: float) -> str:
-    immunophenotype_markers = [
-        _add_marker_smartlist(channel)
-        for channel in ip_channels
-        if channel not in PHYSICAL_PARAMETERS
-    ]
-
-    template = f"""Immunophenotypic analysis reveals a population of {{cell lineage selection:40658}} cells ({_format_percent(percent_events)} of total events) with {{light scatter strength:40657}} forward light scatter, {{light scatter strength:40657}} orthogonal light scatter, and the following immunophenotype: {_join_list(immunophenotype_markers)}"""
-
-    return template
-
-
-def _add_marker_smartlist(channel) -> str:
-    if channel in ['Kappa', 'Lambda']:
-        return f'{{surface/IC:46754}} {channel.lower()} light chain ({{+/-:40630}})'
-    return f'{channel} ({{+/-:40630}})'
-
-
-def _join_list(_list: list[str]) -> str:
-    if len(_list) <= 2:
-        return ' and '.join(_list)
-    else:
-        return f'{", ".join(_list[:-1])}, and {_list[-1]}'
 
 
 def immunophenotype_plot(
@@ -223,11 +180,3 @@ def histogram_axis(channel: str, axis_ticks: list[tuple[int, str]]) -> QLabel:
 
     axis.setPixmap(canvas)
     return axis
-
-
-def get_ip_channels(channels: list[str]) -> list[str]:
-    return [
-        channel
-        for channel in channels
-        if channel not in ['FSC-H', 'SSC-H', 'Time'] + ADDED_PARAMETERS
-    ]

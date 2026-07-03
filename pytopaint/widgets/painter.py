@@ -550,9 +550,8 @@ class Painter(QWidget):
 
     def open_immunophenotyper_dialog(self, color: Color):
         dialog = Immunophenotyper(
-            df=self.df,
+            data=self.data,
             state=self.state,
-            axis_ticks=self.data.uns['axis_ticks'],
             color=color,
             parent=self,
         )
