@@ -337,14 +337,14 @@ class Painter(QWidget):
 
     @record_action
     def replace_state(self, memory_state: pd.DataFrame):
-        self.state = memory_state.copy()
+        self.state.update(memory_state)
 
     @record_action
     def merge_state(self, memory_state: pd.DataFrame):
         self.state.update(memory_state.loc[lambda x: x['color'] != Color.GREY])
 
     def store_state(self, slot: int):
-        self.memoryStateReturned.emit(slot, self.state.copy())
+        self.memoryStateReturned.emit(slot, self.state)
 
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)

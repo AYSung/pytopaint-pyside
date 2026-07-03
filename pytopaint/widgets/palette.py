@@ -449,8 +449,8 @@ class MemorySlot(QToolButton):
             MenuAction.MERGE_STATE, dict(memory_state=self.memory)
         )
 
-    def store_state(self, color_state: pd.Series):
-        self.memory = color_state
+    def store_state(self, color_state: pd.DataFrame):
+        self.memory = color_state.copy()
         self.update_appearance()
 
     def clear_state(self):
