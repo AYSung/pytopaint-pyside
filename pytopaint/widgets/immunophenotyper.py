@@ -10,7 +10,7 @@ from itertools import batched
 
 import anndata as ad
 import pandas as pd
-from PySide6.QtCore import QLine, QPoint, QRect, Qt
+from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QDialog,
@@ -18,6 +18,7 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QLayout,
+    QPushButton,
     QVBoxLayout,
     QWidget,
 )
@@ -25,6 +26,7 @@ from PySide6.QtWidgets import (
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.widgets.reportgenerator import copy_report_template
 
 
 class Immunophenotyper(QDialog):
@@ -52,6 +54,11 @@ class Immunophenotyper(QDialog):
             .loc[state['visible']]
         )
 
+        self.percent = (
+            state['color'].loc[state['visible'] & (state['color'] == color)].size
+            / state['visible'].sum()
+        )
+
         layout = QVBoxLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout = QHBoxLayout()
@@ -73,7 +80,22 @@ class Immunophenotyper(QDialog):
             column_layout.addStretch()
             ip_layout.addLayout(column_layout)
         layout.addLayout(ip_layout)
+        copy_button = QPushButton('Copy Report Template', self)
+        copy_button.setFixedWidth(200)
+        copy_button.clicked.connect(lambda: self.copy_clicked(copy_button))
+        layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
         self.setLayout(layout)
+
+    def copy_clicked(self, button: QPushButton) -> None:
+        def restore_button():
+            button.setEnabled(True)
+            button.setText('Copy Report Template')
+
+        copy_report_template(self.channels, self.percent)
+        button.setEnabled(False)
+        button.setText('Copied!')
+        QTimer.singleShot(2000, restore_button)
 
 
 def immunophenotype_plot(

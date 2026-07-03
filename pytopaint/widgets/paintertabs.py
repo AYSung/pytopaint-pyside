@@ -51,3 +51,7 @@ class PainterTabs(QTabWidget):
             self.setCurrentIndex(i)
         self.setCurrentIndex(current_index)
         self.setUpdatesEnabled(True)
+
+    @property
+    def painters(self) -> list[Painter]:
+        return [self.widget(i) for i in range(self.count())]

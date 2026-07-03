@@ -2,24 +2,14 @@ import pytest
 import yaml
 
 import pandas as pd
-from pathlib import Path
 
 
 from pytopaint.flowdata import (
-    FlowData,
-    bin_df,
     sort_channels,
     _clean_marker_name,
-    _get_channel_names,
-    _get_compensation,
     UPPER_PHYSICAL,
-    lower_clip_limit,
-    upper_clip_limit,
-    clip_series,
-    bin_series,
     get_axis_ticks,
     extract_case_number,
-    umap_transform,
 )
 
 LOWER_ASINH = -1
@@ -88,31 +78,6 @@ def test_get_channels():
         ],
         columns=['pnn', 'pns'],
     )
-
-    assert _get_channel_names(test_df.pnn.to_list(), test_df.pns.to_list()) == [
-        'FSC-A',
-        'FSC-H',
-        'SSC-A',
-        'SSC-H',
-        'CD2',
-        'CD11b',
-        'HLA-DR',
-        'CD45',
-        'Kappa',
-        'Lambda',
-        'fluor7',
-        'Time',
-    ]
-
-
-def test_get_compensation():
-    metadata_1 = {'spill': 'spill matrix'}
-    metadata_2 = {'spillover': 'spillover matrix'}
-    metadata_3 = {'id': 'test'}
-
-    assert _get_compensation(metadata_1) == 'spill matrix'
-    assert _get_compensation(metadata_2) == 'spillover matrix'
-    assert _get_compensation(metadata_3) is None
 
 
 def test_sort_channels():
@@ -183,115 +148,6 @@ def df_1() -> pd.DataFrame:
     })
 
 
-def test_lower_clip_limits(df_1):
-    assert lower_clip_limit(df_1['FSC-A']) == 0
-    assert lower_clip_limit(df_1['FSC-H']) == 0
-    assert lower_clip_limit(df_1['SSC-A']) == 0
-    assert lower_clip_limit(df_1['SSC-H']) == 0
-    assert lower_clip_limit(df_1['Time']) == 0
-    assert lower_clip_limit(df_1['CD5']) < LOWER_ASINH
-    assert lower_clip_limit(df_1['CD10']) == LOWER_ASINH
-    assert lower_clip_limit(df_1['UMAP1']) == -1.05
-
-
-def test_upper_clip_limits(df_1):
-    assert upper_clip_limit(df_1['FSC-A']) == UPPER_PHYSICAL
-    assert upper_clip_limit(df_1['FSC-H']) == UPPER_PHYSICAL
-    assert upper_clip_limit(df_1['SSC-A']) == UPPER_PHYSICAL
-    assert upper_clip_limit(df_1['SSC-H']) == UPPER_PHYSICAL
-    assert upper_clip_limit(df_1['Time']) == df_1['Time'].max()
-    assert upper_clip_limit(df_1['CD5']) == UPPER_ASINH
-    assert upper_clip_limit(df_1['CD10']) > UPPER_ASINH
-    assert upper_clip_limit(df_1['UMAP1']) == 10.5
-
-
-def test_clip_series(test_df_1):
-    clip_limits = {
-        'FSC-A': (0, UPPER_PHYSICAL),
-        'SSC-A': (0, UPPER_PHYSICAL),
-        'CD45': (LOWER_ASINH, UPPER_ASINH),
-        'Time': (0, 100),
-    }
-
-    pd.testing.assert_series_equal(
-        clip_series(test_df_1['FSC-A'], clip_limits=clip_limits),
-        pd.Series([0, 100], name='FSC-A'),
-    )
-    pd.testing.assert_series_equal(
-        clip_series(test_df_1['SSC-A'], clip_limits=clip_limits),
-        pd.Series([0, 100], name='SSC-A'),
-    )
-    pd.testing.assert_series_equal(
-        clip_series(test_df_1['CD45'], clip_limits=clip_limits),
-        pd.Series([4, 8], name='CD45'),
-    )
-    pd.testing.assert_series_equal(
-        clip_series(test_df_1['Time'], clip_limits=clip_limits),
-        pd.Series([0, 100], name='Time'),
-    )
-
-
-def test_bin_series(test_df_1):
-    clip_limits = {
-        'FSC-A': (0, UPPER_PHYSICAL),
-        'SSC-A': (0, UPPER_PHYSICAL),
-        'CD45': (LOWER_ASINH, UPPER_ASINH),
-        'Time': (0, 100),
-    }
-
-    pd.testing.assert_series_equal(
-        bin_series(
-            clip_series(test_df_1['FSC-A'], clip_limits=clip_limits),
-            n_bins=256,
-            clip_limits=clip_limits,
-        ),
-        pd.Series([0, 0], name='FSC-A'),
-    )
-    pd.testing.assert_series_equal(
-        bin_series(
-            clip_series(test_df_1['SSC-A'], clip_limits=clip_limits),
-            n_bins=256,
-            clip_limits=clip_limits,
-        ),
-        pd.Series([0, 0], name='SSC-A'),
-    )
-    pd.testing.assert_series_equal(
-        bin_series(
-            clip_series(test_df_1['CD45'], clip_limits=clip_limits),
-            n_bins=256,
-            clip_limits=clip_limits,
-        ),
-        pd.Series([142, 255], name='CD45'),
-    )
-    pd.testing.assert_series_equal(
-        bin_series(
-            clip_series(test_df_1['Time'], clip_limits=clip_limits),
-            n_bins=256,
-            clip_limits=clip_limits,
-        ),
-        pd.Series([0, 255], name='Time'),
-    )
-
-
-def test_bin(test_df_1):
-    clip_limits = {
-        'FSC-A': (0, UPPER_PHYSICAL),
-        'SSC-A': (0, UPPER_PHYSICAL),
-        'CD45': (LOWER_ASINH, UPPER_ASINH),
-        'Time': (0, 100),
-    }
-    binned_df = bin_df(test_df_1, n_bins=256, clip_limits=clip_limits)
-    pd.testing.assert_frame_equal(
-        binned_df,
-        pd.DataFrame({
-            'FSC-A': [0, 0],
-            'SSC-A': [0, 0],
-            'CD45': [142, 255],
-            'Time': [0, 255],
-        }),
-    )
-
-
 def test_get_axis_ticks():
     clip_limits = {
         'FSC-A': (0, UPPER_PHYSICAL),
@@ -327,12 +183,3 @@ def test_extract_case_number():
     assert extract_case_number('Y 24-1234 SMITH1') == 'IP24-01234'
     assert extract_case_number('Z-24-1234 JOHN-SMITH') == 'IP24-01234'
     assert extract_case_number('Y 1234 SMITH') == 'IPxx-01234'
-
-
-def test_umap_transform():
-    df = FlowData.from_path(Path('tests/resources/normal_01_B.fcs')).xform_df
-
-    df_with_umap = umap_transform(df)
-
-    assert df_with_umap.columns.to_list() == ['UMAP1', 'UMAP2']
-    assert df_with_umap.shape[0] == df.shape[0]

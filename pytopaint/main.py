@@ -5,10 +5,9 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import sys
 import cProfile
 import pstats
-
+import sys
 from io import BytesIO
 from multiprocessing import freeze_support
 from pathlib import Path
@@ -55,6 +54,7 @@ from pytopaint.config import (
 )
 from pytopaint.flowdata import read_fcs
 from pytopaint.layout import read_yaml
+from pytopaint.paths import layout_dir
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     about_dialog,
@@ -62,10 +62,10 @@ from pytopaint.widgets.dialogs import (
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
+    report_generator_dialog,
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
-from pytopaint.paths import layout_dir
 
 
 class MainWindow(QMainWindow):
@@ -292,6 +292,15 @@ class MainWindow(QMainWindow):
         subsample_action = QAction('Subsample Data...', self)
         subsample_action.triggered.connect(self.subsample)
         paint_menu.addAction(subsample_action)
+
+        paint_menu.addSeparator()
+        generate_report = QAction('Generate Report Template', self)
+        generate_report.triggered.connect(
+            lambda: report_generator_dialog(
+                self, [painter.data for painter in self.painter_tabs.painters]
+            )
+        )
+        paint_menu.addAction(generate_report)
 
         layout_menu = menu_bar.addMenu('&Layout')
         layout_menu.setEnabled(False)

@@ -29,6 +29,7 @@ from pytopaint.config import (
     get_upper_asinh_bound,
 )
 from pytopaint.flowdata import sort_channels
+from pytopaint.widgets.reportgenerator import ReportTemplateDialog
 
 
 def about_dialog(parent: QWidget) -> None:
@@ -242,3 +243,9 @@ def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
         minValue=1,
         maxValue=10,
     )
+
+
+def report_generator_dialog(parent: QWidget, tubes: list[ad.AnnData]) -> int:
+    report_generator = ReportTemplateDialog(tubes, parent)
+
+    return report_generator.exec()
