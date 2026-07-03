@@ -98,7 +98,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Yellow', 'Shift + S'),
             ('Paint White', 'A'),
             ('Exact Zap Current Color', 'E'),
-            ('Zap Current Color', 'Ctrl E'),
+            ('Zap Current Color', 'Ctrl + E'),
             ('Zap All', 'Ctrl + Shift + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
