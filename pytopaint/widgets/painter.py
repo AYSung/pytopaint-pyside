@@ -25,7 +25,6 @@ from pytopaint.colors import (
     _subtract_color_from_series,
     merge_colors,
 )
-from pytopaint.config import get_resolution
 from pytopaint.flowdata import add_umap_dims, read_fcs, set_scale, set_size
 from pytopaint.layout import get_best_layout
 from pytopaint.selection import get_selection_index
@@ -106,13 +105,14 @@ class Painter(QWidget):
             axis_ticks=self.data.uns['axis_ticks'],
             state=self.state,
             active_color=self.active_color,
+            resolution=self.data.uns['bins'],
         )
         self.biplot_grid.pointsSelected.connect(self.handle_selection)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.stateChanged)
         self.dataChanged.connect(self.biplot_grid.dataChanged)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
-        self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
+        self.resizeTriggered.connect(self.biplot_grid.update_resolution)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
 
         biplot_grid_container = QWidget()
@@ -472,18 +472,21 @@ class Painter(QWidget):
 
         self.highlightsUpdated.emit(self.highlighted_colors)
 
-    @Slot()
-    def handle_resize(self) -> None:
-        set_size(self.data)
+    @Slot(int)
+    def handle_resize(self, bins: int = None) -> None:
+        if bins is None:
+            bins = self.data.uns['bins']
+        set_size(self.data, bins=bins)
+
         self.df = pd.DataFrame(
             self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
         )
-        self.resizeTriggered.emit(get_resolution())
+        self.resizeTriggered.emit(bins)
         self.data_changed()
 
-    @Slot()
-    def handle_rescale(self) -> None:
-        set_scale(self.data)
+    @Slot(object)
+    def handle_rescale(self, scale_config: dict[str, float]) -> None:
+        set_scale(self.data, **scale_config)
         self.handle_resize()
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:

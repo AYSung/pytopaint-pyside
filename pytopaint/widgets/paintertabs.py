@@ -5,7 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Qt, Slot, Signal
+from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QTabWidget
 
@@ -13,8 +13,8 @@ from pytopaint.widgets.painter import Painter
 
 
 class PainterTabs(QTabWidget):
-    resizeTriggered = Signal()
-    rescaleTriggered = Signal()
+    resizeTriggered = Signal(int)
+    rescaleTriggered = Signal(object)
     colorPaletteChanged = Signal()
 
     def __init__(self, parent=None):
@@ -43,10 +43,10 @@ class PainterTabs(QTabWidget):
         self.addTab(painter, painter.data.uns['id'])
         self.setCurrentWidget(painter)
 
-    @Slot()
-    def handle_resize(self):
+    @Slot(int)
+    def handle_resize(self, bins: int):
         self.setUpdatesEnabled(False)
-        self.resizeTriggered.emit()
+        self.resizeTriggered.emit(bins)
         current_index = self.currentIndex()
         for i in range(self.count()):
             self.setCurrentIndex(i)

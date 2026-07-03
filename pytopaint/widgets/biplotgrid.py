@@ -32,6 +32,7 @@ class BiplotGrid(QGridLayout):
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.Series,
         active_color: Color,
+        resolution: int,
     ) -> None:
         super().__init__()
         self.setSpacing(0)
@@ -40,6 +41,7 @@ class BiplotGrid(QGridLayout):
         self.axis_ticks = axis_ticks
         self.state = state
         self.active_color = active_color
+        self.resolution = resolution
 
         self.activeColorChanged.connect(self.update_active_color)
         self.dataChanged.connect(self.update_data)
@@ -67,6 +69,11 @@ class BiplotGrid(QGridLayout):
     def update_state(self, state: pd.DataFrame) -> None:
         self.state = state
 
+    @Slot(int)
+    def update_resolution(self, pixels: int) -> None:
+        self.resolution = pixels
+        self.resizeTriggered.emit(pixels)
+
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
 
@@ -77,6 +84,7 @@ class BiplotGrid(QGridLayout):
             active_color=self.active_color,
             x_label=x_label,
             y_label=y_label,
+            resolution=self.resolution,
         )
         biplot.pointsSelected.connect(self.pointsSelected)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)

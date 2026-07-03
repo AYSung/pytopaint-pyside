@@ -27,6 +27,10 @@ from pytopaint.config import (
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
+    set_lower_asinh_bound,
+    set_resolution,
+    set_scaling_factor,
+    set_upper_asinh_bound,
 )
 from pytopaint.flowdata import sort_channels
 from pytopaint.widgets.reportgenerator import ReportTemplateDialog
@@ -119,52 +123,140 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
 
 
 class PlotScaleDialog(QDialog):
-    def __init__(self, parent=None):
+    def __init__(
+        self,
+        parent=None,
+        scaling_factor: float = None,
+        lower_asinh_bound: float = None,
+        upper_asinh_bound: float = None,
+    ):
         super().__init__(parent)
-        self.setWindowTitle('Scale')
+        self.setWindowTitle('Plot Scale')
         field_width = 60
 
         layout = QFormLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.scaling_factor_input = QSpinBox(singleStep=10)
         self.scaling_factor_input.setRange(20, 1200)
-        self.scaling_factor_input.setValue(get_scaling_factor())
+        self.scaling_factor_input.setValue(scaling_factor or get_scaling_factor())
         self.scaling_factor_input.setFixedWidth(field_width)
         self.scaling_factor_input.setToolTip('between 20 and 1200')
-        self.upper_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
-        self.upper_arcsinh_limit_input.setRange(5, 15)
-        self.upper_arcsinh_limit_input.setValue(get_upper_asinh_bound())
-        self.upper_arcsinh_limit_input.setFixedWidth(field_width)
-        self.upper_arcsinh_limit_input.setToolTip('between 5 and 15')
-        self.lower_arcsinh_limit_input = QDoubleSpinBox(singleStep=0.5)
-        self.lower_arcsinh_limit_input.setRange(-5, 4)
-        self.lower_arcsinh_limit_input.setValue(get_lower_asinh_bound())
-        self.lower_arcsinh_limit_input.setFixedWidth(field_width)
-        self.lower_arcsinh_limit_input.setToolTip('between -5 and 4')
+        self.upper_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
+        self.upper_asinh_bound_input.setRange(5, 15)
+        self.upper_asinh_bound_input.setValue(
+            upper_asinh_bound or get_upper_asinh_bound()
+        )
+        self.upper_asinh_bound_input.setFixedWidth(field_width)
+        self.upper_asinh_bound_input.setToolTip('between 5 and 15')
+        self.lower_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
+        self.lower_asinh_bound_input.setRange(-5, 4)
+        self.lower_asinh_bound_input.setValue(
+            lower_asinh_bound or get_lower_asinh_bound()
+        )
+        self.lower_asinh_bound_input.setFixedWidth(field_width)
+        self.lower_asinh_bound_input.setToolTip('between -5 and 4')
         layout.addRow('Scaling Factor:', self.scaling_factor_input)
-        layout.addRow('Upper Bound:', self.upper_arcsinh_limit_input)
-        layout.addRow('Lower Bound:', self.lower_arcsinh_limit_input)
+        layout.addRow('Upper Bound:', self.upper_asinh_bound_input)
+        layout.addRow('Lower Bound:', self.lower_asinh_bound_input)
 
         button_box = QDialogButtonBox(
             QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
         )
+
+        save_defaults_btn = button_box.addButton(
+            'Save as Default', QDialogButtonBox.ButtonRole.ActionRole
+        )
+        save_defaults_btn.clicked.connect(self.save_defaults)
+        reset_to_defaults_btn = button_box.addButton(
+            'Reset', QDialogButtonBox.ButtonRole.ActionRole
+        )
+        reset_to_defaults_btn.clicked.connect(self.reset_to_defaults)
+
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addRow(button_box)
 
         self.setLayout(layout)
 
+    def reset_to_defaults(self) -> None:
+        self.scaling_factor_input.setValue(get_scaling_factor())
+        self.upper_asinh_bound_input.setValue(get_upper_asinh_bound())
+        self.lower_asinh_bound_input.setValue(get_lower_asinh_bound())
+
+    def save_defaults(self) -> None:
+        set_scaling_factor(self.scaling_factor)
+        set_lower_asinh_bound(self.lower_asinh_bound)
+        set_upper_asinh_bound(self.upper_asinh_bound)
+
     @property
     def scaling_factor(self) -> int:
         return self.scaling_factor_input.value()
 
     @property
-    def upper_arcsinh_limit(self) -> float:
-        return self.upper_arcsinh_limit_input.value()
+    def upper_asinh_bound(self) -> float:
+        return self.upper_asinh_bound_input.value()
 
     @property
-    def lower_arcsinh_limit(self) -> float:
-        return self.lower_arcsinh_limit_input.value()
+    def lower_asinh_bound(self) -> float:
+        return self.lower_asinh_bound_input.value()
+
+    @property
+    def scale_config(self) -> dict[str, float]:
+        return {
+            'scaling_factor': self.scaling_factor,
+            'lower_asinh_bound': self.lower_asinh_bound,
+            'upper_asinh_bound': self.upper_asinh_bound,
+        }
+
+
+class PlotSizeDialog(QDialog):
+    def __init__(
+        self,
+        parent=None,
+        resolution: int = None,
+    ):
+        super().__init__(parent)
+        self.setWindowTitle('Plot Size')
+        field_width = 60
+
+        layout = QFormLayout()
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
+        self.plot_size_input = QSpinBox(singleStep=16)
+        self.plot_size_input.setRange(128, 256)
+        self.plot_size_input.setValue(resolution or get_resolution())
+        self.plot_size_input.setFixedWidth(field_width)
+        self.plot_size_input.setToolTip('between 128 and 256 pixels')
+
+        layout.addRow('Size:', self.plot_size_input)
+
+        button_box = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
+        )
+
+        save_defaults_btn = button_box.addButton(
+            'Save as Default', QDialogButtonBox.ButtonRole.ActionRole
+        )
+        save_defaults_btn.clicked.connect(self.save_defaults)
+        reset_to_defaults_btn = button_box.addButton(
+            'Reset', QDialogButtonBox.ButtonRole.ActionRole
+        )
+        reset_to_defaults_btn.clicked.connect(self.reset_to_defaults)
+
+        button_box.accepted.connect(self.accept)
+        button_box.rejected.connect(self.reject)
+        layout.addRow(button_box)
+
+        self.setLayout(layout)
+
+    def reset_to_defaults(self) -> None:
+        self.plot_size_input.setValue(get_resolution())
+
+    def save_defaults(self) -> None:
+        set_resolution(self.plot_size)
+
+    @property
+    def plot_size(self) -> int:
+        return self.plot_size_input.value()
 
 
 def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
@@ -208,18 +300,6 @@ def subsample_dialog(parent: QWidget, total_events: int) -> tuple[int, bool]:
         minValue=1_000,
         maxValue=total_events,
         step=1_000,
-    )
-
-
-def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
-    return QInputDialog.getInt(
-        parent,
-        'Size',
-        'Pixels per dimension (128-256)',
-        value=get_resolution(),
-        minValue=128,
-        maxValue=256,
-        step=16,
     )
 
 

@@ -58,22 +58,40 @@ def read_fcs(fcs: flowio.FlowData) -> ad.AnnData:
     adata.obs['color'] = Color.GREY
     adata.obs['visible'] = True
 
-    set_scale(adata)
-    set_size(adata)
+    set_scale(
+        adata,
+        scaling_factor=get_scaling_factor(),
+        lower_asinh_bound=get_lower_asinh_bound(),
+        upper_asinh_bound=get_upper_asinh_bound(),
+    )
+    set_size(adata, bins=get_resolution())
 
     return adata
 
 
-def set_scale(adata: ad.AnnData) -> None:
-    adata.layers['xform'] = asinh_transform(adata, scaling_factor=get_scaling_factor())
+def set_scale(
+    adata: ad.AnnData,
+    scaling_factor: int,
+    lower_asinh_bound: float,
+    upper_asinh_bound: float,
+) -> None:
+    adata.uns['scaling_factor'] = scaling_factor
+    adata.uns['lower_asinh_bound'] = lower_asinh_bound
+    adata.uns['upper_asinh_bound'] = upper_asinh_bound
+
+    adata.layers['xform'] = asinh_transform(
+        adata, scaling_factor=adata.uns['scaling_factor']
+    )
     adata.var['lower_bound'] = lower_clip_limits(adata)
     adata.var['upper_bound'] = upper_clip_limits(adata)
 
 
-def set_size(adata: ad.AnnData) -> None:
-    adata.layers['bin'] = discretize_data(adata, bins=get_resolution())
+def set_size(adata: ad.AnnData, bins: int) -> None:
+    adata.uns['bins'] = bins
+
+    adata.layers['bin'] = discretize_data(adata)
     adata.uns['axis_ticks'] = get_axis_ticks(
-        adata, bins=get_resolution(), scaling_factor=get_scaling_factor()
+        adata, bins=adata.uns['bins'], scaling_factor=adata.uns['scaling_factor']
     )
 
 
@@ -144,11 +162,12 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
     return np.clip(adata.layers['xform'], a_min=a_min, a_max=a_max)
 
 
-def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
+def discretize_data(adata: ad.AnnData) -> np.ndarray:
     arr = clip_xform_data(adata)
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
     return np.array([
-        discretize_array(**bounds[i], bins=bins, arr=row) for i, row in enumerate(arr.T)
+        discretize_array(**bounds[i], bins=adata.uns['bins'], arr=row)
+        for i, row in enumerate(arr.T)
     ]).T.astype(np.uint8)
 
 
@@ -163,7 +182,6 @@ def add_umap_dims(adata: ad.AnnData) -> None:
     adata.obsm['umap'] = umap_transform(
         adata[:, adata.var['channel_type'] == 'fluoro'].layers['xform']
     )
-    bins = get_resolution()
     bounds = {
         channel: dict(
             lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
@@ -174,14 +192,14 @@ def add_umap_dims(adata: ad.AnnData) -> None:
     adata.obsm['umap_bins'] = np.array([
         discretize_array(
             **bounds[channel],
-            bins=bins,
+            bins=adata.uns['bins'],
             arr=row,
         )
         for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
     ]).T.astype(np.uint8)
 
     adata.uns['axis_ticks'] = adata.uns['axis_ticks'] | _umap_axis_ticks(
-        bins=bins,
+        bins=adata.uns['bins'],
         channels=['UMAP1', 'UMAP2'],
         bounds=bounds,
     )

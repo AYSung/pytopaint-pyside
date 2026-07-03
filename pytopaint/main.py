@@ -46,20 +46,16 @@ from pytopaint.config import (
     get_color_palette,
     get_window_position,
     set_color_palette,
-    set_lower_asinh_bound,
-    set_resolution,
-    set_scaling_factor,
-    set_upper_asinh_bound,
     set_window_position,
 )
 from pytopaint.layout import read_yaml
 from pytopaint.paths import layout_dir
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
+    PlotSizeDialog,
     about_dialog,
     file_info_dialog,
     report_generator_dialog,
-    resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
 )
@@ -69,8 +65,8 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
-    resizeTriggered = Signal()
-    rescaleTriggered = Signal()
+    resizeTriggered = Signal(int)
+    rescaleTriggered = Signal(object)
 
     def __init__(self):
         super().__init__()
@@ -119,6 +115,9 @@ class MainWindow(QMainWindow):
 
         except ValueError as e:
             raise e
+
+    def save_session(self) -> None:
+        raise NotImplementedError
 
     @Slot()
     def export_fcs(self) -> None:
@@ -202,19 +201,23 @@ class MainWindow(QMainWindow):
             )
 
     def resize_plots(self) -> None:
-        pixels, ok = resize_plot_dialog(self)
-        if ok:
-            set_resolution(pixels)
-            self.resizeTriggered.emit()
-
-    def rescale_plots(self) -> None:
-        dialog = PlotScaleDialog(self)
+        data = self.get_active_painter().data
+        dialog = PlotSizeDialog(self, data.uns.get('bins'))
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            set_scaling_factor(dialog.scaling_factor)
-            set_upper_asinh_bound(dialog.upper_arcsinh_limit)
-            set_lower_asinh_bound(dialog.lower_arcsinh_limit)
-            self.rescaleTriggered.emit()
+            self.resizeTriggered.emit(dialog.plot_size)
+
+    def rescale_plots(self) -> None:
+        data = self.get_active_painter().data
+        dialog = PlotScaleDialog(
+            parent=self,
+            scaling_factor=data.uns.get('scaling_factor'),
+            lower_asinh_bound=data.uns.get('lower_asinh_bound'),
+            upper_asinh_bound=data.uns.get('upper_asinh_bound'),
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            self.rescaleTriggered.emit(dialog.scale_config)
 
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
@@ -260,12 +263,17 @@ class MainWindow(QMainWindow):
         open_file_action.triggered.connect(self.open_dialog)
         file_menu.addAction(open_file_action)
 
+        save_session_action = QAction('&Save Session', self, enabled=False)
+        save_session_action.triggered.connect(self.save_session)
+        self.painter_tabs.currentChanged.connect(
+            lambda: save_session_action.setEnabled(self.painter_tabs.count())
+        )
+
         export_fcs_action = QAction('&Export FCS File', self, enabled=False)
         export_fcs_action.triggered.connect(self.export_fcs)
         self.painter_tabs.currentChanged.connect(
             lambda: export_fcs_action.setEnabled(
-                (self.painter_tabs.count() > 0)
-                and (self.get_active_painter().fcs is not None)
+                self.painter_tabs.count() and self.get_active_painter().fcs is not None
             )
         )
         file_menu.addAction(export_fcs_action)

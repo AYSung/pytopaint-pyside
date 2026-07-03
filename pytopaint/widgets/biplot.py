@@ -25,7 +25,6 @@ from pytopaint.colors import (
     get_color_map,
     indices_by_color,
 )
-from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 AXIS_WIDTH = 45
@@ -43,6 +42,7 @@ class Biplot(QWidget):
         x_label: str,
         y_label: str,
         active_color: Color,
+        resolution: int,
     ):
         super().__init__()
         self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
@@ -50,19 +50,20 @@ class Biplot(QWidget):
         self.df = data
         self.state = state
         self.active_color = active_color
+        self.resolution = resolution
 
         channels = sort_channels(data.columns)
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.x_axis = XAxis(x_label, channels, axis_ticks)
+        self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=self.resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.update_title)
-        self.y_axis = YAxis(y_label, channels, axis_ticks)
+        self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=self.resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.update_title)
 
-        self.plot = DotPlot(active_color=active_color)
+        self.plot = DotPlot(active_color=active_color, resolution=self.resolution)
         self.update_plot_data()
         self.plot.pointsSelected.connect(self.points_selected)
 
@@ -71,7 +72,7 @@ class Biplot(QWidget):
         self.title_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.title_label.customContextMenuRequested.connect(self.title_context_menu)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setFixedWidth(get_resolution())
+        self.title_label.setFixedWidth(self.resolution)
         self.update_title()
 
         layout = QGridLayout()
@@ -137,20 +138,23 @@ class Biplot(QWidget):
                 color_map = get_color_map() | {Color.WHITE: '#000000'}
                 axis_color = '#000000'
 
-        canvas = QPixmap(get_resolution() + AXIS_WIDTH, get_resolution() + AXIS_WIDTH)
+        canvas = QPixmap(self.resolution + AXIS_WIDTH, self.resolution + AXIS_WIDTH)
         canvas.fill('#00000000')
         self.plot.draw_dots(
             canvas,
-            origin=(AXIS_WIDTH, get_resolution() - 1),
+            origin=(AXIS_WIDTH, self.resolution - 1),
             color_map=color_map,
             background_color=background_color,
         )
         self.y_axis.draw_axis(
-            canvas, origin=(0, get_resolution() - 1), pen_color=axis_color, offset=0
+            canvas,
+            origin=(0, self.resolution - 1),
+            pen_color=axis_color,
+            offset=0,
         )
         self.x_axis.draw_axis(
             canvas,
-            origin=(AXIS_WIDTH, get_resolution()),
+            origin=(AXIS_WIDTH, self.resolution),
             pen_color=axis_color,
             offset=0,
         )
@@ -223,6 +227,7 @@ class Biplot(QWidget):
 
     @Slot(int)
     def resize(self, pixels: int) -> None:
+        self.resolution = pixels
         self.plot.resize(pixels=pixels)
         self.x_axis.resize(pixels=pixels)
         self.y_axis.resize(pixels=pixels)
@@ -231,21 +236,22 @@ class Biplot(QWidget):
 
     def sizeHint(self):
         return QSize(
-            AXIS_WIDTH + get_resolution(),
-            AXIS_WIDTH + get_resolution() + 10 + self.title_label.height(),
+            AXIS_WIDTH + self.resolution,
+            AXIS_WIDTH + self.resolution + 10 + self.title_label.height(),
         )
 
 
 class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
 
-    def __init__(self, active_color: Color):
+    def __init__(self, active_color: Color, resolution: int):
         super().__init__()
-        canvas = QPixmap(get_resolution(), get_resolution())
+        canvas = QPixmap(resolution, resolution)
         canvas.fill(BACKGROUND)
         self.setPixmap(canvas)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.active_color = active_color
+        self.resolution = resolution
 
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
@@ -260,7 +266,7 @@ class DotPlot(QLabel):
             return
 
         pos = e.position()
-        self.selection_geometry += [(pos.x(), get_resolution() - pos.y())]
+        self.selection_geometry += [(pos.x(), self.resolution - pos.y())]
         if self.last_x is None:  # First event.
             self.last_x = pos.x()
             self.last_y = pos.y()
@@ -353,9 +359,7 @@ class DotPlot(QLabel):
         painter.scale(1, -1)
 
         if background_color is not None:
-            painter.fillRect(
-                0, -1, get_resolution(), get_resolution(), background_color
-            )
+            painter.fillRect(0, -1, self.resolution, self.resolution, background_color)
 
         for color in self.non_highlighted_colors + self.highlighted_colors:
             self.draw_color(color, painter, color_map=color_map)
@@ -368,12 +372,13 @@ class DotPlot(QLabel):
         if self.color_indices is not None:
             self.draw_dots(
                 canvas,
-                origin=(0, get_resolution() - 1),
+                origin=(0, self.resolution - 1),
                 color_map=get_color_map(),
             )
         self.setPixmap(canvas)
 
     def resize(self, pixels: int):
+        self.resolution = pixels
         self.setPixmap(QPixmap(pixels, pixels))
 
     def clear(self) -> None:
@@ -388,13 +393,15 @@ class XAxis(QLabel):
         label: str,
         channels: list[str],
         axis_ticks: dict[str, list[tuple[int, str]]],
+        resolution: int,
     ):
         super().__init__()
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
+        self.resolution = resolution
 
-        canvas = QPixmap(get_resolution(), AXIS_WIDTH)
+        canvas = QPixmap(resolution, AXIS_WIDTH)
         canvas.fill('#00000000')
         self.setPixmap(canvas)
 
@@ -413,6 +420,7 @@ class XAxis(QLabel):
             self.labelChanged.emit()
 
     def resize(self, pixels: int) -> None:
+        self.resolution = pixels
         self.setPixmap(QPixmap(pixels, AXIS_WIDTH))
         if self.label not in self.axis_ticks.keys():
             self.label = None
@@ -431,7 +439,7 @@ class XAxis(QLabel):
         label_y = 11
         tick_y0 = offset
         tick_y1 = tick_y0 + 4
-        X_MAX = get_resolution() - 1
+        X_MAX = self.resolution - 1
 
         painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
@@ -458,7 +466,7 @@ class XAxis(QLabel):
             font.setBold(True)
             painter.setFont(font)
             painter.drawText(
-                QRect(0, 0, get_resolution() - 1, 44),
+                QRect(0, 0, self.resolution - 1, 44),
                 self.label,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
             )
@@ -491,14 +499,19 @@ class YAxis(QLabel):
     labelChanged = Signal()
 
     def __init__(
-        self, label: str, channels: list[str], axis_ticks: dict[str, tuple[int, str]]
+        self,
+        label: str,
+        channels: list[str],
+        axis_ticks: dict[str, tuple[int, str]],
+        resolution: int,
     ):
         super().__init__()
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
+        self.resolution = resolution
 
-        canvas = QPixmap(AXIS_WIDTH, get_resolution())
+        canvas = QPixmap(AXIS_WIDTH, self.resolution)
         canvas.fill('#00000000')
 
         self.setPixmap(canvas)
@@ -517,6 +530,7 @@ class YAxis(QLabel):
             self.labelChanged.emit()
 
     def resize(self, pixels: int) -> None:
+        self.resolution = pixels
         self.setPixmap(QPixmap(AXIS_WIDTH, pixels))
         self.update_axis()
 
@@ -531,7 +545,7 @@ class YAxis(QLabel):
         label_x = -7
         tick_x1 = 44 - offset
         tick_x0 = tick_x1 - 4
-        Y_MAX = get_resolution() - 1
+        Y_MAX = self.resolution - 1
 
         painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, Y_MAX))
 
@@ -563,7 +577,7 @@ class YAxis(QLabel):
             font.setWeight(QFont.Weight(800))
             painter.setFont(font)
             painter.drawText(
-                QRect(1, 0, get_resolution() - 1, 20),
+                QRect(1, 0, self.resolution - 1, 20),
                 self.label,
                 Qt.AlignmentFlag.AlignLeft,
             )
@@ -574,7 +588,7 @@ class YAxis(QLabel):
         canvas.fill('#00000000')
         self.draw_axis(
             canvas,
-            origin=(0, get_resolution() - 1),
+            origin=(0, self.resolution - 1),
             pen_color='#bababa',
             offset=4,
         )

@@ -24,7 +24,6 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.colors import BACKGROUND, Color, get_color_map
-from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 from pytopaint.widgets.reportgenerator import copy_report_template
 
@@ -45,6 +44,7 @@ class Immunophenotyper(QDialog):
             + data.var_names[data.var['channel_type'] == 'fluoro'].to_list()
         )
         axis_ticks = data.uns['axis_ticks']
+        resolution = data.uns['bins']
 
         df = (
             pd
@@ -75,6 +75,7 @@ class Immunophenotyper(QDialog):
                         channel=channel,
                         target_color=color,
                         axis_ticks=axis_ticks[channel],
+                        resolution=resolution,
                     )
                 )
             column_layout.addStretch()
@@ -103,6 +104,7 @@ def immunophenotype_plot(
     channel: str,
     target_color: Color,
     axis_ticks: list[tuple[int, str]],
+    resolution: int,
 ) -> QWidget:
     plot = QWidget()
     layout = QGridLayout()
@@ -112,18 +114,20 @@ def immunophenotype_plot(
     channel_label.setStyleSheet('font-weight: bold; margin-bottom: 6px;')
 
     layout.addWidget(channel_label, 0, 0)
-    layout.addWidget(histogram(data=data, target_color=target_color), 1, 0)
-    layout.addWidget(histogram_axis(channel, axis_ticks), 2, 0)
+    layout.addWidget(
+        histogram(data=data, target_color=target_color, resolution=resolution), 1, 0
+    )
+    layout.addWidget(histogram_axis(channel, axis_ticks, resolution=resolution), 2, 0)
 
     plot.setLayout(layout)
     return plot
 
 
-def histogram(data: pd.DataFrame, target_color: Color) -> QLabel:
+def histogram(data: pd.DataFrame, target_color: Color, resolution: int) -> QLabel:
     histogram = QLabel()
     MAX_HEIGHT = 9
 
-    canvas = QPixmap(get_resolution(), 40)
+    canvas = QPixmap(resolution, 40)
     canvas.fill(BACKGROUND)
     painter = QPainter(canvas)
     pen = QPen()
@@ -167,10 +171,12 @@ def histogram(data: pd.DataFrame, target_color: Color) -> QLabel:
     return histogram
 
 
-def histogram_axis(channel: str, axis_ticks: list[tuple[int, str]]) -> QLabel:
+def histogram_axis(
+    channel: str, axis_ticks: list[tuple[int, str]], resolution
+) -> QLabel:
     axis = QLabel()
 
-    canvas = QPixmap(get_resolution(), 20)
+    canvas = QPixmap(resolution, 20)
     canvas.fill('#00000000')
 
     painter = QPainter(canvas)
@@ -181,7 +187,7 @@ def histogram_axis(channel: str, axis_ticks: list[tuple[int, str]]) -> QLabel:
     label_y = 6
     tick_y0 = 0
     tick_y1 = tick_y0 + 4
-    X_MAX = get_resolution() - 1
+    X_MAX = resolution - 1
 
     painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
