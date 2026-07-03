@@ -31,7 +31,7 @@ UPPER_PHYSICAL = 255_000
 def read_fcs(fcs: flowio.FlowData) -> ad.AnnData:
     cleaned_channel_names = clean_channel_names(fcs)
     empty_channel_mask = cleaned_channel_names != ''
-    adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask])
+    adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask].astype(np.float32))
 
     adata.uns['filename'] = fcs.name
     adata.uns['tube'] = fcs.text.get('tube name')
