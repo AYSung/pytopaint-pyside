@@ -33,7 +33,6 @@ from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
     add_row_dialog,
-    terminal_out_dialog,
 )
 from pytopaint.widgets.immunophenotyper import Immunophenotyper
 from pytopaint.widgets.palette import Palette
@@ -392,7 +391,7 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        terminal_out_dialog(self, title='UMAP', func=lambda: add_umap_dims(self.data))
+        add_umap_dims(self.data)
 
         umap_df = pd.DataFrame(
             self.data.obsm['umap_bins'],
