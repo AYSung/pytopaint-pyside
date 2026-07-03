@@ -33,6 +33,7 @@ class Immunophenotyper(QDialog):
         self,
         data: ad.AnnData,
         state: pd.DataFrame,
+        axis_ticks: dict[str, list[tuple[int, str]]],
         color: Color,
         parent=None,
     ):
@@ -43,7 +44,6 @@ class Immunophenotyper(QDialog):
             ['FSC-A', 'SSC-A']
             + data.var_names[data.var['channel_type'] == 'fluoro'].to_list()
         )
-        axis_ticks = data.uns['axis_ticks']
         resolution = data.uns['bins']
 
         df = (

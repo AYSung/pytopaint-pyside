@@ -25,8 +25,6 @@ from pytopaint.config import (
 )
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
-ADDED_PARAMETERS = ['UMAP1', 'UMAP2']
-NON_IP_PARAMETERS = PHYSICAL_PARAMETERS + ['Time'] + ADDED_PARAMETERS
 UPPER_PHYSICAL = 255_000
 
 
@@ -58,14 +56,19 @@ def read_fcs(fcs: flowio.FlowData) -> ad.AnnData:
     adata.obs['color'] = Color.GREY
     adata.obs['visible'] = True
 
+    return initialize(adata)
+
+
+def initialize(
+    adata: ad.AnnData,
+) -> ad.AnnData:
     set_scale(
         adata,
-        scaling_factor=get_scaling_factor(),
-        lower_asinh_bound=get_lower_asinh_bound(),
-        upper_asinh_bound=get_upper_asinh_bound(),
+        scaling_factor=adata.uns.get('scaling_factor', get_scaling_factor()),
+        lower_asinh_bound=adata.uns.get('lower_asinh_bound', get_lower_asinh_bound()),
+        upper_asinh_bound=adata.uns.get('upper_asinh_bound', get_upper_asinh_bound()),
     )
-    set_size(adata, bins=get_resolution())
-
+    set_size(adata, bins=adata.uns.get('bins', get_resolution()))
     return adata
 
 
@@ -88,11 +91,7 @@ def set_scale(
 
 def set_size(adata: ad.AnnData, bins: int) -> None:
     adata.uns['bins'] = bins
-
     adata.layers['bin'] = discretize_data(adata)
-    adata.uns['axis_ticks'] = get_axis_ticks(
-        adata, bins=adata.uns['bins'], scaling_factor=adata.uns['scaling_factor']
-    )
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
@@ -178,7 +177,9 @@ def discretize_array(
     return np.searchsorted(bins, arr, side='left')
 
 
-def add_umap_dims(adata: ad.AnnData) -> None:
+def add_umap_dims(
+    adata: ad.AnnData,
+) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
     adata.obsm['umap'] = umap_transform(
         adata[:, adata.var['channel_type'] == 'fluoro'].layers['xform']
     )
@@ -198,11 +199,12 @@ def add_umap_dims(adata: ad.AnnData) -> None:
         for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
     ]).T.astype(np.uint8)
 
-    adata.uns['axis_ticks'] = adata.uns['axis_ticks'] | _umap_axis_ticks(
+    umap_axis_ticks = _umap_axis_ticks(
         bins=adata.uns['bins'],
         channels=['UMAP1', 'UMAP2'],
         bounds=bounds,
     )
+    return adata.obsm['umap_bins'], umap_axis_ticks
 
 
 def umap_transform(arr: np.ndarray) -> np.array:
@@ -213,13 +215,12 @@ def umap_transform(arr: np.ndarray) -> np.array:
     return umap.transform(scaled_arr)
 
 
-# TODO: refactor
 def get_axis_ticks(
     adata: ad.AnnData,
-    bins: int,
-    scaling_factor: float,
 ) -> dict[str, list[tuple[int, str]]]:
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
+    bins = adata.uns['bins']
+    scaling_factor = adata.uns['scaling_factor']
 
     scatter_axis_ticks = {
         channel_name: list(

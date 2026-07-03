@@ -25,7 +25,14 @@ from pytopaint.colors import (
     _subtract_color_from_series,
     merge_colors,
 )
-from pytopaint.flowdata import add_umap_dims, read_fcs, set_scale, set_size
+from pytopaint.flowdata import (
+    add_umap_dims,
+    get_axis_ticks,
+    initialize,
+    read_fcs,
+    set_scale,
+    set_size,
+)
 from pytopaint.layout import get_best_layout
 from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplotgrid import BiplotGrid
@@ -85,6 +92,7 @@ class Painter(QWidget):
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
+        self.axis_ticks = get_axis_ticks(self.data)
         self.undo_history = [self.state.copy()]
         self.redo_history = []
         self.active_color = Color.BLUE
@@ -102,7 +110,7 @@ class Painter(QWidget):
 
         self.biplot_grid = BiplotGrid(
             df=self.df,
-            axis_ticks=self.data.uns['axis_ticks'],
+            axis_ticks=self.axis_ticks,
             state=self.state,
             active_color=self.active_color,
             resolution=self.data.uns['bins'],
@@ -139,6 +147,10 @@ class Painter(QWidget):
     def from_fcs(cls, fcs: flowio.FlowData):
         data = read_fcs(fcs)
         return cls(data, fcs)
+
+    @classmethod
+    def from_adata(cls, adata: ad.AnnData):
+        return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
         red_shortcut = QShortcut(QKeySequence('F'), self)
@@ -411,12 +423,13 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        add_umap_dims(self.data)
+        umap_arr, umap_axis_ticks = add_umap_dims(self.data)
 
         umap_df = pd.DataFrame(
-            self.data.obsm['umap_bins'],
+            umap_arr,
             columns=['UMAP1', 'UMAP2'],
         )
+        self.axis_ticks = self.axis_ticks | umap_axis_ticks
         self.df = self.df.join(umap_df)
 
         self.data_changed()
@@ -458,7 +471,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.data.uns['axis_ticks'])
+        self.dataChanged.emit(self.df, self.axis_ticks)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
@@ -477,6 +490,7 @@ class Painter(QWidget):
         if bins is None:
             bins = self.data.uns['bins']
         set_size(self.data, bins=bins)
+        self.axis_ticks = get_axis_ticks(self.data)
 
         self.df = pd.DataFrame(
             self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
@@ -514,7 +528,13 @@ class Painter(QWidget):
         dialog = Immunophenotyper(
             data=self.data,
             state=self.state,
+            axis_ticks=self.axis_ticks,
             color=color,
             parent=self,
         )
         dialog.exec()
+
+    def update_anndata_state(self) -> None:
+        new_state = self.state.copy()
+        new_state.index = new_state.index.astype(str)
+        self.data.obs = new_state

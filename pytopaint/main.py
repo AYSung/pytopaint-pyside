@@ -12,11 +12,13 @@ from io import BytesIO
 from multiprocessing import freeze_support
 from pathlib import Path
 
+import anndata as ad
 import flowio
 import numpy as np
 import yaml
 from PySide6.QtCore import (
     QCoreApplication,
+    QDir,
     Qt,
     Signal,
     Slot,
@@ -97,7 +99,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def open_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select FCS Files', '', 'FCS (*.fcs)'
+            None, 'Select File(s)', QDir.homePath(), 'FCS (*.fcs);;H5AD (*.h5ad)'
         )
         self.open_files(files)
 
@@ -106,6 +108,8 @@ class MainWindow(QMainWindow):
             match Path(file).suffix:
                 case '.fcs':
                     self.open_fcs(file)
+                case '.h5ad':
+                    self.open_session(file)
 
     def open_fcs(self, file: Path):
         try:
@@ -116,8 +120,31 @@ class MainWindow(QMainWindow):
         except ValueError as e:
             raise e
 
+    def open_session(self, file: Path):
+        try:
+            adata = ad.io.read_h5ad(file)
+            painter = Painter.from_adata(adata)
+            self.painter_tabs.add_painter(painter)
+
+        except ValueError as e:
+            raise e
+
     def save_session(self) -> None:
-        raise NotImplementedError
+        painter = self.get_active_painter()
+        painter.update_anndata_state()
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Save Session',
+            dir=QDir.homePath(),
+            filter='H5AD (*.h5ad)',
+        )
+        if not file_path:
+            return
+
+        temp_data = painter.data.copy()
+        temp_data.layers.clear()
+        temp_data.write(filename=file_path, compression='gzip')
 
     @Slot()
     def export_fcs(self) -> None:
@@ -132,8 +159,8 @@ class MainWindow(QMainWindow):
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
-            caption='Save File',
-            dir='',
+            caption='Export Deidentified FCS',
+            dir=QDir.homePath(),
             filter='FCS (*.fcs)',
         )
         if not file_path:
@@ -258,18 +285,21 @@ class MainWindow(QMainWindow):
         # menu_bar.setNativeMenuBar(False)
         file_menu = menu_bar.addMenu('&File')
 
-        open_file_action = QAction('&Open FCS File(s)', self)
+        open_file_action = QAction('&Open File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
         open_file_action.triggered.connect(self.open_dialog)
         file_menu.addAction(open_file_action)
 
-        save_session_action = QAction('&Save Session', self, enabled=False)
+        save_session_action = QAction('&Save Session As', self, enabled=False)
         save_session_action.triggered.connect(self.save_session)
         self.painter_tabs.currentChanged.connect(
             lambda: save_session_action.setEnabled(self.painter_tabs.count())
         )
+        file_menu.addAction(save_session_action)
 
-        export_fcs_action = QAction('&Export FCS File', self, enabled=False)
+        export_fcs_action = QAction(
+            '&Export Deidentified FCS File', self, enabled=False
+        )
         export_fcs_action.triggered.connect(self.export_fcs)
         self.painter_tabs.currentChanged.connect(
             lambda: export_fcs_action.setEnabled(

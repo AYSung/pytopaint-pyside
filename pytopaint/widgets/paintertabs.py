@@ -64,6 +64,6 @@ class PainterTabs(QTabWidget):
             painter = QPainter(self)
             painter.setPen('#bababa')
 
-            text = 'Welcome to PytoPaint!\n\nOpen .fcs files by dragging and dropping into this window or File > Open FCS File'
+            text = 'Welcome to PytoPaint!\n\nOpen files by dragging and dropping into this window or File > Open File(s)'
 
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, text)
