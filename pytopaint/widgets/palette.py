@@ -70,7 +70,7 @@ class Palette(QWidget):
 
     @Slot(object)
     def update_labels(self, state: pd.DataFrame):
-        events = events_by_color(state['color'])
+        events = events_by_color(state.loc[state['visible'], 'color'])
         total_events = state['visible'].sum()
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
