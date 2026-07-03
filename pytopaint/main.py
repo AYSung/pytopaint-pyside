@@ -69,9 +69,9 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 
 class MainWindow(QMainWindow):
+    colorPaletteChanged = Signal()
     resizeTriggered = Signal()
     rescaleTriggered = Signal()
-    colorPaletteChanged = Signal()
 
     def __init__(self):
         super().__init__()

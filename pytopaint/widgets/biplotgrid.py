@@ -18,12 +18,12 @@ from pytopaint.widgets.biplot import Biplot
 
 
 class BiplotGrid(QGridLayout):
-    resizeTriggered = Signal(int)
-    colorPaletteChanged = Signal()
-    highlightsUpdated = Signal(list)
     activeColorChanged = Signal(int)
-    pointsSelected = Signal(object, str, str, QMouseEvent)
+    colorPaletteChanged = Signal()
     dataChanged = Signal(object, object)
+    highlightsUpdated = Signal(list)
+    pointsSelected = Signal(object, str, str, QMouseEvent)
+    resizeTriggered = Signal(int)
     stateChanged = Signal()
 
     def __init__(

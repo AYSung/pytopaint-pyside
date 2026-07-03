@@ -39,13 +39,13 @@ from pytopaint.widgets.palette import Palette
 
 class Painter(QWidget):
     activeColorChanged = Signal(int)
-    dataChanged = Signal(object, object)
-    stateChanged = Signal()
-    highlightsUpdated = Signal(list)
-    resizeTriggered = Signal(int)
-    colorStateReturned = Signal(int, object)
-    memoryStateReturned = Signal(int, object)
     colorPaletteChanged = Signal()
+    colorStateReturned = Signal(int, object)
+    dataChanged = Signal(object, object)
+    highlightsUpdated = Signal(list)
+    memoryStateReturned = Signal(int, object)
+    resizeTriggered = Signal(int)
+    stateChanged = Signal()
 
     def __init__(self, data: ad.AnnData):
         super().__init__()
