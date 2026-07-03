@@ -1,15 +1,13 @@
+import pandas as pd
 import pytest
 import yaml
 
-import pandas as pd
-
-
 from pytopaint.flowdata import (
-    sort_channels,
-    _clean_marker_name,
     UPPER_PHYSICAL,
-    get_axis_ticks,
+    _clean_marker_name,
     extract_case_number,
+    get_axis_ticks,
+    sort_channels,
 )
 
 LOWER_ASINH = -1
@@ -58,26 +56,6 @@ def test_df_1():
         'CD45': [4, 10],
         'Time': [0, 100],
     })
-
-
-def test_get_channels():
-    test_df = pd.DataFrame(
-        [
-            ('FSC-A', ''),
-            ('FSC-H', ''),
-            ('SSC-A', ''),
-            ('SSC-H', ''),
-            ('fluor1', 'CD2'),
-            ('fluor2', 'CD11b'),
-            ('fluor3', 'HLA-DR'),
-            ('fluor4', 'CD45 AF700'),
-            ('fluor5', 'mKAPPA'),
-            ('fluor6', 'mLAMBDA'),
-            ('fluor7', ''),
-            ('Time', ''),
-        ],
-        columns=['pnn', 'pns'],
-    )
 
 
 def test_sort_channels():
