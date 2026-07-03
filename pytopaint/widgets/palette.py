@@ -71,7 +71,7 @@ class Palette(QWidget):
 
     @Slot()
     def update_labels(self):
-        events = events_by_color(self.state['color'])
+        events = events_by_color(self.state['color'].loc[self.state['visible']])
         total_events = self.state['visible'].sum()
         self.total_events_label.setText(f'Total Events: {total_events:,}')
 
