@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from PySide6.QtCore import Qt, Slot, Signal
+from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QTabWidget
 
 from pytopaint.widgets.painter import Painter
@@ -55,3 +56,14 @@ class PainterTabs(QTabWidget):
     @property
     def painters(self) -> list[Painter]:
         return [self.widget(i) for i in range(self.count())]
+
+    def paintEvent(self, event):
+        super().paintEvent(event)
+
+        if not self.count():
+            painter = QPainter(self)
+            painter.setPen('#bababa')
+
+            text = 'Welcome to PytoPaint!\n\nOpen .fcs files by dragging and dropping into this window or File > Open FCS File'
+
+            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, text)
