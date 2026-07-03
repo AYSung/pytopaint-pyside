@@ -172,7 +172,7 @@ def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
     dialog.setWindowTitle('File Info')
 
     file_name = QLabel(f'File Name: {data.uns["filename"]}')
-    event_count = QLabel(f'Event Count: {data.n_obs}')
+    event_count = QLabel(f'Event Count: {data.n_obs:,}')
     channels = [
         f'{marker} ({fluor})'
         for fluor, marker in data.var.loc[
