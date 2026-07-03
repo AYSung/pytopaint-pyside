@@ -37,7 +37,6 @@ def read_fcs(filepath: Path) -> ad.AnnData:
     empty_channel_mask = cleaned_channel_names != ''
     adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask])
 
-    adata.uns['fcs'] = fcs
     adata.uns['filename'] = fcs.name
     adata.uns['tube'] = fcs.text.get('tube name')
     adata.uns['id'] = (
@@ -46,6 +45,7 @@ def read_fcs(filepath: Path) -> ad.AnnData:
         else f'{extract_case_number(filepath.stem)}'
     )
     fcs.text = scrub_metadata(fcs.text)
+    adata.uns['fcs'] = fcs
 
     adata.var_names = cleaned_channel_names[empty_channel_mask]
     adata.var['channel_type'] = np.select(
