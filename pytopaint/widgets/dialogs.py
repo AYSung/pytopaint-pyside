@@ -186,7 +186,7 @@ def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
 
     layout = QVBoxLayout()
     layout.addWidget(file_name)
-    if tube := data.uns.get('tube') is not None:
+    if (tube := data.uns.get('tube')) is not None:
         tube_label = QLabel(f'Tube: {tube}')
         layout.addWidget(tube_label)
     layout.addWidget(event_count)
