@@ -74,7 +74,7 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('PytoPaint')
 
-        # self.setStyleSheet('QMainWindow { background-color: #121010; }')
+        self.setStyleSheet('QMainWindow { background-color: #242424; }')
 
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.handle_resize)
