@@ -17,6 +17,8 @@ def get_selection_index(
         return pd.Index([])
 
     poly = Polygon(point_array)
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(df[x_label], df[y_label]))
+    gdf = gpd.GeoDataFrame(
+        geometry=gpd.points_from_xy(df[x_label], df[y_label]), index=df.index
+    )
     selection_index = gdf[gdf.within(poly)].index
     return selection_index

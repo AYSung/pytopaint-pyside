@@ -268,10 +268,10 @@ class Painter(QWidget):
 
         selection = get_selection_index(
             selection_geometry,
-            self.df,
+            self.df.loc[self.state['visible']],
             x_label=x_label,
             y_label=y_label,
-        ).intersection(self.state.loc[lambda x: x['visible']].index)
+        )
         if selection.empty:
             return
 
