@@ -224,7 +224,7 @@ class MainWindow(QMainWindow):
 
     def subsample(self) -> None:
         n, ok = subsample_dialog(
-            self, total_events=self.get_active_painter().data.obs['visible'].sum()
+            self, total_events=self.get_active_painter().state['visible'].sum()
         )
         if ok:
             self.get_active_painter().handle_menu_action(
