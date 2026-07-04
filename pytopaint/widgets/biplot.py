@@ -6,7 +6,16 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import pandas as pd
-from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal, Slot
+from PySide6.QtCore import (
+    QPoint,
+    QRect,
+    QRunnable,
+    QSize,
+    Qt,
+    QThreadPool,
+    Signal,
+    Slot,
+)
 from PySide6.QtGui import QAction, QFont, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
@@ -33,6 +42,7 @@ AXIS_WIDTH = 45
 class Biplot(QWidget):
     pointsSelected = Signal(object, str, str, QMouseEvent)
     removeTriggered = Signal(object)
+    updateFinished = Signal()
 
     def __init__(
         self,
@@ -90,7 +100,16 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object, object)
+    @Slot(object, object, object)
+    def update_data(
+        self,
+        df: pd.DataFrame = None,
+        axis_ticks: dict[str, list[tuple[int, str]]] = None,
+        state: pd.DataFrame = None,
+    ):
+        updater = BiplotUpdater(self, df, axis_ticks, state)
+        QThreadPool.globalInstance().start(updater)
+
     def set_data(self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]):
         self.df = df
 
@@ -104,7 +123,6 @@ class Biplot(QWidget):
 
         self.update_plot_data()
 
-    @Slot(object)
     def update_plot_data(self, state: pd.DataFrame = None):
         if state is not None:
             self.state = state
@@ -311,8 +329,6 @@ class DotPlot(QLabel):
             indices_by_color(color_data) if color_data is not None else None
         )
 
-        self.update_plot()
-
     @Slot(list)
     def update_highlighted_colors(self, highlighted_colors: list[Color]):
         self.highlighted_colors = highlighted_colors
@@ -366,6 +382,7 @@ class DotPlot(QLabel):
 
         painter.end()
 
+    @Slot()
     def update_plot(self) -> None:
         canvas = self.pixmap()
         canvas.fill(BACKGROUND)
@@ -604,3 +621,26 @@ class YAxis(QLabel):
             self.label = action.text()
             self.update_axis()
             self.labelChanged.emit()
+
+
+class BiplotUpdater(QRunnable):
+    def __init__(
+        self,
+        biplot: Biplot,
+        data: pd.DataFrame,
+        axis_ticks: dict[str, list[tuple[int, str]]],
+        state: pd.DataFrame,
+    ):
+        super().__init__()
+        self.biplot = biplot
+        self.state = state
+        self.data = data
+        self.axis_ticks = axis_ticks
+
+    def run(self):
+        if self.data is not None:
+            self.biplot.set_data(self.data, self.axis_ticks)
+
+        self.biplot.update_plot_data()
+
+        self.biplot.updateFinished.emit()

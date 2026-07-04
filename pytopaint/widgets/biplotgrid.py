@@ -25,6 +25,8 @@ class BiplotGrid(QGridLayout):
     pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTriggered = Signal(int)
     stateChanged = Signal(object)
+    updateData = Signal(object, object, object)
+    updatePlot = Signal()
 
     def __init__(
         self,
@@ -43,6 +45,8 @@ class BiplotGrid(QGridLayout):
         self.active_color = active_color
         self.resolution = resolution
 
+        self.update_manager = BiplotUpdateManager(self)
+
         self.activeColorChanged.connect(self.update_active_color)
         self.dataChanged.connect(self.update_data)
         self.stateChanged.connect(self.update_state)
@@ -52,7 +56,10 @@ class BiplotGrid(QGridLayout):
         @wraps(func)
         def wrapper(self: BiplotGrid, *args, **kwargs):
             self.setEnabled(False)
+
             func(self, *args, **kwargs)
+            self.update_biplot_count()
+
             self.setEnabled(True)
             self.update()
 
@@ -64,10 +71,12 @@ class BiplotGrid(QGridLayout):
     ) -> None:
         self.df = df
         self.axis_ticks = axis_ticks
+        self.updateData.emit(self.df, self.axis_ticks, None)
 
     @Slot(object)
     def update_state(self, state: pd.DataFrame) -> None:
         self.state = state
+        self.updateData.emit(None, None, state)
 
     @Slot(int)
     def update_resolution(self, pixels: int) -> None:
@@ -87,9 +96,10 @@ class BiplotGrid(QGridLayout):
             resolution=self.resolution,
         )
         biplot.pointsSelected.connect(self.pointsSelected)
+        biplot.updateFinished.connect(self.update_manager.on_update_finished)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
-        self.stateChanged.connect(biplot.update_plot_data)
-        self.dataChanged.connect(biplot.set_data)
+        self.updateData.connect(biplot.update_data)
+        self.updatePlot.connect(biplot.plot.update_plot)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.resizeTriggered.connect(biplot.resize)
@@ -206,3 +216,19 @@ class BiplotGrid(QGridLayout):
 
     def get_biplots(self) -> list[Biplot]:
         return [self._get_biplot(i) for i in range(self.count())]
+
+    def update_biplot_count(self) -> None:
+        self.update_manager.n_biplots = self.count()
+
+
+class BiplotUpdateManager:
+    def __init__(self, biplot_grid: BiplotGrid):
+        self.finished_count = 0
+        self.biplot_grid = biplot_grid
+        self.n_biplots = biplot_grid.count()
+
+    def on_update_finished(self):
+        self.finished_count += 1
+        if self.finished_count == self.n_biplots:
+            self.finished_count = 0
+            self.biplot_grid.updatePlot.emit()
