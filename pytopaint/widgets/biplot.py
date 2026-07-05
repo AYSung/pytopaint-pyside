@@ -66,16 +66,19 @@ class Biplot(QWidget):
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
+        self.plot = DotPlot(active_color=active_color, resolution=self.resolution)
+        self.plot.pointsSelected.connect(self.points_selected)
+
         self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=self.resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
+        self.x_axis.labelChanged.connect(self.plot.update_plot)
         self.x_axis.labelChanged.connect(self.update_title)
         self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=self.resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
+        self.y_axis.labelChanged.connect(self.plot.update_plot)
         self.y_axis.labelChanged.connect(self.update_title)
 
-        self.plot = DotPlot(active_color=active_color, resolution=self.resolution)
         self.update_plot_data()
-        self.plot.pointsSelected.connect(self.points_selected)
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
@@ -123,6 +126,7 @@ class Biplot(QWidget):
 
         self.update_plot_data()
 
+    @Slot()
     def update_plot_data(self, state: pd.DataFrame = None):
         if state is not None:
             self.state = state
@@ -188,6 +192,7 @@ class Biplot(QWidget):
         self.x_axis.update_axis()
         self.y_axis.update_axis()
         self.update_plot_data()
+        self.plot.update_plot()
         self.update_title()
 
     def title_context_menu(self, pos):
