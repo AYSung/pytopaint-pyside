@@ -362,9 +362,9 @@ class Painter(QWidget):
 
     @record_action
     def zap_all_but(self, color: Color):
-        self.state.loc[
-            lambda x: lambda x: x['visible'] & (x['color'] != color), 'color'
-        ] = Color.GREY
+        self.state.loc[lambda x: x['visible'] & (x['color'] != color), 'color'] = (
+            Color.GREY
+        )
 
     @record_action
     def replace_state(self, slot: int):
