@@ -427,7 +427,7 @@ class Painter(QWidget):
 
     def add_umap(self):
         self.data.obsm['umap'] = umap_transform(
-            self.data[:, self.data.var['channel_type' == 'fluoro']].layers['xform']
+            self.data[:, self.data.var['channel_type'] == 'fluoro'].layers['xform']
         )
 
         self.load_umap()
