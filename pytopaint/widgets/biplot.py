@@ -10,7 +10,6 @@ from PySide6.QtCore import (
     QPoint,
     QRect,
     QRunnable,
-    QSize,
     Qt,
     QThreadPool,
     Signal,
@@ -22,7 +21,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
-    QSizePolicy,
     QStyle,
     QStyleOption,
     QWidget,
@@ -55,7 +53,6 @@ class Biplot(QWidget):
         resolution: int,
     ):
         super().__init__()
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         self.df = data
         self.state = state
@@ -257,12 +254,6 @@ class Biplot(QWidget):
         self.title_label.setFixedWidth(pixels)
         self.updateGeometry()
 
-    def sizeHint(self):
-        return QSize(
-            AXIS_WIDTH + self.resolution,
-            AXIS_WIDTH + self.resolution + 10 + self.title_label.height(),
-        )
-
 
 class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
@@ -401,7 +392,9 @@ class DotPlot(QLabel):
 
     def resize(self, pixels: int):
         self.resolution = pixels
-        self.setPixmap(QPixmap(pixels, pixels))
+        canvas = QPixmap(pixels, pixels)
+        canvas.fill(BACKGROUND)
+        self.setPixmap(canvas)
 
     def clear(self) -> None:
         self.set_working_data(x_data=None, y_data=None, color_data=None)

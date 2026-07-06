@@ -38,6 +38,7 @@ class BiplotGrid(QGridLayout):
     ) -> None:
         super().__init__()
         self.setSpacing(0)
+        self.setSizeConstraint(QGridLayout.SizeConstraint.SetFixedSize)
 
         self.df = df
         self.axis_ticks = axis_ticks
@@ -58,7 +59,6 @@ class BiplotGrid(QGridLayout):
             self.setEnabled(False)
 
             func(self, *args, **kwargs)
-            self.update_biplot_count()
 
             self.setEnabled(True)
             self.update()
@@ -217,18 +217,14 @@ class BiplotGrid(QGridLayout):
     def get_biplots(self) -> list[Biplot]:
         return [self._get_biplot(i) for i in range(self.count())]
 
-    def update_biplot_count(self) -> None:
-        self.update_manager.n_biplots = self.count()
-
 
 class BiplotUpdateManager:
     def __init__(self, biplot_grid: BiplotGrid):
         self.finished_count = 0
         self.biplot_grid = biplot_grid
-        self.n_biplots = biplot_grid.count()
 
     def on_update_finished(self):
         self.finished_count += 1
-        if self.finished_count == self.n_biplots:
+        if self.finished_count == self.biplot_grid.count():
             self.finished_count = 0
             self.biplot_grid.updatePlot.emit()
