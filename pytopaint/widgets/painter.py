@@ -22,9 +22,9 @@ from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     Color,
-    _add_color_to_series,
-    _subtract_color_from_series,
+    add_color_to_series,
     merge_colors,
+    subtract_color_from_series,
 )
 from pytopaint.flowdata import (
     get_axis_ticks,
@@ -278,7 +278,7 @@ class Painter(QWidget):
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
-                self.state.loc[selection, 'color'] = _add_color_to_series(
+                self.state.loc[selection, 'color'] = add_color_to_series(
                     self.state.loc[selection, 'color'], self.active_color
                 )
 
@@ -287,7 +287,7 @@ class Painter(QWidget):
                 selection = selection.difference(
                     self.state.loc[lambda x: x['color'] == Color.GREY, 'color'].index
                 )
-                self.state.loc[selection, 'color'] = _add_color_to_series(
+                self.state.loc[selection, 'color'] = add_color_to_series(
                     self.state.loc[selection, 'color'], self.active_color
                 )
 
@@ -296,7 +296,7 @@ class Painter(QWidget):
                 selection = selection.intersection(
                     self.state.loc[lambda x: x['color'] == Color.GREY].index
                 )
-                self.state.loc[selection, 'color'] = _add_color_to_series(
+                self.state.loc[selection, 'color'] = add_color_to_series(
                     self.state.loc[selection, 'color'], self.active_color
                 )
 
@@ -319,7 +319,7 @@ class Painter(QWidget):
 
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # exact zap color from selection
-                self.state.loc[selection, 'color'] = _subtract_color_from_series(
+                self.state.loc[selection, 'color'] = subtract_color_from_series(
                     self.state.loc[selection, 'color'], self.active_color
                 )
 
@@ -348,7 +348,7 @@ class Painter(QWidget):
 
     @record_action
     def zap_color(self, color: Color):
-        self.state['color'] = _subtract_color_from_series(self.state['color'], color)
+        self.state['color'] = subtract_color_from_series(self.state['color'], color)
 
     @record_action
     def exact_zap_color(self, color: Color):
@@ -400,7 +400,9 @@ class Painter(QWidget):
 
     @record_action
     def merge_color(self, source_color: Color, target_color: Color):
-        self.state['color'] = merge_colors(self.state, [source_color], target_color)
+        self.state.loc[self.state['visible'], 'color'] = merge_colors(
+            self.state.loc[self.state['visible'], 'color'], [source_color], target_color
+        )
 
     @record_action
     def unhide_all(self) -> None:

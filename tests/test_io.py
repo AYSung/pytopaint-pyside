@@ -1,3 +1,5 @@
+import anndata as ad
+import numpy as np
 import pandas as pd
 import pytest
 import yaml
@@ -126,30 +128,43 @@ def df_1() -> pd.DataFrame:
     })
 
 
-def test_get_axis_ticks():
-    clip_limits = {
-        'FSC-A': (0, UPPER_PHYSICAL),
-        'CD45': (LOWER_ASINH, UPPER_ASINH),
-        'Time': (0, 100),
-    }
-    assert get_axis_ticks(
-        'FSC-A',
-        n_bins=256,
-        scaling_factor=150,
-        clip_limits=clip_limits,
-    ) == [(0, '0'), (50, None), (100, '1e5'), (150, None), (200, '2e5'), (250, None)]
-    assert get_axis_ticks(
-        'CD45',
-        n_bins=256,
-        scaling_factor=150,
-        clip_limits=clip_limits,
-    ) == [(10, None), (28, '0'), (46, None), (102, '1e3'), (167, '1e4'), (233, '1e5')]
-    assert get_axis_ticks(
-        'Time',
-        n_bins=256,
-        scaling_factor=150,
-        clip_limits=clip_limits,
-    ) == [(0, None), (64, None), (128, None), (192, None), (256, None)]
+@pytest.fixture
+def adata_1() -> ad.AnnData:
+    adata = ad.AnnData(np.array([[0, 0, 0], [0, 0, 0]]))
+    adata.var_names = ['FSC-A', 'CD45', 'Time']
+    adata.var['channel_type'] = ['scatter', 'fluoro', 'time']
+    adata.uns['bins'] = 256
+    adata.uns['scaling_factor'] = 150
+    adata.var['lower_bound'] = [0, LOWER_ASINH, 0]
+    adata.var['upper_bound'] = [UPPER_PHYSICAL, UPPER_ASINH, 100]
+    return adata
+
+
+def test_get_axis_ticks(adata_1):
+    axis_ticks = get_axis_ticks(adata_1)
+
+    assert axis_ticks['FSC-A'] == [
+        (0, '0'),
+        (50, None),
+        (100, '1e5'),
+        (150, None),
+        (200, '2e5'),
+    ]
+    assert axis_ticks['CD45'] == [
+        (11, None),
+        (29, '0'),
+        (47, None),
+        (102, '1e3'),
+        (167, '1e4'),
+        (233, '1e5'),
+    ]
+    assert axis_ticks['Time'] == [
+        (0, None),
+        (64, None),
+        (128, None),
+        (192, None),
+        (255, None),
+    ]
 
 
 def test_extract_case_number():

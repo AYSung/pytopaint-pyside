@@ -216,39 +216,18 @@ SUBTRACTION_COLOR_MAPS = {
 }
 
 
-def _add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
+def add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
     return s.map(ADDITION_COLOR_MAPS[color])
 
 
-def _subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
+def subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
     return s.map(SUBTRACTION_COLOR_MAPS[color])
 
 
-def add_color_to_selection(
-    df: pd.DataFrame, color: Color, selection: pd.Index
-) -> pd.DataFrame:
-    return df.assign(
-        color=df.color.where(
-            ~df.index.isin(selection), _add_color_to_series(df.color, color=color)
-        ),
-    )
-
-
-def subtract_color_from_selection(
-    df: pd.DataFrame, color: Color, selection: pd.Index
-) -> pd.DataFrame:
-    return df.assign(
-        color=df.color.where(
-            ~df.index.isin(selection),
-            _subtract_color_from_series(df.color, color=color),
-        ),
-    )
-
-
 def merge_colors(
-    df: pd.DataFrame, source_colors: Color | list[Color], target_color: Color
+    s: pd.Series, source_colors: Color | list[Color], target_color: Color
 ) -> pd.DataFrame:
-    return df.color.replace(source_colors, target_color)
+    return s.replace(source_colors, target_color)
 
 
 def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:
