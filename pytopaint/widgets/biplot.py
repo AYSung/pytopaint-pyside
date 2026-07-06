@@ -121,8 +121,6 @@ class Biplot(QWidget):
         self.x_axis.set_axis_ticks(axis_ticks)
         self.y_axis.set_axis_ticks(axis_ticks)
 
-        self.update_plot_data()
-
     @Slot()
     def update_plot_data(self, state: pd.DataFrame = None):
         if state is not None:
@@ -631,14 +629,12 @@ class BiplotUpdater(QRunnable):
     ):
         super().__init__()
         self.biplot = biplot
-        self.state = state
         self.data = data
         self.axis_ticks = axis_ticks
+        self.state = state
 
     def run(self):
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
-
-        self.biplot.update_plot_data()
-
+        self.biplot.update_plot_data(self.state)
         self.biplot.updateFinished.emit()

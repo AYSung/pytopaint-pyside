@@ -20,11 +20,9 @@ from pytopaint.widgets.biplot import Biplot
 class BiplotGrid(QGridLayout):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
-    dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
     pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTriggered = Signal(int)
-    stateChanged = Signal(object)
     updateData = Signal(object, object, object)
     updatePlot = Signal()
 
@@ -49,8 +47,6 @@ class BiplotGrid(QGridLayout):
         self.update_manager = BiplotUpdateManager(self)
 
         self.activeColorChanged.connect(self.update_active_color)
-        self.dataChanged.connect(self.update_data)
-        self.stateChanged.connect(self.update_state)
 
     @staticmethod
     def batch_update(func):
