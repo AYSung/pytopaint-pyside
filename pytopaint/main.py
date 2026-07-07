@@ -76,7 +76,7 @@ class MainWindow(QMainWindow):
 
         self.last_dir = QDir.homePath()
 
-        self.setStyleSheet('QMainWindow { background-color: #242424; }')
+        self.setStyleSheet('QMainWindow { background-color: #202020; }')
 
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.handle_resize)

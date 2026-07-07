@@ -57,32 +57,29 @@ class Biplot(QWidget):
         self.df = data
         self.state = state
         self.active_color = active_color
-        self.resolution = resolution
 
         channels = sort_channels(data.columns)
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.plot = DotPlot(active_color=active_color, resolution=self.resolution)
+        self.plot = DotPlot(active_color=active_color, resolution=resolution)
         self.plot.pointsSelected.connect(self.points_selected)
 
-        self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=self.resolution)
+        self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
-        self.x_axis.labelChanged.connect(self.plot.update_plot)
+        self.x_axis.labelChanged.connect(self.plot.set_canvas)
         self.x_axis.labelChanged.connect(self.update_title)
-        self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=self.resolution)
+        self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
-        self.y_axis.labelChanged.connect(self.plot.update_plot)
+        self.y_axis.labelChanged.connect(self.plot.set_canvas)
         self.y_axis.labelChanged.connect(self.update_title)
-
-        self.update_plot_data()
 
         self.title_label = QLabel()
         self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
         self.title_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.title_label.customContextMenuRequested.connect(self.title_context_menu)
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setFixedWidth(self.resolution)
+        self.title_label.setFixedWidth(resolution)
         self.update_title()
 
         layout = QGridLayout()
@@ -128,6 +125,7 @@ class Biplot(QWidget):
 
         if self.x_axis.label is None or self.y_axis.label is None:
             self.plot.clear()
+            self.plot.update_plot()
             return
 
         df = (
@@ -143,8 +141,9 @@ class Biplot(QWidget):
             y_data=df[self.y_axis.label],
             color_data=df['color'],
         )
+        self.plot.draw_canvas()
 
-    def copy_plot_to_clipboard(self, mode: str):
+    def copy_plot_to_clipboard(self, mode: str, resolution: int):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
@@ -155,23 +154,23 @@ class Biplot(QWidget):
                 color_map = get_color_map() | {Color.WHITE: '#000000'}
                 axis_color = '#000000'
 
-        canvas = QPixmap(self.resolution + AXIS_WIDTH, self.resolution + AXIS_WIDTH)
+        canvas = QPixmap(resolution + AXIS_WIDTH, resolution + AXIS_WIDTH)
         canvas.fill('#00000000')
         self.plot.draw_dots(
             canvas,
-            origin=(AXIS_WIDTH, self.resolution - 1),
+            origin=(AXIS_WIDTH, resolution - 1),
             color_map=color_map,
             background_color=background_color,
         )
         self.y_axis.draw_axis(
             canvas,
-            origin=(0, self.resolution - 1),
+            origin=(0, resolution - 1),
             pen_color=axis_color,
             offset=0,
         )
         self.x_axis.draw_axis(
             canvas,
-            origin=(AXIS_WIDTH, self.resolution),
+            origin=(AXIS_WIDTH, resolution),
             pen_color=axis_color,
             offset=0,
         )
@@ -203,13 +202,21 @@ class Biplot(QWidget):
             'Copy to Clipboard (Light)',
             enabled=self.x_axis.label is not None and self.y_axis.label is not None,
         )
-        copy_light.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='light'))
+        copy_light.triggered.connect(
+            lambda: self.copy_plot_to_clipboard(
+                mode='light', resolution=self.plot.resolution
+            )
+        )
         menu.addAction(copy_light)
         copy_dark = QAction(
             'Copy to Clipboard (Dark)',
             enabled=self.x_axis.label is not None and self.y_axis.label is not None,
         )
-        copy_dark.triggered.connect(lambda: self.copy_plot_to_clipboard(mode='dark'))
+        copy_dark.triggered.connect(
+            lambda: self.copy_plot_to_clipboard(
+                mode='dark', resolution=self.plot.resolution
+            )
+        )
         menu.addAction(copy_dark)
         remove_biplot = QAction('Remove Biplot', self)
         remove_biplot.triggered.connect(lambda: self.removeTriggered.emit(self))
@@ -245,12 +252,10 @@ class Biplot(QWidget):
 
     @Slot(int)
     def resize(self, pixels: int) -> None:
-        self.resolution = pixels
         self.plot.resize(pixels=pixels)
         self.x_axis.resize(pixels=pixels)
         self.y_axis.resize(pixels=pixels)
         self.title_label.setFixedWidth(pixels)
-        self.updateGeometry()
 
 
 class DotPlot(QLabel):
@@ -258,9 +263,6 @@ class DotPlot(QLabel):
 
     def __init__(self, active_color: Color, resolution: int):
         super().__init__()
-        canvas = QPixmap(resolution, resolution)
-        canvas.fill(BACKGROUND)
-        self.setPixmap(canvas)
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.active_color = active_color
         self.resolution = resolution
@@ -268,7 +270,9 @@ class DotPlot(QLabel):
         self.last_x, self.last_y = None, None
         self.selection_geometry = []
         self.highlighted_colors = []
+
         self.set_working_data(x_data=None, y_data=None, color_data=None)
+        self.update_plot()
 
     def mouseMoveEvent(self, e: QMouseEvent):
         if self.color_indices is None:
@@ -378,21 +382,25 @@ class DotPlot(QLabel):
 
     @Slot()
     def update_plot(self) -> None:
-        canvas = self.pixmap()
-        canvas.fill(BACKGROUND)
+        self.draw_canvas()
+        self.set_canvas()
+
+    def draw_canvas(self) -> None:
+        self.canvas = QPixmap(self.resolution, self.resolution)
+        self.canvas.fill(BACKGROUND)
         if self.color_indices is not None:
             self.draw_dots(
-                canvas,
+                self.canvas,
                 origin=(0, self.resolution - 1),
                 color_map=get_color_map(),
             )
-        self.setPixmap(canvas)
+
+    @Slot()
+    def set_canvas(self) -> None:
+        self.setPixmap(self.canvas)
 
     def resize(self, pixels: int):
         self.resolution = pixels
-        canvas = QPixmap(pixels, pixels)
-        canvas.fill(BACKGROUND)
-        self.setPixmap(canvas)
 
     def clear(self) -> None:
         self.set_working_data(x_data=None, y_data=None, color_data=None)
@@ -414,7 +422,7 @@ class XAxis(QLabel):
         self.axis_ticks = axis_ticks
         self.resolution = resolution
 
-        canvas = QPixmap(resolution, AXIS_WIDTH)
+        canvas = QPixmap(self.resolution, AXIS_WIDTH)
         canvas.fill('#00000000')
         self.setPixmap(canvas)
 
@@ -434,7 +442,6 @@ class XAxis(QLabel):
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        self.setPixmap(QPixmap(pixels, AXIS_WIDTH))
         if self.label not in self.axis_ticks.keys():
             self.label = None
             self.labelChanged.emit()
@@ -486,7 +493,7 @@ class XAxis(QLabel):
         painter.end()
 
     def update_axis(self) -> None:
-        canvas = self.pixmap()
+        canvas = QPixmap(self.resolution, AXIS_WIDTH)
         canvas.fill('#00000000')
         self.draw_axis(
             canvas,
@@ -544,7 +551,9 @@ class YAxis(QLabel):
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        self.setPixmap(QPixmap(AXIS_WIDTH, pixels))
+        if self.label not in self.axis_ticks.keys():
+            self.label = None
+            self.labelChanged.emit()
         self.update_axis()
 
     def draw_axis(
@@ -597,7 +606,7 @@ class YAxis(QLabel):
         painter.end()
 
     def update_axis(self) -> None:
-        canvas = self.pixmap()
+        canvas = QPixmap(AXIS_WIDTH, self.resolution)
         canvas.fill('#00000000')
         self.draw_axis(
             canvas,

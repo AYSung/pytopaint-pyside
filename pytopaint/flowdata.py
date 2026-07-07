@@ -174,7 +174,7 @@ def discretize_array(
     lower_bound: float, upper_bound: float, bins: int, arr: np.ndarray
 ) -> np.ndarray:
     bins = np.linspace(lower_bound, upper_bound, num=bins)
-    return np.searchsorted(bins, arr, side='left').astype(np.uint8)
+    return np.searchsorted(bins, arr, side='left')
 
 
 def get_umap_dims(

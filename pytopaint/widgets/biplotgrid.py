@@ -95,7 +95,7 @@ class BiplotGrid(QGridLayout):
         biplot.updateFinished.connect(self.update_manager.on_update_finished)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.updateData.connect(biplot.update_data)
-        self.updatePlot.connect(biplot.plot.update_plot)
+        self.updatePlot.connect(biplot.plot.set_canvas)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.resizeTriggered.connect(biplot.resize)
@@ -213,6 +213,10 @@ class BiplotGrid(QGridLayout):
     def get_biplots(self) -> list[Biplot]:
         return [self._get_biplot(i) for i in range(self.count())]
 
+    @batch_update
+    def update_plots(self) -> None:
+        self.updatePlot.emit()
+
 
 class BiplotUpdateManager:
     def __init__(self, biplot_grid: BiplotGrid):
@@ -223,4 +227,4 @@ class BiplotUpdateManager:
         self.finished_count += 1
         if self.finished_count == self.biplot_grid.count():
             self.finished_count = 0
-            self.biplot_grid.updatePlot.emit()
+            self.biplot_grid.update_plots()
