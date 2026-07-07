@@ -166,13 +166,11 @@ class Biplot(QWidget):
             canvas,
             origin=(0, resolution - 1),
             pen_color=axis_color,
-            offset=0,
         )
         self.x_axis.draw_axis(
             canvas,
             origin=(AXIS_WIDTH, resolution),
             pen_color=axis_color,
-            offset=0,
         )
         clipboard = QApplication.clipboard()
         clipboard.setPixmap(canvas)
@@ -421,6 +419,7 @@ class XAxis(QLabel):
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
+        self.setContentsMargins(0, 4, 0, 0)
 
         canvas = QPixmap(self.resolution, AXIS_WIDTH)
         canvas.fill('#00000000')
@@ -448,7 +447,7 @@ class XAxis(QLabel):
         self.update_axis()
 
     def draw_axis(
-        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str, offset: int
+        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str
     ) -> None:
         painter = QPainter(canvas)
         pen = QPen()
@@ -457,7 +456,7 @@ class XAxis(QLabel):
         painter.translate(*origin)
 
         label_y = 11
-        tick_y0 = offset
+        tick_y0 = 0
         tick_y1 = tick_y0 + 4
         X_MAX = self.resolution - 1
 
@@ -499,7 +498,6 @@ class XAxis(QLabel):
             canvas,
             origin=(0, 0),
             pen_color='#bababa',
-            offset=4,
         )
         self.setPixmap(canvas)
 
@@ -530,6 +528,7 @@ class YAxis(QLabel):
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
+        self.setContentsMargins(0, 0, 4, 0)
 
         canvas = QPixmap(AXIS_WIDTH, self.resolution)
         canvas.fill('#00000000')
@@ -557,7 +556,7 @@ class YAxis(QLabel):
         self.update_axis()
 
     def draw_axis(
-        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str, offset: int
+        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str
     ) -> None:
         painter = QPainter(canvas)
         pen = QPen()
@@ -565,7 +564,7 @@ class YAxis(QLabel):
         painter.setPen(pen)
 
         label_x = -7
-        tick_x1 = 44 - offset
+        tick_x1 = 44
         tick_x0 = tick_x1 - 4
         Y_MAX = self.resolution - 1
 
@@ -612,7 +611,6 @@ class YAxis(QLabel):
             canvas,
             origin=(0, self.resolution - 1),
             pen_color='#bababa',
-            offset=4,
         )
         self.setPixmap(canvas)
 
