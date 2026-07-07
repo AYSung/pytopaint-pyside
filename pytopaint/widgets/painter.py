@@ -60,6 +60,7 @@ class Painter(QWidget):
         self.configure_shortcuts()
 
         self.fcs = fcs
+        self.setStyleSheet('* {color: #bababa}')
 
         self.paint_actions = {
             MenuAction.SET_ACTIVE: self.change_color,
