@@ -435,6 +435,7 @@ def main():
     QCoreApplication.setApplicationName('PytoPaint')
 
     app = QApplication(sys.argv)
+    app.setStyleSheet('* {color: #bababa}')
     QGuiApplication.styleHints().setColorScheme(Qt.ColorScheme.Dark)
     window = MainWindow()
     window.show()
