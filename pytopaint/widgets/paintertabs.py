@@ -24,6 +24,7 @@ class PainterTabs(QTabWidget):
         self.setElideMode(Qt.TextElideMode.ElideMiddle)
         self.tabCloseRequested.connect(self.handle_tab_close)
         self.setMinimumSize(600, 400)
+        self.setStyleSheet('QMainWindow { background-color: #242424; }')
 
     @Slot(int)
     def handle_tab_close(self, index: int):
