@@ -15,7 +15,7 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
-from PySide6.QtGui import QAction, QFont, QMouseEvent, QPainter, QPen, QPixmap
+from PySide6.QtGui import QAction, QFont, QImage, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
     QGridLayout,
@@ -154,26 +154,21 @@ class Biplot(QWidget):
                 color_map = get_color_map() | {Color.WHITE: '#000000'}
                 axis_color = '#000000'
 
-        canvas = QPixmap(resolution + AXIS_WIDTH, resolution + AXIS_WIDTH)
-        canvas.fill('#00000000')
-        self.plot.draw_dots(
-            canvas,
-            origin=(AXIS_WIDTH, resolution - 1),
-            color_map=color_map,
-            background_color=background_color,
+        image = QImage(
+            resolution + AXIS_WIDTH,
+            resolution + AXIS_WIDTH,
+            QImage.Format.Format_ARGB32,
         )
-        self.y_axis.draw_axis(
-            canvas,
-            origin=(0, resolution - 1),
-            pen_color=axis_color,
-        )
-        self.x_axis.draw_axis(
-            canvas,
-            origin=(AXIS_WIDTH, resolution),
-            pen_color=axis_color,
-        )
+        image.fill(0)
+        painter = QPainter(image)
+        painter.drawPixmap(AXIS_WIDTH, 0, self.plot.canvas)
+        painter.drawPixmap(0, 0, self.y_axis.canvas)
+        painter.drawPixmap(AXIS_WIDTH, resolution, self.x_axis.canvas)
+
+        painter.end()
+
         clipboard = QApplication.clipboard()
-        clipboard.setPixmap(canvas)
+        clipboard.setImage(image)
 
     def transpose_axes(self):
         self.set_axes(x_label=self.y_axis.label, y_label=self.x_axis.label)
@@ -415,15 +410,17 @@ class XAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
+        self.mouse_pressed = False
+
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
         self.setContentsMargins(0, 4, 0, 0)
 
-        canvas = QPixmap(self.resolution, AXIS_WIDTH)
-        canvas.fill('#00000000')
-        self.setPixmap(canvas)
+        self.canvas = QPixmap(self.resolution, AXIS_WIDTH)
+        self.canvas.fill('#00000000')
+        self.setPixmap(self.canvas)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -446,10 +443,20 @@ class XAxis(QLabel):
             self.labelChanged.emit()
         self.update_axis()
 
-    def draw_axis(
-        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str
-    ) -> None:
-        painter = QPainter(canvas)
+    def mousePressEvent(self, ev):
+        self.mouse_pressed = True
+
+        super().mousePressEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if self.mouse_pressed:
+            self.customContextMenuRequested.emit(ev.pos())
+
+        self.mouse_pressed = False
+        super().mouseReleaseEvent(ev)
+
+    def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
+        painter = QPainter(self.canvas)
         pen = QPen()
         pen.setColor(pen_color)
         painter.setPen(pen)
@@ -492,14 +499,13 @@ class XAxis(QLabel):
         painter.end()
 
     def update_axis(self) -> None:
-        canvas = QPixmap(self.resolution, AXIS_WIDTH)
-        canvas.fill('#00000000')
+        self.canvas = QPixmap(self.resolution, AXIS_WIDTH)
+        self.canvas.fill('#00000000')
         self.draw_axis(
-            canvas,
             origin=(0, 0),
             pen_color='#bababa',
         )
-        self.setPixmap(canvas)
+        self.setPixmap(self.canvas)
 
     def context_menu(self, pos):
         menu = QMenu()
@@ -524,17 +530,19 @@ class YAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
+        self.mouse_pressed = False
+
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
         self.setContentsMargins(0, 0, 4, 0)
 
-        canvas = QPixmap(AXIS_WIDTH, self.resolution)
-        canvas.fill('#00000000')
+        self.canvas = QPixmap(AXIS_WIDTH, self.resolution)
+        self.canvas.fill('#00000000')
 
-        self.setPixmap(canvas)
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setPixmap(self.canvas)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
         self.update_axis()
@@ -555,10 +563,20 @@ class YAxis(QLabel):
             self.labelChanged.emit()
         self.update_axis()
 
-    def draw_axis(
-        self, canvas: QPixmap, origin: tuple[int, int], pen_color: str
-    ) -> None:
-        painter = QPainter(canvas)
+    def mousePressEvent(self, ev):
+        self.mouse_pressed = True
+
+        super().mousePressEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if self.mouse_pressed:
+            self.customContextMenuRequested.emit(ev.pos())
+
+        self.mouse_pressed = False
+        super().mouseReleaseEvent(ev)
+
+    def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
+        painter = QPainter(self.canvas)
         pen = QPen()
         pen.setColor(pen_color)
         painter.setPen(pen)
@@ -605,14 +623,13 @@ class YAxis(QLabel):
         painter.end()
 
     def update_axis(self) -> None:
-        canvas = QPixmap(AXIS_WIDTH, self.resolution)
-        canvas.fill('#00000000')
+        self.canvas = QPixmap(AXIS_WIDTH, self.resolution)
+        self.canvas.fill('#00000000')
         self.draw_axis(
-            canvas,
             origin=(0, self.resolution - 1),
             pen_color='#bababa',
         )
-        self.setPixmap(canvas)
+        self.setPixmap(self.canvas)
 
     def context_menu(self, pos):
         menu = QMenu()
