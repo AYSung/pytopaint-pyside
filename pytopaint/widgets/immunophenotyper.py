@@ -39,6 +39,9 @@ class Immunophenotyper(QDialog):
     ):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
+        self.setStyleSheet(
+            'QDialog {background-color: #333333;} QPushButton {color: auto}'
+        )
 
         self.channels = sort_channels(
             ['FSC-A', 'SSC-A']
