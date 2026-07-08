@@ -68,19 +68,22 @@ class Biplot(QWidget):
         self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
         self.x_axis.labelChanged.connect(self.plot.set_canvas)
-        self.x_axis.labelChanged.connect(self.update_title)
         self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.plot.set_canvas)
-        self.y_axis.labelChanged.connect(self.update_title)
 
-        self.title_label = QLabel()
-        self.title_label.setStyleSheet('font-weight: bold; margin-bottom: 6px')
-        self.title_label.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
-        self.title_label.customContextMenuRequested.connect(self.title_context_menu)
-        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        self.title_label.setFixedWidth(resolution)
-        self.update_title()
+        self.title_label = PlotTitle(
+            x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
+        )
+        self.x_axis.labelChanged.connect(
+            lambda: self.title_label.update_title(self.x_axis.label, self.y_axis.label)
+        )
+        self.y_axis.labelChanged.connect(
+            lambda: self.title_label.update_title(self.x_axis.label, self.y_axis.label)
+        )
+        self.title_label.transposeAxesClicked.connect(self.transpose_axes)
+        self.title_label.copyPlotClicked.connect(self.copy_plot_to_clipboard)
+        self.title_label.removePlotClicked.connect(self.remove)
 
         layout = QGridLayout()
         layout.setSpacing(0)
@@ -143,7 +146,7 @@ class Biplot(QWidget):
         )
         self.plot.draw_canvas()
 
-    def copy_plot_to_clipboard(self, mode: str, resolution: int):
+    def copy_plot_to_clipboard(self, mode: str):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
@@ -154,6 +157,7 @@ class Biplot(QWidget):
                 color_map = get_color_map() | {Color.WHITE: '#000000'}
                 axis_color = '#000000'
 
+        resolution = self.plot.resolution
         image = QImage(
             resolution + AXIS_WIDTH,
             resolution + AXIS_WIDTH,
@@ -180,50 +184,7 @@ class Biplot(QWidget):
         self.y_axis.update_axis()
         self.update_plot_data()
         self.plot.update_plot()
-        self.update_title()
-
-    def title_context_menu(self, pos):
-        menu = QMenu()
-        transpose = QAction(
-            'Transpose Axes',
-            enabled=self.x_axis.label is not None and self.y_axis.label is not None,
-        )
-        transpose.triggered.connect(self.transpose_axes)
-        menu.addAction(transpose)
-        menu.addSeparator()
-        copy_light = QAction(
-            'Copy to Clipboard (Light)',
-            enabled=self.x_axis.label is not None and self.y_axis.label is not None,
-        )
-        copy_light.triggered.connect(
-            lambda: self.copy_plot_to_clipboard(
-                mode='light', resolution=self.plot.resolution
-            )
-        )
-        menu.addAction(copy_light)
-        copy_dark = QAction(
-            'Copy to Clipboard (Dark)',
-            enabled=self.x_axis.label is not None and self.y_axis.label is not None,
-        )
-        copy_dark.triggered.connect(
-            lambda: self.copy_plot_to_clipboard(
-                mode='dark', resolution=self.plot.resolution
-            )
-        )
-        menu.addAction(copy_dark)
-        remove_biplot = QAction('Remove Biplot', self)
-        remove_biplot.triggered.connect(lambda: self.removeTriggered.emit(self))
-        menu.addAction(remove_biplot)
-        menu.exec(self.mapToGlobal(pos))
-
-    @Slot(str)
-    def update_title(self, _: str = None):
-        if self.x_axis.label is None or self.y_axis.label is None:
-            title = ''
-        else:
-            title = f'{self.y_axis.label} vs {self.x_axis.label}'
-
-        self.title_label.setText(title)
+        self.title_label.update_title(x_label=x_label, y_label=y_label)
 
     @Slot(object, QMouseEvent)
     def points_selected(
@@ -249,6 +210,80 @@ class Biplot(QWidget):
         self.x_axis.resize(pixels=pixels)
         self.y_axis.resize(pixels=pixels)
         self.title_label.setFixedWidth(pixels)
+
+    @Slot()
+    def remove(self) -> None:
+        self.removeTriggered.emit(self)
+
+
+class PlotTitle(QLabel):
+    transposeAxesClicked = Signal()
+    copyPlotClicked = Signal(str)
+    removePlotClicked = Signal()
+
+    def __init__(self, x_label: str, y_label: str, resolution: int):
+        super().__init__()
+        self.mouse_pressed = False
+        self.x_label, self.y_label = x_label, y_label
+
+        self.setStyleSheet('font-weight: bold; margin-bottom: 6px')
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.customContextMenuRequested.connect(self.context_menu)
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setFixedWidth(resolution)
+        self.update_title(x_label=x_label, y_label=y_label)
+
+    def resize(self, resolution: int) -> None:
+        self.setFixedWidth(resolution)
+
+    @Slot(str, str)
+    def update_title(self, x_label: str = None, y_label: str = None) -> None:
+        self.x_label, self.y_label = x_label, y_label
+
+        if x_label is None or y_label is None:
+            title = ''
+        else:
+            title = f'{y_label} vs {x_label}'
+
+        self.setText(title)
+
+    def context_menu(self, pos) -> None:
+        menu = QMenu()
+        transpose = QAction(
+            'Transpose Axes',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        transpose.triggered.connect(self.transposeAxesClicked)
+        menu.addAction(transpose)
+        menu.addSeparator()
+        copy_light = QAction(
+            'Copy to Clipboard (Light)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        copy_light.triggered.connect(lambda: self.copyPlotClicked.emit('light'))
+        menu.addAction(copy_light)
+        copy_dark = QAction(
+            'Copy to Clipboard (Dark)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        copy_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
+        menu.addAction(copy_dark)
+        remove_biplot = QAction('Remove Biplot', self)
+        remove_biplot.triggered.connect(self.removePlotClicked)
+        menu.addAction(remove_biplot)
+        menu.exec(self.mapToGlobal(pos))
+
+    def mousePressEvent(self, ev):
+        self.mouse_pressed = True
+
+        super().mousePressEvent(ev)
+
+    def mouseReleaseEvent(self, ev):
+        if self.mouse_pressed:
+            self.customContextMenuRequested.emit(ev.pos())
+
+        self.mouse_pressed = False
+        super().mouseReleaseEvent(ev)
 
 
 class DotPlot(QLabel):
