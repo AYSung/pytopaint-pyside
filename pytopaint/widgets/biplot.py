@@ -273,17 +273,17 @@ class PlotTitle(QLabel):
         menu.addAction(remove_biplot)
         menu.exec(self.mapToGlobal(pos))
 
-    def mousePressEvent(self, ev):
+    def mousePressEvent(self, e: QMouseEvent):
         self.mouse_pressed = True
 
-        super().mousePressEvent(ev)
+        super().mousePressEvent(e)
 
-    def mouseReleaseEvent(self, ev):
-        if self.mouse_pressed:
-            self.customContextMenuRequested.emit(ev.pos())
+    def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
 
         self.mouse_pressed = False
-        super().mouseReleaseEvent(ev)
+        super().mouseReleaseEvent(e)
 
 
 class DotPlot(QLabel):
@@ -478,17 +478,17 @@ class XAxis(QLabel):
             self.labelChanged.emit()
         self.update_axis()
 
-    def mousePressEvent(self, ev):
+    def mousePressEvent(self, e: QMouseEvent):
         self.mouse_pressed = True
 
-        super().mousePressEvent(ev)
+        super().mousePressEvent(e)
 
-    def mouseReleaseEvent(self, ev):
-        if self.mouse_pressed:
-            self.customContextMenuRequested.emit(ev.pos())
+    def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
 
         self.mouse_pressed = False
-        super().mouseReleaseEvent(ev)
+        super().mouseReleaseEvent(e)
 
     def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
         painter = QPainter(self.canvas)
@@ -598,17 +598,17 @@ class YAxis(QLabel):
             self.labelChanged.emit()
         self.update_axis()
 
-    def mousePressEvent(self, ev):
+    def mousePressEvent(self, e: QMouseEvent):
         self.mouse_pressed = True
 
-        super().mousePressEvent(ev)
+        super().mousePressEvent(e)
 
-    def mouseReleaseEvent(self, ev):
-        if self.mouse_pressed:
-            self.customContextMenuRequested.emit(ev.pos())
+    def mouseReleaseEvent(self, e: QMouseEvent):
+        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
 
         self.mouse_pressed = False
-        super().mouseReleaseEvent(ev)
+        super().mouseReleaseEvent(e)
 
     def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
         painter = QPainter(self.canvas)
