@@ -457,7 +457,7 @@ class XAxis(QLabel):
         self.canvas.fill('#00000000')
         self.setPixmap(self.canvas)
 
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
         self.update_axis()
