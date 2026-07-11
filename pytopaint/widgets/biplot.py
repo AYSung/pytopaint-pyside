@@ -278,6 +278,10 @@ class PlotTitle(QLabel):
 
         super().mousePressEvent(e)
 
+    def mouseMoveEvent(self, e: QMouseEvent):
+        self.mouse_pressed = False
+        e.ignore()
+
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
@@ -483,6 +487,10 @@ class XAxis(QLabel):
 
         super().mousePressEvent(e)
 
+    def mouseMoveEvent(self, e: QMouseEvent):
+        self.mouse_pressed = False
+        e.ignore()
+
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
@@ -602,6 +610,10 @@ class YAxis(QLabel):
         self.mouse_pressed = True
 
         super().mousePressEvent(e)
+
+    def mouseMoveEvent(self, e: QMouseEvent):
+        self.mouse_pressed = False
+        e.ignore()
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
