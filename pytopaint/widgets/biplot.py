@@ -283,20 +283,10 @@ class PlotTitle(QLabel):
         menu.exec(self.mapToGlobal(pos))
 
     def mousePressEvent(self, e: QMouseEvent):
-        self.mouse_pressed = True
-
-        super().mousePressEvent(e)
-
-    def mouseMoveEvent(self, e: QMouseEvent):
-        self.mouse_pressed = False
-        e.ignore()
-
-    def mouseReleaseEvent(self, e: QMouseEvent):
-        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+        if e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
 
-        self.mouse_pressed = False
-        super().mouseReleaseEvent(e)
+        super().mousePressEvent(e)
 
 
 class DotPlot(QLabel):
@@ -482,20 +472,10 @@ class XAxis(QLabel):
         self.update_axis()
 
     def mousePressEvent(self, e: QMouseEvent):
-        self.mouse_pressed = True
-
-        super().mousePressEvent(e)
-
-    def mouseMoveEvent(self, e: QMouseEvent):
-        self.mouse_pressed = False
-        e.ignore()
-
-    def mouseReleaseEvent(self, e: QMouseEvent):
-        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+        if e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
 
-        self.mouse_pressed = False
-        super().mouseReleaseEvent(e)
+        super().mousePressEvent(e)
 
     def draw_axis(
         self,
@@ -603,20 +583,10 @@ class YAxis(QLabel):
         self.update_axis()
 
     def mousePressEvent(self, e: QMouseEvent):
-        self.mouse_pressed = True
-
-        super().mousePressEvent(e)
-
-    def mouseMoveEvent(self, e: QMouseEvent):
-        self.mouse_pressed = False
-        e.ignore()
-
-    def mouseReleaseEvent(self, e: QMouseEvent):
-        if self.mouse_pressed and e.button() == Qt.MouseButton.RightButton:
+        if e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
 
-        self.mouse_pressed = False
-        super().mouseReleaseEvent(e)
+        super().mousePressEvent(e)
 
     def draw_axis(
         self,
