@@ -111,6 +111,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Open File(s)', 'Ctrl + O'),
             ('Load Layout', 'Ctrl + L'),
             ('Close Tab', 'Ctrl + W'),
+            ('Close All Tabs', 'Ctrl + Shift + W'),
             ('Close Application', 'Ctrl + Q'),
         ])
     )
