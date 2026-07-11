@@ -407,6 +407,7 @@ class Painter(QWidget):
 
     @record_action
     def unhide_all(self) -> None:
+        self.state.loc[lambda x: ~x['visible'], 'color'] = Color.GREY
         self.state['visible'] = True
 
     @record_action
