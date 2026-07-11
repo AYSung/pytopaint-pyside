@@ -217,7 +217,7 @@ class MainWindow(QMainWindow):
             return
 
         layout = read_yaml(file_path)
-        self.get_active_painter().update_layout(layout)
+        self.get_active_painter().biplot_grid.update_layout(layout.grid)
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
