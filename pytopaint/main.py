@@ -9,6 +9,7 @@ import cProfile
 import pstats
 import sys
 from io import BytesIO
+from itertools import chain
 from multiprocessing import freeze_support
 from pathlib import Path
 
@@ -99,10 +100,21 @@ class MainWindow(QMainWindow):
         self.setAcceptDrops(True)
 
     @Slot()
-    def open_dialog(self):
+    def open_file_dialog(self):
         files, _ = QFileDialog.getOpenFileNames(
             None, 'Select File(s)', self.last_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
         )
+        self.open_files(files)
+
+    @Slot()
+    def open_dir_dialog(self):
+        dir = QFileDialog.getExistingDirectory(
+            None, 'Select Directory', self.last_dir, QFileDialog.Option.ShowDirsOnly
+        )
+        self.open_files_in(dir)
+
+    def open_files_in(self, dir: str):
+        files = [item for item in Path(dir).iterdir() if item.is_file()]
         self.open_files(files)
 
     def open_files(self, files: list[str]):
@@ -257,8 +269,18 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def dropEvent(self, event: QDropEvent):
+        def _expand_url(url: str) -> list[Path]:
+            path = Path(url)
+            if path.is_dir():
+                return [item for item in path.iterdir() if item.is_file()]
+            else:
+                return [path]
+
         urls = event.mimeData().urls()
-        self.open_files([url.toLocalFile() for url in urls])
+        local_urls = [url.toLocalFile() for url in urls]
+        expanded_urls = chain(*map(_expand_url, local_urls))
+
+        self.open_files(expanded_urls)
 
     def configure_shortcuts(self):
         close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
@@ -291,8 +313,13 @@ class MainWindow(QMainWindow):
 
         open_file_action = QAction('&Open File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_file_action.triggered.connect(self.open_dialog)
+        open_file_action.triggered.connect(self.open_file_dialog)
         file_menu.addAction(open_file_action)
+
+        open_dir_action = QAction('Open Directory', self)
+        open_dir_action.setShortcut(QKeySequence('Ctrl+Shift+O'))
+        open_dir_action.triggered.connect(self.open_dir_dialog)
+        file_menu.addAction(open_dir_action)
 
         save_session_action = QAction('&Save Session As', self, enabled=False)
         save_session_action.triggered.connect(self.save_session)
