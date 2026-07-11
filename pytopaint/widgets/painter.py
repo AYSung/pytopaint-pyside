@@ -234,7 +234,7 @@ class Painter(QWidget):
             lambda: self.handle_menu_action(MenuAction.UNHIDE_ALL, dict())
         )
 
-        hide_events_shortcut = QShortcut(QKeySequence.StandardKey.Backspace, self)
+        hide_events_shortcut = QShortcut(QKeySequence('Backspace'), self)
         hide_events_shortcut.activated.connect(
             lambda: self.handle_menu_action(
                 MenuAction.HIDE, dict(color=self.active_color)
