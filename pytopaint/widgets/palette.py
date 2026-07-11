@@ -407,7 +407,7 @@ class MemorySlot(QToolButton):
         recall_state_action = QAction('Recall', self, enabled=self.has_events)
         recall_state_action.triggered.connect(self.replace_state)
         menu.addAction(recall_state_action)
-        combine_state_action = QAction('Recall Merge', self, enabled=self.has_events)
+        combine_state_action = QAction('Recall Non-Grey', self, enabled=self.has_events)
         combine_state_action.triggered.connect(self.merge_state)
         menu.addAction(combine_state_action)
 
