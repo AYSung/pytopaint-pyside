@@ -34,7 +34,7 @@ from pytopaint.colors import (
 )
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
-AXIS_WIDTH = 45
+AXIS_WIDTH = 40
 
 
 class Biplot(QWidget):
@@ -151,11 +151,14 @@ class Biplot(QWidget):
             case 'dark':
                 background_color = BACKGROUND
                 color_map = get_color_map()
-                axis_color = '#bababa'
+                label_color = '#bababa'
             case 'light':
                 background_color = '#ffffff'
-                color_map = get_color_map() | {Color.WHITE: '#000000'}
-                axis_color = '#000000'
+                color_map = get_color_map() | {
+                    Color.WHITE: '#000000',
+                    Color.GREY: '#828282',
+                }
+                label_color = '#000000'
 
         resolution = self.plot.resolution
         image = QImage(
@@ -163,11 +166,17 @@ class Biplot(QWidget):
             resolution + AXIS_WIDTH,
             QImage.Format.Format_ARGB32,
         )
-        image.fill(0)
+        image.fill('#00000000')
         painter = QPainter(image)
-        painter.drawPixmap(AXIS_WIDTH, 0, self.plot.canvas)
-        painter.drawPixmap(0, 0, self.y_axis.canvas)
-        painter.drawPixmap(AXIS_WIDTH, resolution, self.x_axis.canvas)
+        painter.drawPixmap(
+            AXIS_WIDTH,
+            0,
+            self.plot.draw_plot(background_color=background_color, color_map=color_map),
+        )
+        painter.drawPixmap(0, 0, self.y_axis.draw_axis(label_color=label_color))
+        painter.drawPixmap(
+            AXIS_WIDTH, resolution, self.x_axis.draw_axis(label_color=label_color)
+        )
 
         painter.end()
 
@@ -376,6 +385,24 @@ class DotPlot(QLabel):
     def set_active_color(self, color: Color):
         self.active_color = color
 
+    def draw_plot(self, background_color: str, color_map: dict[Color, str]) -> QPixmap:
+        canvas = QPixmap(self.resolution, self.resolution)
+        canvas.fill(background_color)
+
+        if self.color_indices is None:
+            return canvas
+
+        painter = QPainter(canvas)
+        painter.translate(0, self.resolution - 1)
+        painter.scale(1, -1)
+
+        for color in self.non_highlighted_colors + self.highlighted_colors:
+            self.draw_color(color, painter, color_map=color_map)
+
+        painter.end()
+
+        return canvas
+
     def draw_color(
         self,
         color: Color,
@@ -393,39 +420,15 @@ class DotPlot(QLabel):
             self.y_data.loc[index].to_numpy(dtype='uint16'),
         )
 
-    def draw_dots(
-        self,
-        canvas: QPixmap,
-        origin: tuple[int, int],
-        color_map: dict[Color, str],
-        background_color: str = None,
-    ) -> None:
-        painter = QPainter(canvas)
-        painter.translate(*origin)
-        painter.scale(1, -1)
-
-        if background_color is not None:
-            painter.fillRect(0, -1, self.resolution, self.resolution, background_color)
-
-        for color in self.non_highlighted_colors + self.highlighted_colors:
-            self.draw_color(color, painter, color_map=color_map)
-
-        painter.end()
-
     @Slot()
     def update_plot(self) -> None:
         self.draw_canvas()
         self.set_canvas()
 
     def draw_canvas(self) -> None:
-        self.canvas = QPixmap(self.resolution, self.resolution)
-        self.canvas.fill(BACKGROUND)
-        if self.color_indices is not None:
-            self.draw_dots(
-                self.canvas,
-                origin=(0, self.resolution - 1),
-                color_map=get_color_map(),
-            )
+        self.canvas = self.draw_plot(
+            background_color=BACKGROUND, color_map=get_color_map()
+        )
 
     @Slot()
     def set_canvas(self) -> None:
@@ -456,10 +459,6 @@ class XAxis(QLabel):
         self.axis_ticks = axis_ticks
         self.resolution = resolution
         self.setContentsMargins(0, 4, 0, 0)
-
-        self.canvas = QPixmap(self.resolution, AXIS_WIDTH)
-        self.canvas.fill('#00000000')
-        self.setPixmap(self.canvas)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -498,14 +497,18 @@ class XAxis(QLabel):
         self.mouse_pressed = False
         super().mouseReleaseEvent(e)
 
-    def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
-        painter = QPainter(self.canvas)
+    def draw_axis(
+        self,
+        label_color: str,
+    ) -> QPixmap:
+        canvas = QPixmap(self.resolution, AXIS_WIDTH)
+        canvas.fill('#00000000')
+        painter = QPainter(canvas)
         pen = QPen()
-        pen.setColor(pen_color)
+        pen.setColor(label_color)
         painter.setPen(pen)
-        painter.translate(*origin)
 
-        label_y = 11
+        label_y = 7
         tick_y0 = 0
         tick_y1 = tick_y0 + 4
         X_MAX = self.resolution - 1
@@ -513,7 +516,7 @@ class XAxis(QLabel):
         painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
         if self.label is not None:
-            axis_ticks = self.axis_ticks[self.label]
+            axis_ticks = self.axis_ticks.get(self.label)
 
             for tick, _ in axis_ticks:
                 painter.drawLine(QPoint(tick, tick_y0), QPoint(tick, tick_y1))
@@ -535,20 +538,17 @@ class XAxis(QLabel):
             font.setBold(True)
             painter.setFont(font)
             painter.drawText(
-                QRect(0, 0, self.resolution - 1, 44),
+                canvas.rect(),
                 self.label,
                 Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignBottom,
             )
         painter.end()
 
+        return canvas
+
     def update_axis(self) -> None:
-        self.canvas = QPixmap(self.resolution, AXIS_WIDTH)
-        self.canvas.fill('#00000000')
-        self.draw_axis(
-            origin=(0, 0),
-            pen_color='#bababa',
-        )
-        self.setPixmap(self.canvas)
+        canvas = self.draw_axis(label_color='#bababa')
+        self.setPixmap(canvas)
 
     def context_menu(self, pos):
         menu = QMenu()
@@ -581,10 +581,6 @@ class YAxis(QLabel):
         self.resolution = resolution
         self.setContentsMargins(0, 0, 4, 0)
 
-        self.canvas = QPixmap(AXIS_WIDTH, self.resolution)
-        self.canvas.fill('#00000000')
-
-        self.setPixmap(self.canvas)
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
@@ -622,21 +618,26 @@ class YAxis(QLabel):
         self.mouse_pressed = False
         super().mouseReleaseEvent(e)
 
-    def draw_axis(self, origin: tuple[int, int], pen_color: str) -> None:
-        painter = QPainter(self.canvas)
+    def draw_axis(
+        self,
+        label_color: str,
+    ) -> QPixmap:
+        canvas = QPixmap(AXIS_WIDTH, self.resolution)
+        canvas.fill('#00000000')
+        painter = QPainter(canvas)
         pen = QPen()
-        pen.setColor(pen_color)
+        pen.setColor(label_color)
         painter.setPen(pen)
 
-        label_x = -7
-        tick_x1 = 44
+        label_x = AXIS_WIDTH - 48
+        tick_x1 = AXIS_WIDTH - 1
         tick_x0 = tick_x1 - 4
         Y_MAX = self.resolution - 1
 
         painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, Y_MAX))
 
         if self.label is not None:
-            axis_ticks = self.axis_ticks[self.label]
+            axis_ticks = self.axis_ticks.get(self.label)
 
             for tick, _ in axis_ticks:
                 painter.drawLine(
@@ -657,26 +658,23 @@ class YAxis(QLabel):
                     Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
                 )
 
-            painter.translate(*origin)
+            painter.translate(0, Y_MAX)
             painter.rotate(-90)
             font = QFont()
             font.setWeight(QFont.Weight(800))
             painter.setFont(font)
             painter.drawText(
-                QRect(1, 0, self.resolution - 1, 20),
+                canvas.rect().transposed(),
                 self.label,
-                Qt.AlignmentFlag.AlignLeft,
+                Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignTop,
             )
         painter.end()
 
+        return canvas
+
     def update_axis(self) -> None:
-        self.canvas = QPixmap(AXIS_WIDTH, self.resolution)
-        self.canvas.fill('#00000000')
-        self.draw_axis(
-            origin=(0, self.resolution - 1),
-            pen_color='#bababa',
-        )
-        self.setPixmap(self.canvas)
+        canvas = self.draw_axis(label_color='#bababa')
+        self.setPixmap(canvas)
 
     def context_menu(self, pos):
         menu = QMenu()
