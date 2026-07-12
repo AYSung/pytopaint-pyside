@@ -88,9 +88,7 @@ class Painter(QWidget):
         }
 
         self.data = data
-        self.df = pd.DataFrame(
-            self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
-        )
+        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
@@ -495,9 +493,7 @@ class Painter(QWidget):
         set_size(self.data, bins=bins)
         self.axis_ticks = get_axis_ticks(self.data)
 
-        self.df = pd.DataFrame(
-            self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
-        )
+        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.resizeTriggered.emit(bins)
         self.data_changed()
 

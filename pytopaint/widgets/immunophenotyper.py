@@ -53,7 +53,6 @@ class Immunophenotyper(QDialog):
             pd
             .DataFrame(data.layers['bin'], columns=data.var_names)
             .join(state[['color']])
-            .astype('uint8')
             .loc[state['visible']]
         )
 

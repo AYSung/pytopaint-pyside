@@ -167,7 +167,7 @@ def discretize_data(adata: ad.AnnData) -> np.ndarray:
     return np.array([
         discretize_array(**bounds[i], bins=adata.uns['bins'], arr=row)
         for i, row in enumerate(arr.T)
-    ]).T.astype(np.uint8)
+    ]).T.astype(np.uint16)
 
 
 def discretize_array(
@@ -194,7 +194,7 @@ def get_umap_dims(
             arr=row,
         )
         for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
-    ]).T.astype(np.uint8)
+    ]).T.astype(np.uint16)
 
     umap_axis_ticks = _umap_axis_ticks(
         bins=adata.uns['bins'],

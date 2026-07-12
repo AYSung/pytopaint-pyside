@@ -223,7 +223,7 @@ class PlotSizeDialog(QDialog):
         layout = QFormLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.plot_size_input = QSpinBox(singleStep=16)
-        self.plot_size_input.setRange(128, 256)
+        self.plot_size_input.setRange(128, 512)
         self.plot_size_input.setValue(resolution or get_resolution())
         self.plot_size_input.setFixedWidth(field_width)
         self.plot_size_input.setToolTip('between 128 and 256 pixels')

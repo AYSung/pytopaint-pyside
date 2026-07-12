@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
+    QSizePolicy,
     QStyle,
     QStyleOption,
     QWidget,
@@ -53,6 +54,7 @@ class Biplot(QWidget):
         resolution: int,
     ):
         super().__init__()
+        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
 
         self.df = data
         self.state = state
@@ -406,8 +408,8 @@ class DotPlot(QLabel):
 
         index = self.color_indices.get(color, pd.Index([]))
         painter.drawPointsNp(
-            self.x_data.loc[index].to_numpy(dtype='uint16'),
-            self.y_data.loc[index].to_numpy(dtype='uint16'),
+            self.x_data.loc[index].to_numpy(),
+            self.y_data.loc[index].to_numpy(),
         )
 
     @Slot()
