@@ -8,20 +8,12 @@
 import cProfile
 import pstats
 import sys
-from io import BytesIO
 from multiprocessing import freeze_support
-from pathlib import Path
 
-import anndata as ad
-import flowio
-import numpy as np
-import yaml
 from PySide6.QtCore import (
     QCoreApplication,
-    QDir,
     Qt,
     Signal,
-    Slot,
 )
 from PySide6.QtGui import (
     QAction,
@@ -34,7 +26,6 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
-    QFileDialog,
     QGridLayout,
     QLayout,
     QMainWindow,
@@ -50,8 +41,7 @@ from pytopaint.config import (
     set_color_palette,
     set_window_position,
 )
-from pytopaint.layout import read_yaml
-from pytopaint.paths import layout_dir
+from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     PlotSizeDialog,
@@ -74,14 +64,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('PytoPaint')
 
-        self.last_dir = QDir.homePath()
-
         self.setStyleSheet('QMainWindow { background-color: #202020; }')
 
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.handle_resize)
         self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
+
+        self.io_manager = IOManager(self)
+        self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
 
         self.configure_menu_bar()
         self.configure_shortcuts()
@@ -98,126 +89,10 @@ class MainWindow(QMainWindow):
 
         self.setAcceptDrops(True)
 
-    @Slot()
-    def open_dialog(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select File(s)', self.last_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
-        )
-        self.open_files(files)
-
-    def open_files(self, files: list[str]):
-        for file in files:
-            match Path(file).suffix:
-                case '.fcs':
-                    self.open_fcs(file)
-                case '.h5ad':
-                    self.open_session(file)
-
-    def open_fcs(self, file: Path):
-        try:
-            fcs = flowio.FlowData(file)
-            painter = Painter.from_fcs(fcs)
-            self.painter_tabs.add_painter(painter)
-            self.last_dir = str(Path(file).parent)
-
-        except ValueError as e:
-            raise e
-
-    def open_session(self, file: Path):
-        try:
-            adata = ad.io.read_h5ad(file)
-            painter = Painter.from_adata(adata)
-            self.painter_tabs.add_painter(painter)
-            self.last_dir = str(Path(file).parent)
-
-        except ValueError as e:
-            raise e
-
-    def save_session(self) -> None:
-        painter = self.get_active_painter()
-        painter.update_anndata_state()
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=None,
-            caption='Save Session',
-            dir=self.last_dir,
-            filter='H5AD (*.h5ad)',
-        )
-        if not file_path:
-            return
-
-        temp_data = painter.data.copy()
-        temp_data.layers.clear()
-        temp_data.write(filename=file_path, compression='gzip')
-
-    @Slot()
-    def export_fcs(self) -> None:
-        def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
-            return {
-                k: v
-                for k, v in metadata.items()
-                if k
-                in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS
-                + ['spill', 'spillover']
-            }
-
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=None,
-            caption='Export Deidentified FCS',
-            dir=self.last_dir,
-            filter='FCS (*.fcs)',
-        )
-        if not file_path:
-            return
-
-        painter = self.get_active_painter()
-        sample: flowio.FlowData = painter.fcs
-        event_mask = painter.state['visible']
-        event_matrix: np.ndarray = np.reshape(
-            sample.events, (-1, sample.channel_count)
-        )[event_mask]
-
-        stream = BytesIO()
-        flowio.create_fcs(
-            stream,
-            event_matrix.flatten(),
-            sample.pnn_labels,
-            opt_channel_names=sample.pns_labels,
-            metadata_dict=_scrub_metadata(sample.text),
-        )
-        stream.seek(0)
-
-        with open(file_path, 'wb') as f:
-            f.write(stream.getbuffer())
-
-    def save_layout(self) -> None:
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=None,
-            caption='Save Layout',
-            dir=str(layout_dir),
-            filter='YAML (*.yml)',
-        )
-        if not file_path:
-            return
-
-        with open(file_path, 'w') as f:
-            yaml.safe_dump(
-                self.get_active_painter().layout_to_yaml(),
-                f,
-                default_flow_style=None,
-                sort_keys=False,
-                explicit_start=True,
-            )
-
     def load_layout(self) -> None:
-        file_path, _ = QFileDialog.getOpenFileName(
-            None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'
-        )
-        if not file_path:
-            return
-
-        layout = read_yaml(file_path)
-        self.get_active_painter().biplot_grid.update_layout(layout.grid)
+        layout = self.io_manager.load_layout()
+        if layout is not None:
+            self.get_active_painter().biplot_grid.update_layout(layout.grid)
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
@@ -258,7 +133,7 @@ class MainWindow(QMainWindow):
 
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
-        self.open_files([url.toLocalFile() for url in urls])
+        self.io_manager.open_files_from_urls(urls)
 
     def configure_shortcuts(self):
         close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
@@ -291,11 +166,18 @@ class MainWindow(QMainWindow):
 
         open_file_action = QAction('&Open File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_file_action.triggered.connect(self.open_dialog)
+        open_file_action.triggered.connect(self.io_manager.open_files_dialog)
         file_menu.addAction(open_file_action)
 
+        open_dir_action = QAction('Open Directory', self)
+        open_dir_action.setShortcut(QKeySequence('Ctrl+Shift+O'))
+        open_dir_action.triggered.connect(self.io_manager.open_dir_dialog)
+        file_menu.addAction(open_dir_action)
+
         save_session_action = QAction('&Save Session As', self, enabled=False)
-        save_session_action.triggered.connect(self.save_session)
+        save_session_action.triggered.connect(
+            lambda: self.io_manager.save_session(self.get_active_painter())
+        )
         self.painter_tabs.currentChanged.connect(
             lambda: save_session_action.setEnabled(self.painter_tabs.count())
         )
@@ -304,7 +186,9 @@ class MainWindow(QMainWindow):
         export_fcs_action = QAction(
             '&Export Deidentified FCS File', self, enabled=False
         )
-        export_fcs_action.triggered.connect(self.export_fcs)
+        export_fcs_action.triggered.connect(
+            lambda: self.io_manager.export_fcs(self.get_active_painter())
+        )
         self.painter_tabs.currentChanged.connect(
             lambda: export_fcs_action.setEnabled(
                 self.painter_tabs.count() and self.get_active_painter().fcs is not None
@@ -362,7 +246,9 @@ class MainWindow(QMainWindow):
             lambda: layout_menu.setEnabled(self.painter_tabs.count())
         )
         save_layout_action = QAction('Save Layout...', self)
-        save_layout_action.triggered.connect(self.save_layout)
+        save_layout_action.triggered.connect(
+            lambda: self.io_manager.save_layout(self.get_active_painter())
+        )
         layout_menu.addAction(save_layout_action)
 
         load_layout_action = QAction('Load Layout', self)
