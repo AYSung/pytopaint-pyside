@@ -73,6 +73,7 @@ class MainWindow(QMainWindow):
 
         self.io_manager = IOManager(self)
         self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
+        self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
 
         self.configure_menu_bar()
         self.configure_shortcuts()
