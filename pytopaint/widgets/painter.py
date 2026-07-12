@@ -50,9 +50,8 @@ class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     colorStateReturned = Signal(int, object)
-    dataChanged = Signal(object, object)
+    dataChanged = Signal(object, object, object)
     highlightsUpdated = Signal(list)
-    resizeTriggered = Signal(int)
     stateChanged = Signal(object)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
@@ -123,7 +122,6 @@ class Painter(QWidget):
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
-        self.resizeTriggered.connect(self.biplot_grid.update_resolution)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
 
         biplot_grid_container = QWidget()
@@ -472,7 +470,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.axis_ticks)
+        self.dataChanged.emit(self.df, self.axis_ticks, None)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
@@ -487,20 +485,17 @@ class Painter(QWidget):
         self.highlightsUpdated.emit(self.highlighted_colors)
 
     @Slot(int)
-    def handle_resize(self, bins: int = None) -> None:
-        if bins is None:
-            bins = self.data.uns['bins']
+    def handle_resize(self, bins: int) -> None:
         set_size(self.data, bins=bins)
         self.axis_ticks = get_axis_ticks(self.data)
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
-        self.resizeTriggered.emit(bins)
-        self.data_changed()
+        self.dataChanged.emit(self.df, self.axis_ticks, bins)
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
         set_scale(self.data, **scale_config)
-        self.handle_resize()
+        self.handle_resize(bins=self.data.uns['bins'])
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()

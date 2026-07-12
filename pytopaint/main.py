@@ -67,7 +67,7 @@ class MainWindow(QMainWindow):
         self.setStyleSheet('QMainWindow { background-color: #202020; }')
 
         self.painter_tabs = PainterTabs()
-        self.resizeTriggered.connect(self.painter_tabs.handle_resize)
+        self.resizeTriggered.connect(self.painter_tabs.resizeTriggered)
         self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 

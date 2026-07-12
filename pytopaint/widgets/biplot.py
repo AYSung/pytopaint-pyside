@@ -21,7 +21,6 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QMenu,
-    QSizePolicy,
     QStyle,
     QStyleOption,
     QWidget,
@@ -54,8 +53,6 @@ class Biplot(QWidget):
         resolution: int,
     ):
         super().__init__()
-        self.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
-
         self.df = data
         self.state = state
         self.active_color = active_color
@@ -102,14 +99,15 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object, object, object)
+    @Slot(object, object, object, int)
     def update_data(
         self,
         df: pd.DataFrame = None,
         axis_ticks: dict[str, list[tuple[int, str]]] = None,
         state: pd.DataFrame = None,
+        resolution=None,
     ):
-        updater = BiplotUpdater(self, df, axis_ticks, state)
+        updater = BiplotUpdater(self, df, axis_ticks, state, resolution)
         QThreadPool.globalInstance().start(updater)
 
     def set_data(self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]):
@@ -215,7 +213,7 @@ class Biplot(QWidget):
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
 
-    @Slot(int)
+    # @Slot(int)
     def resize(self, pixels: int) -> None:
         self.plot.resize(pixels=pixels)
         self.x_axis.resize(pixels=pixels)
@@ -667,14 +665,18 @@ class BiplotUpdater(QRunnable):
         data: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.DataFrame,
+        resolution: int,
     ):
         super().__init__()
         self.biplot = biplot
         self.data = data
         self.axis_ticks = axis_ticks
         self.state = state
+        self.resolution = resolution
 
     def run(self):
+        if self.resolution is not None:
+            self.biplot.resize(self.resolution)
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
         self.biplot.update_plot_data(self.state)

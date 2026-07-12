@@ -46,16 +46,6 @@ class PainterTabs(QTabWidget):
         self.addTab(painter, painter.data.uns['id'])
         self.setCurrentWidget(painter)
 
-    @Slot(int)
-    def handle_resize(self, bins: int):
-        self.setUpdatesEnabled(False)
-        self.resizeTriggered.emit(bins)
-        current_index = self.currentIndex()
-        for i in range(self.count()):
-            self.setCurrentIndex(i)
-        self.setCurrentIndex(current_index)
-        self.setUpdatesEnabled(True)
-
     @property
     def painters(self) -> list[Painter]:
         return [self.widget(i) for i in range(self.count())]
