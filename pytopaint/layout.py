@@ -8,6 +8,7 @@
 from dataclasses import dataclass
 from importlib import resources
 from itertools import chain
+from pathlib import Path
 
 import yaml
 
@@ -17,6 +18,13 @@ from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 @dataclass
 class LayoutConfig:
     grid: dict[tuple[int, int], tuple[str, str]]
+
+    @classmethod
+    def from_yaml(cls, path: Path):
+        with open(path) as stream:
+            layout = yaml.safe_load(stream)
+
+        return cls(to_grid(layout))
 
     @property
     def channels(self) -> list[str]:
@@ -42,18 +50,11 @@ class LayoutConfig:
         )
 
 
-def read_yaml(item) -> LayoutConfig:
-    with open(item) as stream:
-        layout = yaml.safe_load(stream)
-
-    return LayoutConfig(to_grid(layout))
-
-
 def _import_layouts(anchor: str) -> list[LayoutConfig]:
 
     dir = resources.files(anchor)
     return [
-        read_yaml(item)
+        LayoutConfig.from_yaml(item)
         for item in dir.iterdir()
         if item.is_file()
         and item.name.endswith('.yml')

@@ -2,6 +2,7 @@ from pathlib import Path
 
 from pytopaint.io import (
     _is_valid_filetype,
+    _scrub_metadata,
     filter_valid_files,
     get_child_files,
 )
@@ -36,3 +37,12 @@ def test_filter_valid_files():
         ])
         == []
     )
+
+
+def test_scrub_metadata():
+    assert _scrub_metadata({
+        'beginanalysis': 'test',
+        'spill': 'test',
+        'mode': 'test',
+        'test': 'test',
+    }) == {'beginanalysis': 'test', 'spill': 'test', 'mode': 'test'}
