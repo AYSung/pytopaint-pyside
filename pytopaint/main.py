@@ -9,17 +9,13 @@ import cProfile
 import pstats
 import sys
 from io import BytesIO
-from itertools import chain
 from multiprocessing import freeze_support
-from pathlib import Path
 
-import anndata as ad
 import flowio
 import numpy as np
 import yaml
 from PySide6.QtCore import (
     QCoreApplication,
-    QDir,
     Qt,
     Signal,
     Slot,
@@ -51,6 +47,7 @@ from pytopaint.config import (
     set_color_palette,
     set_window_position,
 )
+from pytopaint.io import IOManager
 from pytopaint.layout import read_yaml
 from pytopaint.paths import layout_dir
 from pytopaint.widgets.dialogs import (
@@ -75,14 +72,15 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle('PytoPaint')
 
-        self.last_dir = QDir.homePath()
-
         self.setStyleSheet('QMainWindow { background-color: #202020; }')
 
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.handle_resize)
         self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
+
+        self.io_manager = IOManager(self)
+        self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
 
         self.configure_menu_bar()
         self.configure_shortcuts()
@@ -98,52 +96,6 @@ class MainWindow(QMainWindow):
         self.load_position()
 
         self.setAcceptDrops(True)
-
-    @Slot()
-    def open_file_dialog(self):
-        files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select File(s)', self.last_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
-        )
-        self.open_files(files)
-
-    @Slot()
-    def open_dir_dialog(self):
-        dir = QFileDialog.getExistingDirectory(
-            None, 'Select Directory', self.last_dir, QFileDialog.Option.ShowDirsOnly
-        )
-        self.open_files_in(dir)
-
-    def open_files_in(self, dir: str):
-        files = [item for item in Path(dir).iterdir() if item.is_file()]
-        self.open_files(files)
-
-    def open_files(self, files: list[str]):
-        for file in files:
-            match Path(file).suffix:
-                case '.fcs':
-                    self.open_fcs(file)
-                case '.h5ad':
-                    self.open_session(file)
-
-    def open_fcs(self, file: Path):
-        try:
-            fcs = flowio.FlowData(file)
-            painter = Painter.from_fcs(fcs)
-            self.painter_tabs.add_painter(painter)
-            self.last_dir = str(Path(file).parent)
-
-        except ValueError as e:
-            raise e
-
-    def open_session(self, file: Path):
-        try:
-            adata = ad.io.read_h5ad(file)
-            painter = Painter.from_adata(adata)
-            self.painter_tabs.add_painter(painter)
-            self.last_dir = str(Path(file).parent)
-
-        except ValueError as e:
-            raise e
 
     def save_session(self) -> None:
         painter = self.get_active_painter()
@@ -269,18 +221,8 @@ class MainWindow(QMainWindow):
             event.ignore()
 
     def dropEvent(self, event: QDropEvent):
-        def _expand_url(url: str) -> list[Path]:
-            path = Path(url)
-            if path.is_dir():
-                return [item for item in path.iterdir() if item.is_file()]
-            else:
-                return [path]
-
         urls = event.mimeData().urls()
-        local_urls = [url.toLocalFile() for url in urls]
-        expanded_urls = chain(*map(_expand_url, local_urls))
-
-        self.open_files(expanded_urls)
+        self.io_manager.open_files_from_urls(urls)
 
     def configure_shortcuts(self):
         close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
@@ -313,12 +255,12 @@ class MainWindow(QMainWindow):
 
         open_file_action = QAction('&Open File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
-        open_file_action.triggered.connect(self.open_file_dialog)
+        open_file_action.triggered.connect(self.io_manager.open_files_dialog)
         file_menu.addAction(open_file_action)
 
         open_dir_action = QAction('Open Directory', self)
         open_dir_action.setShortcut(QKeySequence('Ctrl+Shift+O'))
-        open_dir_action.triggered.connect(self.open_dir_dialog)
+        open_dir_action.triggered.connect(self.io_manager.open_dir_dialog)
         file_menu.addAction(open_dir_action)
 
         save_session_action = QAction('&Save Session As', self, enabled=False)
