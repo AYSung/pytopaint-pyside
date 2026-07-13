@@ -32,6 +32,7 @@ from pytopaint.colors import (
     get_color_map,
     indices_by_color,
 )
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 AXIS_WIDTH = 40
@@ -53,7 +54,6 @@ class Biplot(QWidget):
         resolution: int,
     ):
         super().__init__()
-
         self.df = data
         self.state = state
         self.active_color = active_color
@@ -213,12 +213,13 @@ class Biplot(QWidget):
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
 
-    @Slot(int)
-    def resize(self, pixels: int) -> None:
-        self.plot.resize(pixels=pixels)
-        self.x_axis.resize(pixels=pixels)
-        self.y_axis.resize(pixels=pixels)
-        self.title_label.setFixedWidth(pixels)
+    @Slot()
+    def resize(self) -> None:
+        resolution = get_resolution()
+        self.plot.resize(pixels=resolution)
+        self.x_axis.resize(pixels=resolution)
+        self.y_axis.resize(pixels=resolution)
+        self.title_label.setFixedWidth(resolution)
 
     @Slot()
     def remove(self) -> None:
@@ -406,8 +407,8 @@ class DotPlot(QLabel):
 
         index = self.color_indices.get(color, pd.Index([]))
         painter.drawPointsNp(
-            self.x_data.loc[index].to_numpy(dtype='uint16'),
-            self.y_data.loc[index].to_numpy(dtype='uint16'),
+            self.x_data.loc[index].to_numpy(),
+            self.y_data.loc[index].to_numpy(),
         )
 
     @Slot()

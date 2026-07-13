@@ -26,6 +26,7 @@ from pytopaint.colors import (
     merge_colors,
     subtract_color_from_series,
 )
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import (
     get_axis_ticks,
     get_umap_dims,
@@ -52,8 +53,8 @@ class Painter(QWidget):
     colorStateReturned = Signal(int, object)
     dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
-    resizeTriggered = Signal(int)
     stateChanged = Signal(object)
+    resizeTriggered = Signal()
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -88,13 +89,11 @@ class Painter(QWidget):
         }
 
         self.data = data
-        self.df = pd.DataFrame(
-            self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
-        )
+        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
-        self.axis_ticks = get_axis_ticks(self.data)
+        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
         self.undo_history = [self.state.copy()]
         self.redo_history = []
@@ -118,14 +117,14 @@ class Painter(QWidget):
             axis_ticks=self.axis_ticks,
             state=self.state,
             active_color=self.active_color,
-            resolution=self.data.uns['bins'],
+            resolution=get_resolution(),
         )
         self.biplot_grid.pointsSelected.connect(self.handle_selection)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
+        self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
-        self.resizeTriggered.connect(self.biplot_grid.update_resolution)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
 
         biplot_grid_container = QWidget()
@@ -474,7 +473,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.axis_ticks)
+        self.dataChanged.emit(self.df, self.axis_ticks, None)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
@@ -488,18 +487,14 @@ class Painter(QWidget):
 
         self.highlightsUpdated.emit(self.highlighted_colors)
 
-    @Slot(int)
-    def handle_resize(self, bins: int = None) -> None:
-        if bins is None:
-            bins = self.data.uns['bins']
-        set_size(self.data, bins=bins)
-        self.axis_ticks = get_axis_ticks(self.data)
+    @Slot()
+    def handle_resize(self) -> None:
+        set_size(self.data, bins=get_resolution())
+        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
-        self.df = pd.DataFrame(
-            self.data.layers['bin'].astype('uint8'), columns=self.data.var_names
-        )
-        self.resizeTriggered.emit(bins)
-        self.data_changed()
+        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
+        self.resizeTriggered.emit()
+        self.dataChanged.emit(self.df, self.axis_ticks)
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:

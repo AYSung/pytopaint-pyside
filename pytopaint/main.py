@@ -39,15 +39,16 @@ from pytopaint.config import (
     get_color_palette,
     get_window_position,
     set_color_palette,
+    set_resolution,
     set_window_position,
 )
 from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
-    PlotSizeDialog,
     about_dialog,
     file_info_dialog,
     report_generator_dialog,
+    resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
 )
@@ -57,7 +58,7 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
-    resizeTriggered = Signal(int)
+    resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
 
     def __init__(self):
@@ -67,12 +68,13 @@ class MainWindow(QMainWindow):
         self.setStyleSheet('QMainWindow { background-color: #202020; }')
 
         self.painter_tabs = PainterTabs()
-        self.resizeTriggered.connect(self.painter_tabs.handle_resize)
-        self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
+        self.resizeTriggered.connect(self.painter_tabs.resizeTriggered)
+        self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.io_manager = IOManager(self)
         self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
+        self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
 
         self.configure_menu_bar()
         self.configure_shortcuts()
@@ -107,11 +109,10 @@ class MainWindow(QMainWindow):
             )
 
     def resize_plots(self) -> None:
-        data = self.get_active_painter().data
-        dialog = PlotSizeDialog(self, data.uns.get('bins'))
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.resizeTriggered.emit(dialog.plot_size)
+        resolution, ok = resize_plot_dialog(self)
+        if ok:
+            set_resolution(resolution)
+            self.resizeTriggered.emit()
 
     def rescale_plots(self) -> None:
         data = self.get_active_painter().data

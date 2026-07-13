@@ -13,7 +13,7 @@ from pytopaint.widgets.painter import Painter
 
 
 class PainterTabs(QTabWidget):
-    resizeTriggered = Signal(int)
+    resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
     colorPaletteChanged = Signal()
 
@@ -35,6 +35,12 @@ class PainterTabs(QTabWidget):
         if widget is not None:
             widget.deleteLater()
 
+    @Slot(object)
+    def handle_rescale(self, scale_config: dict[str, float]) -> None:
+        widget: Painter = self.currentWidget()
+        if widget:
+            widget.handle_rescale(scale_config)
+
     def close_all_tabs(self):
         while self.count() > 0:
             self.handle_tab_close(0)
@@ -45,16 +51,6 @@ class PainterTabs(QTabWidget):
         self.colorPaletteChanged.connect(painter.colorPaletteChanged)
         self.addTab(painter, painter.data.uns['id'])
         self.setCurrentWidget(painter)
-
-    @Slot(int)
-    def handle_resize(self, bins: int):
-        self.setUpdatesEnabled(False)
-        self.resizeTriggered.emit(bins)
-        current_index = self.currentIndex()
-        for i in range(self.count()):
-            self.setCurrentIndex(i)
-        self.setCurrentIndex(current_index)
-        self.setUpdatesEnabled(True)
 
     @property
     def painters(self) -> list[Painter]:

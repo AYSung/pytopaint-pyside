@@ -22,9 +22,10 @@ class BiplotGrid(QGridLayout):
     colorPaletteChanged = Signal()
     highlightsUpdated = Signal(list)
     pointsSelected = Signal(object, str, str, QMouseEvent)
-    resizeTriggered = Signal(int)
+    resizeTabs = Signal()
     updateData = Signal(object, object, object)
     updatePlot = Signal()
+    resizeTriggered = Signal()
 
     def __init__(
         self,
@@ -35,7 +36,7 @@ class BiplotGrid(QGridLayout):
         resolution: int,
     ) -> None:
         super().__init__()
-        self.setSpacing(0)
+        self.setSpacing(5)
         self.setSizeConstraint(QGridLayout.SizeConstraint.SetFixedSize)
 
         self.df = df
@@ -43,6 +44,7 @@ class BiplotGrid(QGridLayout):
         self.state = state
         self.active_color = active_color
         self.resolution = resolution
+        self.resolution_changed = False
 
         self.update_manager = BiplotUpdateManager(self)
 
@@ -63,21 +65,19 @@ class BiplotGrid(QGridLayout):
 
     @Slot(object, object)
     def update_data(
-        self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]
+        self,
+        df: pd.DataFrame,
+        axis_ticks: dict[str, list[tuple[int, str]]],
     ) -> None:
         self.df = df
         self.axis_ticks = axis_ticks
+
         self.updateData.emit(self.df, self.axis_ticks, None)
 
     @Slot(object)
     def update_state(self, state: pd.DataFrame) -> None:
         self.state = state
         self.updateData.emit(None, None, state)
-
-    @Slot(int)
-    def update_resolution(self, pixels: int) -> None:
-        self.resolution = pixels
-        self.resizeTriggered.emit(pixels)
 
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
@@ -98,8 +98,8 @@ class BiplotGrid(QGridLayout):
         self.updatePlot.connect(biplot.plot.set_canvas)
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         biplot.removeTriggered.connect(self.remove_biplot)
-        self.resizeTriggered.connect(biplot.resize)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
+        self.resizeTriggered.connect(biplot.resize)
         return biplot
 
     def add_biplot(

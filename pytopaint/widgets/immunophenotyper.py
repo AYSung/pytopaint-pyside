@@ -24,6 +24,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.colors import BACKGROUND, Color, get_color_map
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 from pytopaint.widgets.reportgenerator import copy_report_template
 
@@ -47,13 +48,11 @@ class Immunophenotyper(QDialog):
             ['FSC-A', 'SSC-A']
             + data.var_names[data.var['channel_type'] == 'fluoro'].to_list()
         )
-        resolution = data.uns['bins']
 
         df = (
             pd
             .DataFrame(data.layers['bin'], columns=data.var_names)
             .join(state[['color']])
-            .astype('uint8')
             .loc[state['visible']]
         )
 
@@ -78,7 +77,7 @@ class Immunophenotyper(QDialog):
                         channel=channel,
                         target_color=color,
                         axis_ticks=axis_ticks[channel],
-                        resolution=resolution,
+                        resolution=get_resolution(),
                     )
                 )
             column_layout.addStretch()
