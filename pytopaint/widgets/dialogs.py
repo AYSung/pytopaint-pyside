@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import anndata as ad
+from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QDialog,
     QDialogButtonBox,
@@ -178,11 +179,13 @@ class PlotScaleDialog(QDialog):
 
         self.setLayout(layout)
 
+    @Slot()
     def reset_to_defaults(self) -> None:
         self.scaling_factor_input.setValue(get_scaling_factor())
         self.upper_asinh_bound_input.setValue(get_upper_asinh_bound())
         self.lower_asinh_bound_input.setValue(get_lower_asinh_bound())
 
+    @Slot()
     def save_defaults(self) -> None:
         set_scaling_factor(self.scaling_factor)
         set_lower_asinh_bound(self.lower_asinh_bound)

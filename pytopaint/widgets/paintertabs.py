@@ -35,6 +35,12 @@ class PainterTabs(QTabWidget):
         if widget is not None:
             widget.deleteLater()
 
+    @Slot(object)
+    def handle_rescale(self, scale_config: dict[str, float]) -> None:
+        widget: Painter = self.currentWidget()
+        if widget:
+            widget.handle_rescale(scale_config)
+
     def close_all_tabs(self):
         while self.count() > 0:
             self.handle_tab_close(0)

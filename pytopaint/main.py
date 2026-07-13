@@ -69,7 +69,7 @@ class MainWindow(QMainWindow):
 
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.resizeTriggered)
-        self.rescaleTriggered.connect(self.painter_tabs.rescaleTriggered)
+        self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.io_manager = IOManager(self)
