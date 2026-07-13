@@ -102,7 +102,7 @@ class IOManager(QObject):
         with open(file_path, 'wb') as f:
             f.write(stream.getbuffer())
 
-        self.last_save_dir = Path(file_path).parent
+        self.last_save_dir = str(Path(file_path).parent)
 
     def save_session(self, painter: Painter) -> None:
         painter.update_anndata_state()
@@ -120,7 +120,7 @@ class IOManager(QObject):
         temp_data.layers.clear()
         temp_data.write(filename=file_path, compression='gzip')
 
-        self.last_save_dir = Path(file_path).parent
+        self.last_save_dir = str(Path(file_path).parent)
 
     def load_layout(self) -> LayoutConfig:
         file_path, _ = QFileDialog.getOpenFileName(
