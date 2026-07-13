@@ -133,7 +133,6 @@ def adata_1() -> ad.AnnData:
     adata = ad.AnnData(np.array([[0, 0, 0], [0, 0, 0]]))
     adata.var_names = ['FSC-A', 'CD45', 'Time']
     adata.var['channel_type'] = ['scatter', 'fluoro', 'time']
-    adata.uns['bins'] = 256
     adata.uns['scaling_factor'] = 150
     adata.var['lower_bound'] = [0, LOWER_ASINH, 0]
     adata.var['upper_bound'] = [UPPER_PHYSICAL, UPPER_ASINH, 100]
@@ -141,7 +140,7 @@ def adata_1() -> ad.AnnData:
 
 
 def test_get_axis_ticks(adata_1):
-    axis_ticks = get_axis_ticks(adata_1)
+    axis_ticks = get_axis_ticks(adata_1, bins=256)
 
     assert axis_ticks['FSC-A'] == [
         (0, '0'),

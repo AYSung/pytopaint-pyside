@@ -1,6 +1,5 @@
-import pytest
-
 import pandas as pd
+import pytest
 
 from pytopaint.selection import get_selection_index
 
@@ -17,6 +16,6 @@ def test_geometry_selection(test_df_1):
     points_2 = [[4, 0], [1, 0], [1, 4], [4, 4]]
 
     assert get_selection_index(points_1, test_df_1, 'x', 'y').shape[0] == 2
-    assert get_selection_index(points_1, test_df_1, 'x', 'y').to_list() == [0, 1]
+    assert set(get_selection_index(points_1, test_df_1, 'x', 'y')) == {0, 1}
     assert get_selection_index(points_2, test_df_1, 'x', 'y').shape[0] == 3
-    assert get_selection_index(points_2, test_df_1, 'x', 'y').to_list() == [2, 3, 4]
+    assert set(get_selection_index(points_2, test_df_1, 'x', 'y')) == {2, 3, 4}

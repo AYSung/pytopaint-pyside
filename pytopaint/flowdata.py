@@ -68,7 +68,7 @@ def initialize(
         lower_asinh_bound=adata.uns.get('lower_asinh_bound', get_lower_asinh_bound()),
         upper_asinh_bound=adata.uns.get('upper_asinh_bound', get_upper_asinh_bound()),
     )
-    set_size(adata, bins=adata.uns.get('bins', get_resolution()))
+    set_size(adata, bins=get_resolution())
     return adata
 
 
@@ -90,8 +90,7 @@ def set_scale(
 
 
 def set_size(adata: ad.AnnData, bins: int) -> None:
-    adata.uns['bins'] = bins
-    adata.layers['bin'] = discretize_data(adata)
+    adata.layers['bin'] = discretize_data(adata, bins)
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
@@ -161,12 +160,11 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
     return np.clip(adata.layers['xform'], a_min=a_min, a_max=a_max)
 
 
-def discretize_data(adata: ad.AnnData) -> np.ndarray:
+def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
     arr = clip_xform_data(adata)
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
     return np.array([
-        discretize_array(**bounds[i], bins=adata.uns['bins'], arr=row)
-        for i, row in enumerate(arr.T)
+        discretize_array(**bounds[i], bins=bins, arr=row) for i, row in enumerate(arr.T)
     ]).T.astype(np.uint16)
 
 
@@ -190,14 +188,14 @@ def get_umap_dims(
     adata.obsm['umap_bins'] = np.array([
         discretize_array(
             **bounds[channel],
-            bins=adata.uns['bins'],
+            bins=get_resolution(),
             arr=row,
         )
         for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
     ]).T.astype(np.uint16)
 
     umap_axis_ticks = _umap_axis_ticks(
-        bins=adata.uns['bins'],
+        bins=get_resolution(),
         channels=['UMAP1', 'UMAP2'],
         bounds=bounds,
     )
@@ -212,11 +210,9 @@ def umap_transform(arr: np.ndarray) -> np.ndarray:
     return umap.transform(scaled_arr)
 
 
-def get_axis_ticks(
-    adata: ad.AnnData,
-) -> dict[str, list[tuple[int, str]]]:
+def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, str]]]:
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
-    bins = adata.uns['bins']
+    bins = bins
     scaling_factor = adata.uns['scaling_factor']
 
     scatter_axis_ticks = {

@@ -93,7 +93,7 @@ class Painter(QWidget):
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
-        self.axis_ticks = get_axis_ticks(self.data)
+        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
         self.undo_history = [self.state.copy()]
         self.redo_history = []
@@ -117,7 +117,7 @@ class Painter(QWidget):
             axis_ticks=self.axis_ticks,
             state=self.state,
             active_color=self.active_color,
-            resolution=self.data.uns['bins'],
+            resolution=get_resolution(),
         )
         self.biplot_grid.pointsSelected.connect(self.handle_selection)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
@@ -490,7 +490,7 @@ class Painter(QWidget):
     @Slot()
     def handle_resize(self) -> None:
         set_size(self.data, bins=get_resolution())
-        self.axis_ticks = get_axis_ticks(self.data)
+        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.resizeTriggered.emit()
