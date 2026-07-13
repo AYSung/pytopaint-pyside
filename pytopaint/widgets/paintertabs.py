@@ -13,7 +13,7 @@ from pytopaint.widgets.painter import Painter
 
 
 class PainterTabs(QTabWidget):
-    resizeTriggered = Signal(int)
+    resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
     colorPaletteChanged = Signal()
 

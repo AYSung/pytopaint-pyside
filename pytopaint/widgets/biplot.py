@@ -32,6 +32,7 @@ from pytopaint.colors import (
     get_color_map,
     indices_by_color,
 )
+from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 
 AXIS_WIDTH = 40
@@ -99,15 +100,14 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(object, object, object, int)
+    @Slot(object, object, object)
     def update_data(
         self,
         df: pd.DataFrame = None,
         axis_ticks: dict[str, list[tuple[int, str]]] = None,
         state: pd.DataFrame = None,
-        resolution=None,
     ):
-        updater = BiplotUpdater(self, df, axis_ticks, state, resolution)
+        updater = BiplotUpdater(self, df, axis_ticks, state)
         QThreadPool.globalInstance().start(updater)
 
     def set_data(self, df: pd.DataFrame, axis_ticks: dict[str, list[tuple[int, str]]]):
@@ -213,12 +213,13 @@ class Biplot(QWidget):
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
 
-    # @Slot(int)
-    def resize(self, pixels: int) -> None:
-        self.plot.resize(pixels=pixels)
-        self.x_axis.resize(pixels=pixels)
-        self.y_axis.resize(pixels=pixels)
-        self.title_label.setFixedWidth(pixels)
+    @Slot()
+    def resize(self) -> None:
+        resolution = get_resolution()
+        self.plot.resize(pixels=resolution)
+        self.x_axis.resize(pixels=resolution)
+        self.y_axis.resize(pixels=resolution)
+        self.title_label.setFixedWidth(resolution)
 
     @Slot()
     def remove(self) -> None:
@@ -665,18 +666,14 @@ class BiplotUpdater(QRunnable):
         data: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.DataFrame,
-        resolution: int,
     ):
         super().__init__()
         self.biplot = biplot
         self.data = data
         self.axis_ticks = axis_ticks
         self.state = state
-        self.resolution = resolution
 
     def run(self):
-        if self.resolution is not None:
-            self.biplot.resize(self.resolution)
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
         self.biplot.update_plot_data(self.state)

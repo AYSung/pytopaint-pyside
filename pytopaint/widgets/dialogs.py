@@ -28,7 +28,6 @@ from pytopaint.config import (
     get_scaling_factor,
     get_upper_asinh_bound,
     set_lower_asinh_bound,
-    set_resolution,
     set_scaling_factor,
     set_upper_asinh_bound,
 )
@@ -210,54 +209,16 @@ class PlotScaleDialog(QDialog):
         }
 
 
-class PlotSizeDialog(QDialog):
-    def __init__(
-        self,
-        parent=None,
-        resolution: int = None,
-    ):
-        super().__init__(parent)
-        self.setWindowTitle('Plot Size')
-        field_width = 60
-
-        layout = QFormLayout()
-        layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-        self.plot_size_input = QSpinBox(singleStep=16)
-        self.plot_size_input.setRange(128, 512)
-        self.plot_size_input.setValue(resolution or get_resolution())
-        self.plot_size_input.setFixedWidth(field_width)
-        self.plot_size_input.setToolTip('between 128 and 256 pixels')
-
-        layout.addRow('Size:', self.plot_size_input)
-
-        button_box = QDialogButtonBox(
-            QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel
-        )
-
-        save_defaults_btn = button_box.addButton(
-            'Save as Default', QDialogButtonBox.ButtonRole.ActionRole
-        )
-        save_defaults_btn.clicked.connect(self.save_defaults)
-        reset_to_defaults_btn = button_box.addButton(
-            'Reset', QDialogButtonBox.ButtonRole.ActionRole
-        )
-        reset_to_defaults_btn.clicked.connect(self.reset_to_defaults)
-
-        button_box.accepted.connect(self.accept)
-        button_box.rejected.connect(self.reject)
-        layout.addRow(button_box)
-
-        self.setLayout(layout)
-
-    def reset_to_defaults(self) -> None:
-        self.plot_size_input.setValue(get_resolution())
-
-    def save_defaults(self) -> None:
-        set_resolution(self.plot_size)
-
-    @property
-    def plot_size(self) -> int:
-        return self.plot_size_input.value()
+def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Size',
+        'Pixels per dimension (128-512)',
+        value=get_resolution(),
+        minValue=128,
+        maxValue=512,
+        step=16,
+    )
 
 
 def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:

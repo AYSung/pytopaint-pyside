@@ -23,8 +23,9 @@ class BiplotGrid(QGridLayout):
     highlightsUpdated = Signal(list)
     pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTabs = Signal()
-    updateData = Signal(object, object, object, object)
+    updateData = Signal(object, object, object)
     updatePlot = Signal()
+    resizeTriggered = Signal()
 
     def __init__(
         self,
@@ -62,27 +63,21 @@ class BiplotGrid(QGridLayout):
 
         return wrapper
 
-    @Slot(object, object, object)
+    @Slot(object, object)
     def update_data(
         self,
         df: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
-        resolution: int,
     ) -> None:
         self.df = df
         self.axis_ticks = axis_ticks
 
-        self.resolution_changed = (
-            resolution is not None and self.resolution != resolution
-        )
-        if self.resolution_changed:
-            self.resolution = resolution
-        self.updateData.emit(self.df, self.axis_ticks, None, resolution)
+        self.updateData.emit(self.df, self.axis_ticks, None)
 
     @Slot(object)
     def update_state(self, state: pd.DataFrame) -> None:
         self.state = state
-        self.updateData.emit(None, None, state, None)
+        self.updateData.emit(None, None, state)
 
     def new_biplot(self, labels: tuple[str, str] = (None, None)) -> Biplot:
         x_label, y_label = labels
@@ -104,6 +99,7 @@ class BiplotGrid(QGridLayout):
         self.activeColorChanged.connect(biplot.plot.set_active_color)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
+        self.resizeTriggered.connect(biplot.resize)
         return biplot
 
     def add_biplot(

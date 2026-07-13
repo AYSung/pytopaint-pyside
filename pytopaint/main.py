@@ -39,15 +39,16 @@ from pytopaint.config import (
     get_color_palette,
     get_window_position,
     set_color_palette,
+    set_resolution,
     set_window_position,
 )
 from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
-    PlotSizeDialog,
     about_dialog,
     file_info_dialog,
     report_generator_dialog,
+    resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
 )
@@ -57,7 +58,7 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
-    resizeTriggered = Signal(int)
+    resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
 
     def __init__(self):
@@ -108,11 +109,10 @@ class MainWindow(QMainWindow):
             )
 
     def resize_plots(self) -> None:
-        data = self.get_active_painter().data
-        dialog = PlotSizeDialog(self, data.uns.get('bins'))
-
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            self.resizeTriggered.emit(dialog.plot_size)
+        resolution, ok = resize_plot_dialog(self)
+        if ok:
+            set_resolution(resolution)
+            self.resizeTriggered.emit()
 
     def rescale_plots(self) -> None:
         data = self.get_active_painter().data
