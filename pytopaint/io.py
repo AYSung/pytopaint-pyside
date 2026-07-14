@@ -75,7 +75,7 @@ class IOManager(QObject):
             self.last_open_dir,
             QFileDialog.Option.ShowDirsOnly,
         )
-        self.open_files(get_child_files(dir))
+        self.open_files(get_child_files(Path(dir)))
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
