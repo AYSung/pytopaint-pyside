@@ -221,7 +221,7 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
                     bins=bins,
                     arr=np.arange(
                         0,
-                        50_000 * (bounds[channel_name]['upper_bound'] // 50_000),
+                        50_000 * (1 + bounds[channel_name]['upper_bound'] // 50_000),
                         50_000,
                     ),
                 ),
