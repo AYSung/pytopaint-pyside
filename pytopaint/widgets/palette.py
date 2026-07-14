@@ -352,7 +352,7 @@ def copy_ratio_to_clipboard(ratio: float):
 
 
 def _format_percent(percent: float) -> str:
-    return f'{percent:.{1 if (percent == 0) or (percent >= 0.01) else 2}%}'
+    return f'{percent:.{1 if (percent == 0) or (percent >= 0.00995) else 2}%}'
 
 
 def _format_ratio(ratio: float) -> str:
