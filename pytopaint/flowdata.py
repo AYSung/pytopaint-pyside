@@ -340,10 +340,8 @@ def _clean_marker_name(marker: str) -> str:
     if marker.startswith('CD'):
         if marker == 'CD45 RA' or marker == 'CD45 RO':
             return marker
-        elif re.match(r'CD\d+$', marker):
-            return marker
         else:
-            return re.match(r'(CD\d+\w*) ?', marker).group(1)
+            return re.match(r'(CD\d+\w*(\/CD\d+\w*)?) ?', marker).group(1)
     else:
         if 'lambda' in marker.lower():
             return 'Lambda'

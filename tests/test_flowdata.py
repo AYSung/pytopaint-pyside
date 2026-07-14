@@ -33,6 +33,7 @@ def test_clean_marker_name():
     assert _clean_marker_name('CD45 BV480') == 'CD45'
     assert _clean_marker_name('CD5 BV480') == 'CD5'
     assert _clean_marker_name('CD11b') == 'CD11b'
+    assert _clean_marker_name('CD41/CD61') == 'CD41/CD61'
 
 
 def load_panel_config() -> list[list[str]]:
