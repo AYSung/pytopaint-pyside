@@ -46,11 +46,17 @@ class IOManager(QObject):
         for i, file in enumerate(files, start=1):
             if progress.wasCanceled():
                 break
-            painter = self.file_parsers[file.suffix.lower()](file)
-            progress.setValue(i)
-            QApplication.processEvents()
-            self.fileOpened.emit(painter)
-            self.last_open_dir = str(file.parent)
+
+            try:
+                painter = self.file_parsers[file.suffix.lower()](file)
+                self.fileOpened.emit(painter)
+                self.last_open_dir = str(file.parent)
+            except ValueError:
+                print(f'error opening {file}')
+            finally:
+                progress.setValue(i)
+                QApplication.processEvents()
+
         self.finished.emit(True)
 
     @Slot()
@@ -152,21 +158,13 @@ class IOManager(QObject):
 
 
 def open_fcs(file: Path) -> Painter:
-    try:
-        fcs = flowio.FlowData(file)
-        return Painter.from_fcs(fcs)
-
-    except ValueError as e:
-        raise e
+    fcs = flowio.FlowData(file)
+    return Painter.from_fcs(fcs)
 
 
 def open_session(file: Path) -> Painter:
-    try:
-        adata = ad.io.read_h5ad(file)
-        return Painter.from_adata(adata)
-
-    except ValueError as e:
-        raise e
+    adata = ad.io.read_h5ad(file)
+    return Painter.from_adata(adata)
 
 
 def get_child_files(dir: Path) -> list[Path]:
