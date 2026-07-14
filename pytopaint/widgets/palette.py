@@ -103,7 +103,7 @@ class ColorLabel(QWidget):
         self.others_zappable = False
         self.memory = None
 
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
         self.setFixedWidth(150)
 
@@ -141,6 +141,10 @@ class ColorLabel(QWidget):
             self.color,
             {color: n / total_events for color, n in sorted(events.items())},
         )
+
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color == Color.GREY:
@@ -373,15 +377,23 @@ class MemorySlot(QToolButton):
 
     def __init__(self, id: int, has_events: bool, parent=None):
         super().__init__(parent)
+        self.mouse_pressed = False
+
         self.id = id
         self.has_events = has_events
         self.setText(str(id))
         self.update_appearance()
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
+    def mousePressEvent(self, e: QMouseEvent):
+        self.mouse_pressed = True
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
+
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if not self.has_events:
+        if not self.has_events or not self.mouse_pressed:
+            self.mouse_pressed = False
             super().mouseReleaseEvent(e)
             return
 
@@ -395,6 +407,7 @@ class MemorySlot(QToolButton):
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.clear_state()
 
+        self.mouse_pressed = False
         super().mouseReleaseEvent(e)
 
     def update_appearance(self) -> None:

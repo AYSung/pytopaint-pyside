@@ -233,7 +233,6 @@ class PlotTitle(QLabel):
 
     def __init__(self, x_label: str, y_label: str, resolution: int):
         super().__init__()
-        self.mouse_pressed = False
         self.x_label, self.y_label = x_label, y_label
 
         self.setStyleSheet('font-weight: bold; margin-bottom: 6px')
@@ -443,8 +442,6 @@ class XAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
-        self.mouse_pressed = False
-
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
@@ -554,8 +551,6 @@ class YAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
-        self.mouse_pressed = False
-
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
