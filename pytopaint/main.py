@@ -21,7 +21,6 @@ from PySide6.QtGui import (
     QDropEvent,
     QGuiApplication,
     QKeySequence,
-    QShortcut,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -77,7 +76,6 @@ class MainWindow(QMainWindow):
         self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
 
         self.configure_menu_bar()
-        self.configure_shortcuts()
 
         central_widget = QWidget()
         central_layout = QGridLayout()
@@ -135,17 +133,6 @@ class MainWindow(QMainWindow):
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
         self.io_manager.open_files_from_urls(urls)
-
-    def configure_shortcuts(self):
-        close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
-        close_tab_shortcut.activated.connect(
-            lambda: self.painter_tabs.tabCloseRequested.emit(
-                self.painter_tabs.currentIndex()
-            )
-        )
-
-        close_all_tabs_shortcut = QShortcut(QKeySequence('Ctrl+Shift+W'), self)
-        close_all_tabs_shortcut.activated.connect(self.painter_tabs.close_all_tabs)
 
     def configure_menu_bar(self):
         def _palette_option(palette: str) -> QAction:
@@ -216,6 +203,28 @@ class MainWindow(QMainWindow):
             lambda: file_info_action.setEnabled(self.painter_tabs.count())
         )
         file_menu.addAction(file_info_action)
+
+        close_current_tab = QAction('Close Current Tab', self, enabled=False)
+        close_current_tab.setShortcut(QKeySequence('Ctrl+W'))
+        close_current_tab.triggered.connect(
+            lambda: self.painter_tabs.tabCloseRequested.emit(
+                self.painter_tabs.currentIndex()
+            )
+        )
+        self.painter_tabs.currentChanged.connect(
+            lambda: close_current_tab.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(close_current_tab)
+
+        close_all_tabs = QAction('Close All Tabs', self, enabled=False)
+        close_all_tabs.setShortcut(QKeySequence('Ctrl+Shift+W'))
+        close_all_tabs.triggered.connect(self.painter_tabs.close_all_tabs)
+        self.painter_tabs.currentChanged.connect(
+            lambda: close_all_tabs.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(close_all_tabs)
+
+        file_menu.addSeparator()
 
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')

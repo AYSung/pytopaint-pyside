@@ -70,7 +70,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Events', 'Left-Click'),
             ('Paint Non-Grey Events', 'Shift + Left-Click'),
             ('Paint Grey Events', 'Ctrl + Left-Click'),
-            ('Override Paint Colors', 'Ctrl + Shift+Left-Click'),
+            ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
         ])
     )
     layout.addWidget(
@@ -110,7 +110,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Reset Events', 'Ctrl + Shift + R'),
             ('Open File(s)', 'Ctrl + O'),
             ('Load Layout', 'Ctrl + L'),
-            ('Close Tab', 'Ctrl + W'),
+            ('Close Current Tab', 'Ctrl + W'),
             ('Close All Tabs', 'Ctrl + Shift + W'),
             ('Close Application', 'Ctrl + Q'),
         ])
