@@ -7,6 +7,7 @@
 
 import pandas as pd
 from PySide6.QtCore import (
+    QDir,
     QPoint,
     QRect,
     QRunnable,
@@ -18,6 +19,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QAction, QFont, QImage, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QGridLayout,
     QLabel,
     QMenu,
@@ -83,6 +85,7 @@ class Biplot(QWidget):
         )
         self.title_label.transposeAxesClicked.connect(self.transpose_axes)
         self.title_label.copyPlotClicked.connect(self.copy_plot_to_clipboard)
+        self.title_label.exportPlotClicked.connect(self.export_plot)
         self.title_label.removePlotClicked.connect(self.remove)
 
         layout = QGridLayout()
@@ -146,7 +149,7 @@ class Biplot(QWidget):
         )
         self.plot.draw_canvas()
 
-    def copy_plot_to_clipboard(self, mode: str):
+    def _draw_plot(self, mode: str):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
@@ -179,9 +182,27 @@ class Biplot(QWidget):
         )
 
         painter.end()
+        return image
+
+    def copy_plot_to_clipboard(self, mode: str):
+        image = self._draw_plot(mode)
 
         clipboard = QApplication.clipboard()
         clipboard.setImage(image)
+
+    def export_plot(self, mode: str):
+        image = self._draw_plot(mode)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Export PNG',
+            dir=QDir.homePath(),
+            filter='PNG (*.png)',
+        )
+        if not file_path:
+            return
+
+        image.save(file_path)
 
     def transpose_axes(self):
         self.set_axes(x_label=self.y_axis.label, y_label=self.x_axis.label)
@@ -229,6 +250,7 @@ class Biplot(QWidget):
 class PlotTitle(QLabel):
     transposeAxesClicked = Signal()
     copyPlotClicked = Signal(str)
+    exportPlotClicked = Signal(str)
     removePlotClicked = Signal()
 
     def __init__(self, x_label: str, y_label: str, resolution: int):
@@ -277,6 +299,24 @@ class PlotTitle(QLabel):
         )
         copy_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
         menu.addAction(copy_dark)
+
+        menu.addSeparator()
+
+        export_light = QAction(
+            'Export as PNG (Light)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        export_light.triggered.connect(lambda: self.exportPlotClicked.emit('light'))
+        menu.addAction(export_light)
+        export_dark = QAction(
+            'Export as PNG (Dark)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        export_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
+        menu.addAction(export_dark)
+
+        menu.addSeparator()
+
         remove_biplot = QAction('Remove Biplot', self)
         remove_biplot.triggered.connect(self.removePlotClicked)
         menu.addAction(remove_biplot)
