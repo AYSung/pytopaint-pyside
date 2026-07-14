@@ -244,10 +244,10 @@ def ratios_by_color(
     antecedent_color: Color,
     percents: dict[Color, float],
 ) -> dict[Color, float]:
-    if antecedent_color == Color.GREY:
+    antecedent_percent = percents.get(antecedent_color, 0)
+    if antecedent_color == Color.GREY or antecedent_percent == 0:
         return dict()
     else:
-        antecedent_percent = percents.get(antecedent_color, 0)
         return {
             consequent_color: (
                 antecedent_percent / consequent_percent,
