@@ -51,7 +51,7 @@ class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     colorStateReturned = Signal(int, object)
-    dataChanged = Signal(object, object)
+    dataChanged = Signal(object, object, object)
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
     resizeTriggered = Signal()
@@ -494,7 +494,7 @@ class Painter(QWidget):
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.resizeTriggered.emit()
-        self.dataChanged.emit(self.df, self.axis_ticks)
+        self.dataChanged.emit(self.df, self.axis_ticks, None)
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
