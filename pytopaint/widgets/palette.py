@@ -258,7 +258,7 @@ class ColorLabel(QWidget):
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
         else:
-            zap_all = QAction('Zap all')
+            zap_all = QAction('Zap All')
             zap_all.triggered.connect(
                 lambda: self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
             )
@@ -280,6 +280,14 @@ class ColorLabel(QWidget):
             )
         )
         menu.addAction(isolate)
+
+        if self.color == Color.GREY:
+            menu.addSeparator()
+            unhide = QAction('Show All Events')
+            unhide.triggered.connect(
+                lambda: self.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, dict())
+            )
+            menu.addAction(unhide)
 
         if self.color != Color.GREY:
             menu.addSeparator()
