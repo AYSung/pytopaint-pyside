@@ -7,7 +7,10 @@
 
 import pandas as pd
 from PySide6.QtCore import (
+    QBuffer,
     QDir,
+    QIODevice,
+    QMimeData,
     QPoint,
     QRect,
     QRunnable,
@@ -187,8 +190,17 @@ class Biplot(QWidget):
     def copy_plot_to_clipboard(self, mode: str):
         image = self._draw_plot(mode)
 
+        byte_array = QBuffer()
+        byte_array.open(QIODevice.OpenModeFlag.WriteOnly)
+        image.save(byte_array, 'PNG', quality=100)
+        byte_array.close()
+
+        mime_data = QMimeData()
+        mime_data.setData('image/png', byte_array.data())
+        mime_data.setImageData(image)
+
         clipboard = QApplication.clipboard()
-        clipboard.setImage(image)
+        clipboard.setMimeData(mime_data)
 
     def export_plot(self, mode: str):
         image = self._draw_plot(mode)
