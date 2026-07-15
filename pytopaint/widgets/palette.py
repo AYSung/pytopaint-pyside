@@ -197,6 +197,16 @@ class ColorLabel(QWidget):
             )
             return action
 
+        def _ratio_action(color: Color, label_info: tuple[float, float]) -> QAction:
+            action = QAction(
+                _color_icon(color),
+                f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
+            )
+            action.triggered.connect(
+                lambda: copy_ratio_to_clipboard(self.ratios[color][0])
+            )
+            return action
+
         menu = QMenu()
         # set active color
         if self.color != Color.GREY:
@@ -325,16 +335,9 @@ class ColorLabel(QWidget):
             menu.addSection('Ratios')
 
             ratio_labels = [
-                QAction(
-                    _color_icon(color),
-                    f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
-                )
+                _ratio_action(color, label_info)
                 for color, label_info in self.ratios.items()
             ]
-            for color, ratio_label in zip(self.ratios.keys(), ratio_labels):
-                ratio_label.triggered.connect(
-                    lambda: copy_ratio_to_clipboard(self.ratios[color][0])
-                )
             menu.addActions(ratio_labels)
 
             menu.addSeparator()
