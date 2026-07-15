@@ -458,8 +458,8 @@ class DotPlot(QLabel):
 
         index = self.color_indices.get(color, pd.Index([]))
         painter.drawPointsNp(
-            self.x_data.loc[index].to_numpy(),
-            self.y_data.loc[index].to_numpy(),
+            self.x_data.loc[index.intersection(self.x_data.index)].to_numpy(),
+            self.y_data.loc[index.intersection(self.y_data.index)].to_numpy(),
         )
 
     @Slot()
