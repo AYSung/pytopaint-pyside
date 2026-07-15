@@ -90,7 +90,6 @@ class IOManager(QObject):
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
         self.open_files(paths)
-        self.last_open_dir = str(paths[-1].parent)
 
     def export_fcs(self, painter: Painter) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
