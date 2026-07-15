@@ -126,10 +126,10 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
 class PlotScaleDialog(QDialog):
     def __init__(
         self,
+        scaling_factor: float,
+        lower_asinh_bound: float,
+        upper_asinh_bound: float,
         parent=None,
-        scaling_factor: float = None,
-        lower_asinh_bound: float = None,
-        upper_asinh_bound: float = None,
     ):
         super().__init__(parent)
         self.setWindowTitle('Plot Scale')
@@ -139,21 +139,17 @@ class PlotScaleDialog(QDialog):
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.scaling_factor_input = QSpinBox(singleStep=10)
         self.scaling_factor_input.setRange(20, 1200)
-        self.scaling_factor_input.setValue(scaling_factor or get_scaling_factor())
+        self.scaling_factor_input.setValue(scaling_factor)
         self.scaling_factor_input.setFixedWidth(field_width)
         self.scaling_factor_input.setToolTip('between 20 and 1200')
         self.upper_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
         self.upper_asinh_bound_input.setRange(5, 15)
-        self.upper_asinh_bound_input.setValue(
-            upper_asinh_bound or get_upper_asinh_bound()
-        )
+        self.upper_asinh_bound_input.setValue(upper_asinh_bound)
         self.upper_asinh_bound_input.setFixedWidth(field_width)
         self.upper_asinh_bound_input.setToolTip('between 5 and 15')
         self.lower_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
         self.lower_asinh_bound_input.setRange(-5, 4)
-        self.lower_asinh_bound_input.setValue(
-            lower_asinh_bound or get_lower_asinh_bound()
-        )
+        self.lower_asinh_bound_input.setValue(lower_asinh_bound)
         self.lower_asinh_bound_input.setFixedWidth(field_width)
         self.lower_asinh_bound_input.setToolTip('between -5 and 4')
         layout.addRow('Scaling Factor:', self.scaling_factor_input)
