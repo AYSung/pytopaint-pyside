@@ -50,7 +50,6 @@ class IOManager(QObject):
             try:
                 painter = self.file_parsers[file.suffix.lower()](file)
                 self.fileOpened.emit(painter)
-                self.last_open_dir = str(file.parent)
             except ValueError:
                 print(f'error opening {file}')
             finally:
@@ -64,8 +63,13 @@ class IOManager(QObject):
         files, _ = QFileDialog.getOpenFileNames(
             None, 'Select File(s)', self.last_open_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
         )
+
         paths = filter_valid_files(map(Path, files))
+        if not paths:
+            return
+
         self.open_files(paths)
+        self.last_open_dir = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
@@ -75,11 +79,18 @@ class IOManager(QObject):
             self.last_open_dir,
             QFileDialog.Option.ShowDirsOnly,
         )
-        self.open_files(get_child_files(Path(dir)))
+        dir = Path(dir)
+        files = get_child_files(dir)
+        if not files:
+            return
+
+        self.open_files(files)
+        self.last_open_dir = str(dir.parent)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
         self.open_files(paths)
+        self.last_open_dir = str(paths[-1].parent)
 
     def export_fcs(self, painter: Painter) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
