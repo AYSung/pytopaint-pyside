@@ -324,7 +324,7 @@ class PlotTitle(QLabel):
             'Export as PNG (Dark)',
             enabled=self.x_label is not None and self.y_label is not None,
         )
-        export_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
+        export_dark.triggered.connect(lambda: self.exportPlotClicked.emit('dark'))
         menu.addAction(export_dark)
 
         menu.addSeparator()
