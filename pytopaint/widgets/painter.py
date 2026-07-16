@@ -273,6 +273,7 @@ class Painter(QWidget):
             y_label=y_label,
         )
         if selection.empty:
+            self.state_changed()
             return
 
         if e.button() == Qt.MouseButton.LeftButton:
@@ -494,7 +495,7 @@ class Painter(QWidget):
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
         self.resizeTriggered.emit()
-        self.dataChanged.emit(self.df, self.axis_ticks, None)
+        self.data_changed()
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:

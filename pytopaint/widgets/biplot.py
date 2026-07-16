@@ -150,7 +150,6 @@ class Biplot(QWidget):
             y_data=df[self.y_axis.label],
             color_data=df['color'],
         )
-        self.plot.draw_canvas()
 
     def _draw_plot(self, mode: str):
         match mode:
@@ -399,8 +398,6 @@ class DotPlot(QLabel):
         self.last_y = None
         self.selection_geometry = []
 
-        self.update_plot()
-
     def set_working_data(
         self, x_data: pd.Series, y_data: pd.Series, color_data: pd.Series
     ):
@@ -458,8 +455,8 @@ class DotPlot(QLabel):
 
         index = self.color_indices.get(color, pd.Index([]))
         painter.drawPointsNp(
-            self.x_data.loc[index.intersection(self.x_data.index)].to_numpy(),
-            self.y_data.loc[index.intersection(self.y_data.index)].to_numpy(),
+            self.x_data.loc[index].to_numpy(),
+            self.y_data.loc[index].to_numpy(),
         )
 
     @Slot()
@@ -721,7 +718,11 @@ class BiplotUpdater(QRunnable):
         self.state = state
 
     def run(self):
+        if self.data is None and self.state is None:
+            return
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
-        self.biplot.update_plot_data(self.state)
+        if self.state is not None:
+            self.biplot.update_plot_data(self.state)
+        self.biplot.plot.draw_canvas()
         self.biplot.updateFinished.emit()
