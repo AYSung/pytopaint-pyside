@@ -72,10 +72,10 @@ class Biplot(QWidget):
 
         self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
-        self.x_axis.labelChanged.connect(self.plot.set_canvas)
+        self.x_axis.labelChanged.connect(self.plot.update_plot)
         self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
-        self.y_axis.labelChanged.connect(self.plot.set_canvas)
+        self.y_axis.labelChanged.connect(self.plot.update_plot)
 
         self.title_label = PlotTitle(
             x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
