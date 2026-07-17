@@ -424,7 +424,7 @@ class Painter(QWidget):
     @Slot(int)
     def handle_highlights(self, color: Color):
         if color not in self.highlighted_colors:
-            self.highlighted_colors += [color]
+            self.highlighted_colors.append(color)
         else:
             self.highlighted_colors.remove(color)
 

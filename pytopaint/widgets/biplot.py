@@ -448,7 +448,7 @@ class DotPlot(QLabel):
             return
 
         pos = e.position()
-        self.selection_geometry += [(pos.x(), self.resolution - pos.y())]
+        self.selection_geometry.append((pos.x(), self.resolution - pos.y()))
         if self.last_x is None:  # First event.
             self.last_x = pos.x()
             self.last_y = pos.y()
