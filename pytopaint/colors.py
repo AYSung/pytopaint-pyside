@@ -32,7 +32,7 @@ class Color(IntEnum):
 COLOR_RGB_MAPS = {
     'Default': {
         Color.GREY: '#606060',
-        Color.BLUE: '#2b4cf1',
+        Color.BLUE: '#1070ff',
         Color.GREEN: '#46D829',
         Color.RED: '#d12f2f',
         Color.YELLOW: '#EBE824',
