@@ -248,6 +248,11 @@ class Painter(QWidget):
             )
         )
 
+        hide_grey_shortcut = QShortcut(QKeySequence('Shift + Return'), self)
+        hide_grey_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.HIDE, dict(color=Color.GREY))
+        )
+
     @staticmethod
     def record_action(func):
         @wraps(func)

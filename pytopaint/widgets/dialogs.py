@@ -106,6 +106,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Zap All', 'Ctrl + Shift + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
+            ('Hide Grey Events', 'Shift + Enter'),
             ('Unhide Events', 'Ctrl + R'),
             ('Reset Events', 'Ctrl + Shift + R'),
             ('Open File(s)', 'Ctrl + O'),
