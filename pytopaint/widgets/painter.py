@@ -11,10 +11,9 @@ from functools import wraps
 import anndata as ad
 import flowio
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
-    QMouseEvent,
     QShortcut,
 )
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
@@ -37,7 +36,6 @@ from pytopaint.flowdata import (
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
-from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
@@ -64,6 +62,8 @@ class Painter(QWidget):
         self.setStyleSheet('* {color: #bababa}')
 
         self.paint_actions = {
+            MenuAction.ADD_COLOR: self.add_color,
+            MenuAction.OVERRIDE_COLOR: self.override_color,
             MenuAction.SET_ACTIVE: self.change_color,
             MenuAction.ZAP: self.zap_color,
             MenuAction.EXACT_ZAP: self.exact_zap_color,
@@ -119,7 +119,7 @@ class Painter(QWidget):
             active_color=self.active_color,
             resolution=get_resolution(),
         )
-        self.biplot_grid.pointsSelected.connect(self.handle_selection)
+        self.biplot_grid.menuActionTriggered.connect(self.handle_menu_action)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
@@ -144,6 +144,7 @@ class Painter(QWidget):
         self.setLayout(layout)
 
         self.activeColorChanged.emit(self.active_color)
+        self.highlightsUpdated.emit(self.highlighted_colors)
         self.state_changed()
 
     @classmethod
@@ -247,89 +248,6 @@ class Painter(QWidget):
             )
         )
 
-    @Slot(object, str, str, QMouseEvent)
-    def handle_selection(
-        self,
-        selection_geometry: list[list[int, int]],
-        x_label: str,
-        y_label: str,
-        e: QMouseEvent,
-    ):
-        modifiers = e.modifiers()
-
-        if e.button() == Qt.MouseButton.MiddleButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.exact_zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                self.zap_all()
-            return
-
-        selection = get_selection_index(
-            selection_geometry,
-            self.df.loc[self.state['visible']],
-            x_label=x_label,
-            y_label=y_label,
-        )
-        if selection.empty:
-            self.state_changed()
-            return
-
-        if e.button() == Qt.MouseButton.LeftButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                # add to selection
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                # ignore unselected points (paint composite color)
-                selection = selection.difference(
-                    self.state.loc[lambda x: x['color'] == Color.GREY, 'color'].index
-                )
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                # ignore painted
-                selection = selection.intersection(
-                    self.state.loc[lambda x: x['color'] == Color.GREY].index
-                )
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif (
-                modifiers
-                == Qt.KeyboardModifier.ControlModifier
-                | Qt.KeyboardModifier.ShiftModifier
-            ):
-                # override colors
-                self.state.loc[selection, 'color'] = self.active_color
-
-        elif e.button() == Qt.MouseButton.RightButton:
-            # if not selection.empty:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                # zap color from selection
-                selection = selection.intersection(
-                    self.state.loc[lambda x: x['color'] == self.active_color].index
-                )
-                self.state.loc[selection, 'color'] = Color.GREY
-
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                # exact zap color from selection
-                self.state.loc[selection, 'color'] = subtract_color_from_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                # subtract all
-                self.state.loc[selection, 'color'] = Color.GREY
-
-        self.record_current_state()
-
     @staticmethod
     def record_action(func):
         @wraps(func)
@@ -348,24 +266,41 @@ class Painter(QWidget):
         self.activeColorChanged.emit(self.active_color)
 
     @record_action
-    def zap_color(self, color: Color):
-        self.state['color'] = subtract_color_from_series(self.state['color'], color)
-
-    @record_action
-    def exact_zap_color(self, color: Color):
-        self.state.loc[lambda x: x['visible'] & (x['color'] == color), 'color'] = (
-            Color.GREY
+    def add_color(self, color: Color, selection: pd.Index):
+        self.state.loc[selection, 'color'] = add_color_to_series(
+            self.state.loc[selection, 'color'], color
         )
 
     @record_action
-    def zap_all(self):
-        self.state.loc[lambda x: x['visible'], 'color'] = Color.GREY
+    def override_color(self, color: Color, selection: pd.Index):
+        self.state.loc[selection, 'color'] = color
+
+    @record_action
+    def zap_color(self, color: Color, selection: pd.Index = None):
+        if selection is None:
+            self.state['color'] = subtract_color_from_series(self.state['color'], color)
+        else:
+            self.state.loc[selection, 'color'] = subtract_color_from_series(
+                self.state.loc[selection, 'color'], color
+            )
+
+    @record_action
+    def exact_zap_color(self, color: Color, selection: pd.Index = None):
+        if selection is None:
+            self.state.loc[self.state['color'] == color, 'color'] = Color.GREY
+        else:
+            self.state.loc[selection, 'color'] = Color.GREY
+
+    @record_action
+    def zap_all(self, selection: pd.Index = None):
+        if selection is None:
+            self.state['color'] = Color.GREY
+        else:
+            self.state.loc[selection, 'color'] = Color.GREY
 
     @record_action
     def zap_all_but(self, color: Color):
-        self.state.loc[lambda x: x['visible'] & (x['color'] != color), 'color'] = (
-            Color.GREY
-        )
+        self.state.loc[self.state['color'] != color, 'color'] = Color.GREY
 
     @record_action
     def replace_state(self, slot: int):

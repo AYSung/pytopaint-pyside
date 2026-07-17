@@ -9,7 +9,6 @@ from functools import wraps
 
 import pandas as pd
 from PySide6.QtCore import Signal, Slot
-from PySide6.QtGui import QMouseEvent
 from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.colors import Color
@@ -21,11 +20,11 @@ class BiplotGrid(QGridLayout):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     highlightsUpdated = Signal(list)
-    pointsSelected = Signal(object, str, str, QMouseEvent)
     resizeTabs = Signal()
     updateData = Signal(object, object, object)
     updatePlot = Signal()
     resizeTriggered = Signal()
+    menuActionTriggered = Signal(int, dict)
 
     def __init__(
         self,
@@ -91,12 +90,12 @@ class BiplotGrid(QGridLayout):
             y_label=y_label,
             resolution=self.resolution,
         )
-        biplot.pointsSelected.connect(self.pointsSelected)
+        biplot.menuActionTriggered.connect(self.menuActionTriggered)
         biplot.updateFinished.connect(self.update_manager.on_update_finished)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
         self.updateData.connect(biplot.update_data)
         self.updatePlot.connect(biplot.plot.set_canvas)
-        self.activeColorChanged.connect(biplot.plot.set_active_color)
+        self.activeColorChanged.connect(biplot.activeColorChanged)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
         self.resizeTriggered.connect(biplot.resize)

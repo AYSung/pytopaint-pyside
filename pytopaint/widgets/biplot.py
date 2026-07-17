@@ -31,6 +31,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     BACKGROUND,
     Color,
@@ -39,14 +40,16 @@ from pytopaint.colors import (
 )
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40
 
 
 class Biplot(QWidget):
-    pointsSelected = Signal(object, str, str, QMouseEvent)
     removeTriggered = Signal(object)
     updateFinished = Signal()
+    menuActionTriggered = Signal(int, dict)
+    activeColorChanged = Signal(int)
 
     def __init__(
         self,
@@ -67,8 +70,11 @@ class Biplot(QWidget):
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
+        self.activeColorChanged.connect(self.set_active_color)
+
         self.plot = DotPlot(active_color=active_color, resolution=resolution)
-        self.plot.pointsSelected.connect(self.points_selected)
+        self.plot.pointsSelected.connect(self.handle_selection)
+        self.activeColorChanged.connect(self.plot.set_active_color)
 
         self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
@@ -105,6 +111,87 @@ class Biplot(QWidget):
         layout.addWidget(self.x_axis, 2, 1, Qt.AlignmentFlag.AlignTop)
 
         self.setLayout(layout)
+
+    @Slot(int)
+    def set_active_color(self, color: Color) -> None:
+        self.active_color = color
+
+    @Slot(object, QMouseEvent)
+    def handle_selection(
+        self, selection_geometry: list[list[float]], e: QMouseEvent
+    ) -> None:
+        modifiers = e.modifiers()
+
+        if e.button() == Qt.MouseButton.MiddleButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.EXACT_ZAP, dict(color=self.active_color)
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.ZAP, dict(color=self.active_color)
+                )
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+            return
+
+        if e.button() == Qt.MouseButton.LeftButton:
+            selection = get_selection_index(
+                selection_geometry,
+                df=self.df.loc[self.state.color != self.active_color],
+                x_label=self.x_axis.label,
+                y_label=self.y_axis.label,
+            )
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                # add to selection
+                action = MenuAction.ADD_COLOR
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                # ignore grey events
+                action = MenuAction.ADD_COLOR
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s != Color.GREY].index
+                )
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                # ignore painted
+                action = MenuAction.ADD_COLOR
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s == Color.GREY].index
+                )
+            elif (
+                modifiers
+                == Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier
+            ):
+                # override colors
+                action = MenuAction.OVERRIDE_COLOR
+
+        elif e.button() == Qt.MouseButton.RightButton:
+            selection = get_selection_index(
+                selection_geometry,
+                df=self.df.loc[self.state.color != Color.GREY],
+                x_label=self.x_axis.label,
+                y_label=self.y_axis.label,
+            )
+
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                # exact zap color
+                action = MenuAction.EXACT_ZAP
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s == self.active_color].index
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                # zap color
+                action = MenuAction.ZAP
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                # paint grey
+                action = MenuAction.ZAP_ALL
+
+        if not selection.empty:
+            self.menuActionTriggered.emit(
+                action, dict(color=self.active_color, selection=selection)
+            )
+        else:
+            self.plot.update_plot()
 
     @Slot(object, object, object)
     def update_data(
@@ -385,11 +472,7 @@ class DotPlot(QLabel):
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color_indices is None:
             return
-
-        self.pointsSelected.emit(
-            self.selection_geometry,
-            e,
-        )
+        self.pointsSelected.emit(self.selection_geometry, e)
         self.reset_lasso()
 
     def reset_lasso(self) -> None:
