@@ -141,7 +141,7 @@ class Biplot(QWidget):
         if e.button() == Qt.MouseButton.LeftButton:
             selection = get_selection_index(
                 selection_geometry,
-                df=self.df.loc[self.state.color != self.active_color],
+                df=self.df.loc[self.state['color'] != self.active_color],
                 x_label=self.x_axis.label,
                 y_label=self.y_axis.label,
             )
@@ -167,6 +167,8 @@ class Biplot(QWidget):
             ):
                 # override colors
                 action = MenuAction.OVERRIDE_COLOR
+            else:
+                selection = pd.Index([])
 
         elif e.button() == Qt.MouseButton.RightButton:
             selection = get_selection_index(
@@ -195,6 +197,8 @@ class Biplot(QWidget):
                 # paint grey
                 action = MenuAction.OVERRIDE_COLOR
                 color = Color.GREY
+            else:
+                selection = pd.Index([])
 
         if not selection.empty:
             self.menuActionTriggered.emit(
