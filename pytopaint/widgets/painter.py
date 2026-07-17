@@ -299,11 +299,8 @@ class Painter(QWidget):
             self.state.loc[selection, 'color'] = Color.GREY
 
     @record_action
-    def zap_all(self, selection: pd.Index = None):
-        if selection is None:
-            self.state['color'] = Color.GREY
-        else:
-            self.state.loc[selection, 'color'] = Color.GREY
+    def zap_all(self):
+        self.state['color'] = Color.GREY
 
     @record_action
     def zap_all_but(self, color: Color):

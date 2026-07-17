@@ -136,6 +136,7 @@ class Biplot(QWidget):
                 self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
             return
 
+        color = self.active_color
         if e.button() == Qt.MouseButton.LeftButton:
             selection = get_selection_index(
                 selection_geometry,
@@ -185,11 +186,13 @@ class Biplot(QWidget):
                 action = MenuAction.ZAP
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # paint grey
-                action = MenuAction.ZAP_ALL
+                print('ctrl right click')
+                action = MenuAction.OVERRIDE_COLOR
+                color = Color.GREY
 
         if not selection.empty:
             self.menuActionTriggered.emit(
-                action, dict(color=self.active_color, selection=selection)
+                action, dict(color=color, selection=selection)
             )
         else:
             self.plot.update_plot()
