@@ -41,6 +41,7 @@ class PainterTabs(QTabWidget):
         if widget:
             widget.handle_rescale(scale_config)
 
+    @Slot()
     def close_all_tabs(self):
         while self.count() > 0:
             self.handle_tab_close(0)

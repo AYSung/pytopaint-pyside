@@ -91,6 +91,7 @@ class IOManager(QObject):
         paths = get_files_from_urls(urls)
         self.open_files(paths)
 
+    @Slot()
     def export_fcs(self, painter: Painter) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
@@ -120,6 +121,7 @@ class IOManager(QObject):
 
         self.last_save_dir = str(Path(file_path).parent)
 
+    @Slot()
     def save_session(self, painter: Painter) -> None:
         painter.update_anndata_state()
 
@@ -138,6 +140,7 @@ class IOManager(QObject):
 
         self.last_save_dir = str(Path(file_path).parent)
 
+    @Slot()
     def load_layout(self) -> LayoutConfig:
         file_path, _ = QFileDialog.getOpenFileName(
             None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'

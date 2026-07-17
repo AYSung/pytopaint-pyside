@@ -10,11 +10,7 @@ import pstats
 import sys
 from multiprocessing import freeze_support
 
-from PySide6.QtCore import (
-    QCoreApplication,
-    Qt,
-    Signal,
-)
+from PySide6.QtCore import QCoreApplication, Qt, Signal, Slot
 from PySide6.QtGui import (
     QAction,
     QDragEnterEvent,
@@ -92,6 +88,7 @@ class MainWindow(QMainWindow):
 
         self.setAcceptDrops(True)
 
+    @Slot()
     def load_layout(self) -> None:
         layout = self.io_manager.load_layout()
         if layout is not None:
@@ -100,6 +97,7 @@ class MainWindow(QMainWindow):
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
 
+    @Slot()
     def subsample(self) -> None:
         n, ok = subsample_dialog(
             self, total_events=self.get_active_painter().state['visible'].sum()
@@ -109,12 +107,14 @@ class MainWindow(QMainWindow):
                 MenuAction.SUBSAMPLE, dict(n=n)
             )
 
+    @Slot()
     def resize_plots(self) -> None:
         resolution, ok = resize_plot_dialog(self)
         if ok:
             set_resolution(resolution)
             self.resizeTriggered.emit()
 
+    @Slot()
     def rescale_plots(self) -> None:
         data = self.get_active_painter().data
         dialog = PlotScaleDialog(
@@ -156,7 +156,7 @@ class MainWindow(QMainWindow):
             return action
 
         menu_bar = self.menuBar()
-        # menu_bar.setNativeMenuBar(False)
+
         file_menu = menu_bar.addMenu('&File')
 
         open_file_action = QAction('&Open File(s)', self)
@@ -168,6 +168,11 @@ class MainWindow(QMainWindow):
         open_dir_action.setShortcut(QKeySequence('Ctrl+Shift+O'))
         open_dir_action.triggered.connect(self.io_manager.open_dir_dialog)
         file_menu.addAction(open_dir_action)
+
+        new_case_action = QAction('Close Tabs and Open &New Directory', self)
+        new_case_action.setShortcut(QKeySequence('Ctrl+N'))
+        new_case_action.triggered.connect(self.open_new_case)
+        file_menu.addAction(new_case_action)
 
         save_session_action = QAction('&Save Session As', self, enabled=False)
         save_session_action.triggered.connect(
@@ -316,6 +321,11 @@ class MainWindow(QMainWindow):
         about_action.setMenuRole(QAction.MenuRole.NoRole)
         about_action.triggered.connect(lambda: about_dialog(self))
         help_menu.addAction(about_action)
+
+    @Slot()
+    def open_new_case(self):
+        self.painter_tabs.close_all_tabs()
+        self.io_manager.open_dir_dialog()
 
     def closeEvent(self, event):
         set_window_position(self.pos())
