@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import json
+from collections import deque
 from functools import wraps
 
 import anndata as ad
@@ -95,8 +96,9 @@ class Painter(QWidget):
         )
         self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
-        self.undo_history = [self.state.copy()]
-        self.redo_history = []
+        self.undo_history = deque()
+        self.undo_history.append(self.state.copy())
+        self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = []
 
@@ -386,8 +388,8 @@ class Painter(QWidget):
         if self.state.equals(self.undo_history[-1]):
             return
 
-        self.undo_history += [self.state.copy()]
-        self.redo_history = []
+        self.undo_history.append(self.state.copy())
+        self.redo_history.clear()
         self.state_changed()
 
     @Slot()
@@ -397,7 +399,7 @@ class Painter(QWidget):
 
         current_state: pd.DataFrame = self.undo_history.pop()
         previous_state: pd.DataFrame = self.undo_history[-1]
-        self.redo_history += [current_state]
+        self.redo_history.append(current_state)
         self.state.update(previous_state)
 
         self.state_changed()
@@ -408,7 +410,7 @@ class Painter(QWidget):
             return
 
         previous_state: pd.DataFrame = self.redo_history.pop()
-        self.undo_history += [previous_state]
+        self.undo_history.append(previous_state)
         self.state.update(previous_state)
 
         self.state_changed()
