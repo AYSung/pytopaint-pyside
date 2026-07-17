@@ -49,7 +49,7 @@ class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     colorStateReturned = Signal(int, object)
-    dataChanged = Signal(object, object, object)
+    dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
     resizeTriggered = Signal()
@@ -414,7 +414,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.axis_ticks, None)
+        self.dataChanged.emit(self.df, self.axis_ticks)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
