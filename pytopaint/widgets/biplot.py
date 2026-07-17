@@ -349,10 +349,7 @@ class DotPlot(QLabel):
         self.active_color = active_color
         self.resolution = resolution
 
-        self.last_x, self.last_y = None, None
-        self.selection_geometry = []
-        self.highlighted_colors = []
-
+        self.reset_lasso()
         self.set_working_data(x_data=None, y_data=None, color_data=None)
         self.update_plot()
 
@@ -393,7 +390,9 @@ class DotPlot(QLabel):
             self.selection_geometry,
             e,
         )
+        self.reset_lasso()
 
+    def reset_lasso(self) -> None:
         self.last_x = None
         self.last_y = None
         self.selection_geometry = []
