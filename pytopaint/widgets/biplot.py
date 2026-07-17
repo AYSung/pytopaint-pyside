@@ -62,6 +62,7 @@ class Biplot(QWidget):
         y_label: str,
         active_color: Color,
         resolution: int,
+        highlighted_colors: list[Color],
     ):
         super().__init__()
         self.df = data
@@ -74,7 +75,11 @@ class Biplot(QWidget):
 
         self.activeColorChanged.connect(self.set_active_color)
 
-        self.plot = DotPlot(active_color=active_color, resolution=resolution)
+        self.plot = DotPlot(
+            active_color=active_color,
+            resolution=resolution,
+            highlighted_colors=highlighted_colors,
+        )
         self.plot.pointsSelected.connect(self.handle_selection)
         self.activeColorChanged.connect(self.plot.set_active_color)
 
@@ -444,11 +449,14 @@ class PlotTitle(QLabel):
 class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
 
-    def __init__(self, active_color: Color, resolution: int):
+    def __init__(
+        self, active_color: Color, resolution: int, highlighted_colors: list[Color]
+    ):
         super().__init__()
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.active_color = active_color
         self.resolution = resolution
+        self.highlighted_colors = highlighted_colors
 
         self.reset_lasso()
         self.set_working_data(x_data=None, y_data=None, color_data=None)
