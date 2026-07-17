@@ -37,6 +37,7 @@ from pytopaint.colors import (
     Color,
     get_color_map,
     indices_by_color,
+    sort_colors,
 )
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
@@ -498,7 +499,7 @@ class DotPlot(QLabel):
     def non_highlighted_colors(self) -> list[Color]:
         return [
             color
-            for color in self.color_indices.keys()
+            for color in sort_colors(self.color_indices.keys())
             if color not in self.highlighted_colors
         ]
 

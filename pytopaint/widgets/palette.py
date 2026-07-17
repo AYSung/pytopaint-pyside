@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
+    COLOR_ORDER,
     Color,
     events_by_color,
     get_color_map,
@@ -47,7 +48,7 @@ class Palette(QWidget):
         self.total_events_label.setFixedWidth(150)
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = {c: ColorLabel(c) for c in Color}
+        self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER.keys()}
         for color_label in self.color_labels.values():
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
@@ -261,7 +262,9 @@ class ColorLabel(QWidget):
             merge_menu.setEnabled(self.has_events)
 
             merge_actions = [
-                _merge_action(color) for color in Color if color != self.color
+                _merge_action(color)
+                for color in COLOR_ORDER.keys()
+                if color != self.color
             ]
 
             for merge_action in merge_actions:

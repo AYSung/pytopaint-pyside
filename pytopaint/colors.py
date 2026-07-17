@@ -18,15 +18,31 @@ class Color(IntEnum):
     GREY = 0
     BLUE = 1
     GREEN = 2
-    RED = 3
-    YELLOW = 4
+    CYAN = 3
+    RED = 4
     MAGENTA = 5
-    CYAN = 6
+    YELLOW = 6
     WHITE = 7
 
     @property
     def label_name(self) -> str:
         return self.name.title()
+
+
+COLOR_ORDER = {
+    Color.GREY: 0,
+    Color.BLUE: 1,
+    Color.GREEN: 2,
+    Color.RED: 3,
+    Color.YELLOW: 4,
+    Color.MAGENTA: 5,
+    Color.CYAN: 6,
+    Color.WHITE: 7,
+}
+
+
+def sort_colors(colors: list[Color]) -> list[Color]:
+    return sorted(colors, key=lambda c: COLOR_ORDER[c])
 
 
 COLOR_RGB_MAPS = {
