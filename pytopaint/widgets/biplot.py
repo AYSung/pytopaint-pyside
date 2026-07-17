@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     BACKGROUND,
+    ZAPPABLE_COLORS,
     Color,
     get_color_map,
     indices_by_color,
@@ -184,9 +185,14 @@ class Biplot(QWidget):
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # zap color
                 action = MenuAction.ZAP
+                selection = selection.intersection(
+                    self
+                    .state['color']
+                    .loc[self.state['color'].isin(ZAPPABLE_COLORS[self.active_color])]
+                    .index
+                )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # paint grey
-                print('ctrl right click')
                 action = MenuAction.OVERRIDE_COLOR
                 color = Color.GREY
 
