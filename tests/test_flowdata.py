@@ -149,6 +149,7 @@ def test_get_axis_ticks(adata_1):
         (100, '1e5'),
         (150, None),
         (200, '2e5'),
+        (250, None),
     ]
     assert axis_ticks['CD45'] == [
         (11, None),
