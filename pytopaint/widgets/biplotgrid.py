@@ -15,6 +15,7 @@ from pytopaint.colors import Color
 from pytopaint.config import get_resolution
 from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
+from pytopaint.widgets.zoomplot import ZoomPlot
 
 
 class BiplotGrid(QGridLayout):
@@ -44,6 +45,8 @@ class BiplotGrid(QGridLayout):
         self.state = state
         self.active_color = active_color
         self.highlighted_colors = highlighted_colors
+
+        self.zoom_plot = None
 
         self.update_manager = BiplotUpdateManager(self)
 
@@ -89,8 +92,6 @@ class BiplotGrid(QGridLayout):
 
     def new_biplot(
         self,
-        active_color: Color,
-        highlighted_colors: list[Color],
         labels: tuple[str, str] = (None, None),
     ) -> Biplot:
         x_label, y_label = labels
@@ -168,8 +169,6 @@ class BiplotGrid(QGridLayout):
     def update_layout(
         self,
         grid: dict[tuple[int, int], tuple[str, str]],
-        active_color: Color,
-        highlighted_colors: list[Color],
     ) -> None:
         for coords, labels in grid.items():
             layout_item = self.itemAtPosition(*coords)
@@ -232,6 +231,22 @@ class BiplotGrid(QGridLayout):
     def update_plots(self) -> None:
         self.updatePlot.emit()
 
+    @Slot(str, str)
+    def open_zoom(self, x_label: str, y_label: str) -> None:
+        self.zoom_plot = self.new_biplot(labels=(x_label, y_label))
+        dialog = ZoomPlot(self.zoom_plot, parent=self.parent())
+        dialog.open()
+        dialog.finished.connect(self.close_zoom)
+
+    @Slot()
+    def close_zoom(self) -> None:
+        self.zoom_plot.deleteLater()
+        self.zoom_plot = None
+
+    @property
+    def plot_count(self) -> int:
+        return self.count() + (self.zoom_plot is not None)
+
 
 class BiplotUpdateManager:
     def __init__(self, biplot_grid: BiplotGrid):
@@ -240,6 +255,6 @@ class BiplotUpdateManager:
 
     def on_update_finished(self):
         self.finished_count += 1
-        if self.finished_count == self.biplot_grid.count():
+        if self.finished_count == self.biplot_grid.plot_count:
             self.finished_count = 0
             self.biplot_grid.update_plots()

@@ -18,7 +18,7 @@ from PySide6.QtGui import (
     QKeySequence,
     QShortcut,
 )
-from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
@@ -38,6 +38,7 @@ from pytopaint.flowdata import (
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
+from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
@@ -55,6 +56,7 @@ class Painter(QWidget):
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
+    zoomTriggered = Signal(str, str)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -107,7 +109,7 @@ class Painter(QWidget):
         if 'umap' in self.data.obsm.keys():
             self.load_umap()
 
-        palette = Palette(memory_states=self.memory_states)
+        palette = Palette(state=self.state, memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.handle_menu_action)
         self.colorStateReturned.connect(palette.update_color_memory)
         self.activeColorChanged.connect(palette.activeColorChanged)
@@ -129,16 +131,13 @@ class Painter(QWidget):
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
+        self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
         biplot_grid_container = QWidget()
         biplot_grid_container.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         biplot_grid_container.setLayout(self.biplot_grid)
-
-        self.activeColorChanged.emit(self.active_color)
-        self.highlightsUpdated.emit(self.highlighted_colors)
-
         self.biplot_grid.update_layout(self.load_grid_layout())
 
         layout = QVBoxLayout()
@@ -151,7 +150,6 @@ class Painter(QWidget):
 
         self.activeColorChanged.emit(self.active_color)
         self.highlightsUpdated.emit(self.highlighted_colors)
-        self.state_changed()
 
     @classmethod
     def from_fcs(cls, fcs: flowio.FlowData):
@@ -258,6 +256,9 @@ class Painter(QWidget):
         hide_grey_shortcut.activated.connect(
             lambda: self.handle_menu_action(MenuAction.HIDE, dict(color=Color.GREY))
         )
+
+        zoom_biplot_shortcut = QShortcut(QKeySequence('Space'), self)
+        zoom_biplot_shortcut.activated.connect(self.zoom_plot)
 
     @staticmethod
     def record_action(func):
@@ -519,3 +520,12 @@ class Painter(QWidget):
         )
         self.axis_ticks = self.axis_ticks | umap_axis_ticks
         self.df = self.df.join(umap_df)
+
+    def zoom_plot(self) -> None:
+        cursor_position = QCursor().pos()
+        widget = QApplication.widgetAt(cursor_position)
+        if isinstance(widget, DotPlot):
+            parent_widget: Biplot = widget.parentWidget()
+            self.zoomTriggered.emit(
+                parent_widget.x_axis.label, parent_widget.y_axis.label
+            )

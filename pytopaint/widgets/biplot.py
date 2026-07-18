@@ -89,6 +89,10 @@ class Biplot(QWidget):
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.plot.update_plot)
 
+        self.set_data(self.df, axis_ticks)
+        self.update_plot_data(self.state)
+        self.plot.update_plot()
+
         self.title_label = PlotTitle(
             x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
         )

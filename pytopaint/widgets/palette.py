@@ -37,7 +37,7 @@ class Palette(QWidget):
     highlightsUpdated = Signal(list)
     colorPaletteChanged = Signal()
 
-    def __init__(self, memory_states: dict[int, pd.DataFrame]):
+    def __init__(self, state: pd.DataFrame, memory_states: dict[int, pd.DataFrame]):
         super().__init__()
 
         layout = QHBoxLayout()
@@ -56,6 +56,7 @@ class Palette(QWidget):
             self.activeColorChanged.connect(color_label.update_active_color)
             self.eventsUpdated.connect(color_label.update_label)
             self.colorPaletteChanged.connect(color_label.update_palette)
+        self.update_labels(state)
 
         save_state_label = QLabel('Snapshots:')
         save_state_label.setContentsMargins(0, 0, 10, 0)
