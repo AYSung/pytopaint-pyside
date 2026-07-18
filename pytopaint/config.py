@@ -25,6 +25,14 @@ def set_resolution(pixels: int) -> None:
     QSettings().setValue('Plot/resolution', pixels)
 
 
+def get_zoom_resolution() -> int:
+    return int(QSettings().value('Plot/zoom_resolution', 512))
+
+
+def set_zoom_resolution(pixels: int) -> None:
+    QSettings().setValue('Plot/zoom_resolution', pixels)
+
+
 def get_scaling_factor() -> float:
     return float(QSettings().value('Plot/scaling_factor', 150))
 

@@ -14,10 +14,11 @@ import flowio
 import pandas as pd
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import (
+    QCursor,
     QKeySequence,
     QShortcut,
 )
-from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
@@ -26,7 +27,7 @@ from pytopaint.colors import (
     merge_colors,
     subtract_color_from_series,
 )
-from pytopaint.config import get_resolution
+from pytopaint.config import get_resolution, get_zoom_resolution
 from pytopaint.flowdata import (
     get_axis_ticks,
     get_umap_dims,
@@ -34,9 +35,12 @@ from pytopaint.flowdata import (
     read_fcs,
     set_scale,
     set_size,
+    set_zoom,
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
+from pytopaint.shortcuts import configure_paint_shortcuts
+from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
@@ -54,6 +58,8 @@ class Painter(QWidget):
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
+    zoomTriggered = Signal(str, str)
+    menuActionTriggered = Signal(int, dict)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -91,23 +97,28 @@ class Painter(QWidget):
 
         self.data = data
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
+        self.zoom_df = pd.DataFrame(
+            self.data.layers['zoom'], columns=self.data.var_names
+        )
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
         self.axis_ticks = get_axis_ticks(self.data, get_resolution())
+        self.zoom_axis_ticks = get_axis_ticks(self.data, get_zoom_resolution())
 
         self.undo_history = deque()
         self.undo_history.append(self.state.copy())
         self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = []
+        self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.load_memory_states()
         if 'umap' in self.data.obsm.keys():
             self.load_umap()
 
-        palette = Palette(memory_states=self.memory_states)
-        palette.menuActionTriggered.connect(self.handle_menu_action)
+        palette = Palette(state=self.state, memory_states=self.memory_states)
+        palette.menuActionTriggered.connect(self.menuActionTriggered)
         self.colorStateReturned.connect(palette.update_color_memory)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.stateChanged.connect(palette.update_labels)
@@ -116,26 +127,28 @@ class Painter(QWidget):
 
         self.biplot_grid = BiplotGrid(
             df=self.df,
+            zoom_df=self.zoom_df,
             axis_ticks=self.axis_ticks,
+            zoom_axis_ticks=self.zoom_axis_ticks,
             state=self.state,
+            active_color=self.active_color,
+            highlighted_colors=self.highlighted_colors,
         )
-        self.biplot_grid.menuActionTriggered.connect(self.handle_menu_action)
+        self.biplot_grid.menuActionTriggered.connect(self.menuActionTriggered)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
+        self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
         biplot_grid_container = QWidget()
         biplot_grid_container.setSizePolicy(
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         biplot_grid_container.setLayout(self.biplot_grid)
-
-        self.biplot_grid.update_layout(
-            self.load_grid_layout(), self.active_color, self.highlighted_colors
-        )
+        self.biplot_grid.update_layout(self.load_grid_layout())
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -147,7 +160,6 @@ class Painter(QWidget):
 
         self.activeColorChanged.emit(self.active_color)
         self.highlightsUpdated.emit(self.highlighted_colors)
-        self.state_changed()
 
     @classmethod
     def from_fcs(cls, fcs: flowio.FlowData):
@@ -159,101 +171,10 @@ class Painter(QWidget):
         return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
-        red_shortcut = QShortcut(QKeySequence('F'), self)
-        red_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.RED)
-            )
-        )
-        green_shortcut = QShortcut(QKeySequence('D'), self)
-        green_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.GREEN)
-            )
-        )
-        blue_shortcut = QShortcut(QKeySequence('S'), self)
-        blue_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.BLUE)
-            )
-        )
-        cyan_shortcut = QShortcut(QKeySequence('Shift+F'), self)
-        cyan_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.CYAN)
-            )
-        )
-        magenta_shortcut = QShortcut(QKeySequence('Shift+D'), self)
-        magenta_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.MAGENTA)
-            )
-        )
-        yellow_shortcut = QShortcut(QKeySequence('Shift+S'), self)
-        yellow_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.YELLOW)
-            )
-        )
-        white_shortcut = QShortcut(QKeySequence('A'), self)
-        white_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.WHITE)
-            )
-        )
-        exact_zap_current_color = QShortcut(QKeySequence('E'), self)
-        exact_zap_current_color.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.EXACT_ZAP, dict(color=self.active_color)
-            )
-        )
-        zap_current_color = QShortcut(QKeySequence('Ctrl+E'), self)
-        zap_current_color.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.ZAP, dict(color=self.active_color)
-            )
-        )
-        zap_all = QShortcut(QKeySequence('Ctrl+Shift+E'), self)
-        zap_all.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.ZAP_ALL, dict())
-        )
+        configure_paint_shortcuts(self)
 
-        undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
-        undo_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.UNDO, dict())
-        )
-        redo_shortcut = QShortcut(QKeySequence('Ctrl+Shift+Z'), self)
-        redo_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.REDO, dict())
-        )
-
-        reset_shortcut = QShortcut(QKeySequence('Ctrl+Shift+R'), self)
-        reset_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.RESET, dict())
-        )
-        unhide_all_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
-        unhide_all_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.UNHIDE_ALL, dict())
-        )
-
-        hide_events_shortcut = QShortcut(QKeySequence('Backspace'), self)
-        hide_events_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.HIDE, dict(color=self.active_color)
-            )
-        )
-
-        isolate_events_shortcut = QShortcut(QKeySequence('Return'), self)
-        isolate_events_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.ISOLATE, dict(color=self.active_color)
-            )
-        )
-
-        hide_grey_shortcut = QShortcut(QKeySequence('Shift + Return'), self)
-        hide_grey_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.HIDE, dict(color=Color.GREY))
-        )
+        zoom_biplot_shortcut = QShortcut(QKeySequence('Space'), self)
+        zoom_biplot_shortcut.activated.connect(self.zoom_plot)
 
     @staticmethod
     def record_action(func):
@@ -442,6 +363,13 @@ class Painter(QWidget):
         set_scale(self.data, **scale_config)
         self.handle_resize()
 
+    @Slot(object)
+    def change_zoom(self) -> None:
+        zoom = get_zoom_resolution()
+        set_zoom(self.data, bins=zoom)
+        self.zoom_axis_ticks = get_axis_ticks(self.data, zoom)
+        self.biplot_grid.zoom_axis_ticks = self.zoom_axis_ticks
+
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()
 
@@ -449,22 +377,16 @@ class Painter(QWidget):
         n_rows, ok = add_row_dialog(self)
 
         if ok:
-            self.biplot_grid.add_rows(
-                n_rows, self.active_color, self.highlighted_colors
-            )
+            self.biplot_grid.add_rows(n_rows)
 
     def add_biplot_column(self) -> None:
-        n_cols, ok = add_column_dialog(
-            self,
-        )
+        n_cols, ok = add_column_dialog(self)
 
         if ok:
-            self.biplot_grid.add_columns(
-                n_cols, self.active_color, self.highlighted_colors
-            )
+            self.biplot_grid.add_columns(n_cols)
 
     def fill_empty_cells(self) -> None:
-        self.biplot_grid.fill_empty(self.active_color, self.highlighted_colors)
+        self.biplot_grid.fill_empty()
 
     def remove_empty_biplots(self) -> None:
         self.biplot_grid.remove_empty()
@@ -521,3 +443,12 @@ class Painter(QWidget):
         )
         self.axis_ticks = self.axis_ticks | umap_axis_ticks
         self.df = self.df.join(umap_df)
+
+    def zoom_plot(self) -> None:
+        cursor_position = QCursor().pos()
+        widget = QApplication.widgetAt(cursor_position)
+        if isinstance(widget, DotPlot):
+            parent_widget: Biplot = widget.parentWidget()
+            self.zoomTriggered.emit(
+                parent_widget.x_axis.label, parent_widget.y_axis.label
+            )

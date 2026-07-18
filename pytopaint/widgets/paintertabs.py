@@ -16,6 +16,7 @@ class PainterTabs(QTabWidget):
     resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
     colorPaletteChanged = Signal()
+    zoomUpdated = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -50,6 +51,7 @@ class PainterTabs(QTabWidget):
         self.resizeTriggered.connect(painter.handle_resize)
         self.rescaleTriggered.connect(painter.handle_rescale)
         self.colorPaletteChanged.connect(painter.colorPaletteChanged)
+        self.zoomUpdated.connect(painter.change_zoom)
         self.addTab(painter, painter.data.uns['id'])
         self.setCurrentWidget(painter)
 

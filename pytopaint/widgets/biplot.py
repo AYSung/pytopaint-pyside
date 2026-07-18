@@ -89,6 +89,10 @@ class Biplot(QWidget):
         self.y_axis.labelChanged.connect(self.update_plot_data)
         self.y_axis.labelChanged.connect(self.plot.update_plot)
 
+        self.set_data(self.df, axis_ticks)
+        self.update_plot_data(self.state)
+        self.plot.update_plot()
+
         self.title_label = PlotTitle(
             x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
         )
@@ -145,7 +149,9 @@ class Biplot(QWidget):
         if e.button() == Qt.MouseButton.LeftButton:
             selection = get_selection_index(
                 selection_geometry,
-                df=self.df.loc[self.state['color'] != self.active_color],
+                df=self.df.loc[
+                    self.state['visible'] & (self.state['color'] != self.active_color)
+                ],
                 x_label=self.x_axis.label,
                 y_label=self.y_axis.label,
             )
@@ -177,7 +183,9 @@ class Biplot(QWidget):
         elif e.button() == Qt.MouseButton.RightButton:
             selection = get_selection_index(
                 selection_geometry,
-                df=self.df.loc[self.state.color != Color.GREY],
+                df=self.df.loc[
+                    self.state['visible'] & (self.state.color != Color.GREY)
+                ],
                 x_label=self.x_axis.label,
                 y_label=self.y_axis.label,
             )
@@ -203,6 +211,8 @@ class Biplot(QWidget):
                 color = Color.GREY
             else:
                 selection = pd.Index([])
+        else:
+            return
 
         if not selection.empty:
             self.menuActionTriggered.emit(

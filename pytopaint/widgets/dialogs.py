@@ -28,6 +28,7 @@ from pytopaint.config import (
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
+    get_zoom_resolution,
     set_lower_asinh_bound,
     set_scaling_factor,
     set_upper_asinh_bound,
@@ -40,7 +41,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.3.2 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.3.3 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
     )
 
 
@@ -89,7 +90,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     )
     layout.addWidget(_hline())
 
-    layout.addWidget(QLabel('<b>Keyboard Controls:</b>'))
+    layout.addWidget(QLabel('<b>Paint Controls:</b>'))
     layout.addWidget(
         _shortcut_table([
             ('Undo', 'Ctrl + Z'),
@@ -102,17 +103,22 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Yellow', 'Shift + S'),
             ('Paint White', 'A'),
             ('Exact Zap Current Color', 'E'),
-            ('Zap Current Color', 'Ctrl + E'),
-            ('Zap All', 'Ctrl + Shift + E'),
+            ('Zap Current Color', 'Shift + E'),
+            ('Zap All', 'Ctrl + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
             ('Hide Grey Events', 'Shift + Enter'),
             ('Unhide Events', 'Ctrl + R'),
             ('Reset Events', 'Ctrl + Shift + R'),
+            ('Toggle Zoom', 'Space'),
+        ])
+    )
+    layout.addWidget(QLabel('<b>Application Controls:</b>'))
+    layout.addWidget(
+        _shortcut_table([
             ('Open File(s)', 'Ctrl + O'),
             ('Open Directory', 'Ctrl + Shift + O'),
             ('Close Tabs and Open New Directory', 'Ctrl + N'),
-            ('Load Layout', 'Ctrl + L'),
             ('Close Current Tab', 'Ctrl + W'),
             ('Close All Tabs', 'Ctrl + Shift + W'),
             ('Close Application', 'Ctrl + Q'),
@@ -220,6 +226,18 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
         minValue=128,
         maxValue=512,
         step=16,
+    )
+
+
+def zoom_plot_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Size',
+        'Pixels per dimension (512-1024)',
+        value=get_zoom_resolution(),
+        minValue=512,
+        maxValue=1024,
+        step=128,
     )
 
 

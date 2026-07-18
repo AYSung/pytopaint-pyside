@@ -39,6 +39,7 @@ from pytopaint.config import (
     set_color_palette,
     set_resolution,
     set_window_position,
+    set_zoom_resolution,
 )
 from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
@@ -49,6 +50,7 @@ from pytopaint.widgets.dialogs import (
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
+    zoom_plot_dialog,
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
@@ -58,6 +60,7 @@ class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
     resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
+    zoomUpdated = Signal()
 
     def __init__(self):
         super().__init__()
@@ -68,6 +71,7 @@ class MainWindow(QMainWindow):
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.resizeTriggered)
         self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
+        self.zoomUpdated.connect(self.painter_tabs.zoomUpdated)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.io_manager = IOManager(self)
@@ -113,6 +117,13 @@ class MainWindow(QMainWindow):
         if ok:
             set_resolution(resolution)
             self.resizeTriggered.emit()
+
+    @Slot()
+    def change_zoom(self) -> None:
+        resolution, ok = zoom_plot_dialog(self)
+        if ok:
+            set_zoom_resolution(resolution)
+            self.zoomUpdated.emit()
 
     @Slot()
     def rescale_plots(self) -> None:
@@ -274,7 +285,6 @@ class MainWindow(QMainWindow):
         layout_menu.addAction(save_layout_action)
 
         load_layout_action = QAction('Load Layout', self)
-        load_layout_action.setShortcut('Ctrl+L')
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
         layout_menu.addSeparator()
@@ -284,6 +294,9 @@ class MainWindow(QMainWindow):
         rescale_action = QAction('Adjust Plot Scaling', self)
         rescale_action.triggered.connect(self.rescale_plots)
         layout_menu.addAction(rescale_action)
+        change_zoom_action = QAction('Adjust Plot Zoom', self)
+        change_zoom_action.triggered.connect(self.change_zoom)
+        layout_menu.addAction(change_zoom_action)
         layout_menu.addSeparator()
         add_biplot_row_action = QAction('Add Row(s)', self)
         add_biplot_row_action.triggered.connect(
