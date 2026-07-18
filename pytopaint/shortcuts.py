@@ -7,7 +7,7 @@ from PySide6.QtGui import (
 )
 
 from pytopaint.actions import MenuAction
-from pytopaint.colors import COLOR_SHORTCUTS, Color
+from pytopaint.colors import Color
 
 
 class PaintWidget(Protocol):
@@ -25,6 +25,15 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
             )
         )
 
+    COLOR_SHORTCUTS = [
+        ('F', Color.RED),
+        ('D', Color.GREEN),
+        ('S', Color.BLUE),
+        ('Shift+F', Color.CYAN),
+        ('Shift+D', Color.MAGENTA),
+        ('Shift+S', Color.YELLOW),
+        ('A', Color.WHITE),
+    ]
     for key, color in COLOR_SHORTCUTS:
         _color_shortcut(key, color)
 
