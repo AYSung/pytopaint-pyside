@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import Signal
 from PySide6.QtGui import (
     QKeySequence,
     QShortcut,
@@ -10,8 +10,8 @@ from pytopaint.actions import MenuAction
 from pytopaint.colors import COLOR_SHORTCUTS, Color
 
 
-class PaintWidget(QObject, Protocol):
-    menuActionTriggered = Signal(int, dict)
+class PaintWidget(Protocol):
+    menuActionTriggered: Signal = Signal(int, dict)
     active_color: Color
 
 
@@ -34,13 +34,13 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
             MenuAction.EXACT_ZAP, dict(color=widget.active_color)
         )
     )
-    zap_current_color = QShortcut(QKeySequence('Ctrl+E'), widget)
+    zap_current_color = QShortcut(QKeySequence('Shift+E'), widget)
     zap_current_color.activated.connect(
         lambda: widget.menuActionTriggered.emit(
             MenuAction.ZAP, dict(color=widget.active_color)
         )
     )
-    zap_all = QShortcut(QKeySequence('Ctrl+Shift+E'), widget)
+    zap_all = QShortcut(QKeySequence('Ctrl+E'), widget)
     zap_all.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
     )

@@ -90,7 +90,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     )
     layout.addWidget(_hline())
 
-    layout.addWidget(QLabel('<b>Keyboard Controls:</b>'))
+    layout.addWidget(QLabel('<b>Paint Controls:</b>'))
     layout.addWidget(
         _shortcut_table([
             ('Undo', 'Ctrl + Z'),
@@ -103,17 +103,22 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Yellow', 'Shift + S'),
             ('Paint White', 'A'),
             ('Exact Zap Current Color', 'E'),
-            ('Zap Current Color', 'Ctrl + E'),
-            ('Zap All', 'Ctrl + Shift + E'),
+            ('Zap Current Color', 'Shift + E'),
+            ('Zap All', 'Ctrl + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
             ('Hide Grey Events', 'Shift + Enter'),
             ('Unhide Events', 'Ctrl + R'),
             ('Reset Events', 'Ctrl + Shift + R'),
+            ('Toggle Zoom', 'Space'),
+        ])
+    )
+    layout.addWidget(QLabel('<b>Application Controls:</b>'))
+    layout.addWidget(
+        _shortcut_table([
             ('Open File(s)', 'Ctrl + O'),
             ('Open Directory', 'Ctrl + Shift + O'),
             ('Close Tabs and Open New Directory', 'Ctrl + N'),
-            ('Load Layout', 'Ctrl + L'),
             ('Close Current Tab', 'Ctrl + W'),
             ('Close All Tabs', 'Ctrl + Shift + W'),
             ('Close Application', 'Ctrl + Q'),
