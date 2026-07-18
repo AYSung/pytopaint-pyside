@@ -40,7 +40,6 @@ from pytopaint.colors import (
     indices_by_color,
     sort_colors,
 )
-from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 from pytopaint.selection import get_selection_index
 
@@ -333,14 +332,6 @@ class Biplot(QWidget):
         self.plot.update_plot()
         self.title_label.update_title(x_label=x_label, y_label=y_label)
 
-    @Slot(object, QMouseEvent)
-    def points_selected(
-        self, selection_geometry: list[tuple[int, int]], e: QMouseEvent
-    ):
-        self.pointsSelected.emit(
-            selection_geometry, self.x_axis.label, self.y_axis.label, e
-        )
-
     def paintEvent(self, pe):
         o = QStyleOption()
         o.initFrom(self)
@@ -351,9 +342,8 @@ class Biplot(QWidget):
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
 
-    @Slot()
-    def resize(self) -> None:
-        resolution = get_resolution()
+    @Slot(int)
+    def resize(self, resolution: int) -> None:
         self.plot.resize(pixels=resolution)
         self.x_axis.resize(pixels=resolution)
         self.y_axis.resize(pixels=resolution)
@@ -826,7 +816,6 @@ class BiplotUpdater(QRunnable):
             return
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
-        if self.state is not None:
-            self.biplot.update_plot_data(self.state)
+        self.biplot.update_plot_data(self.state)
         self.biplot.plot.draw_canvas()
         self.biplot.updateFinished.emit()

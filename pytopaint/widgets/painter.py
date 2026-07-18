@@ -53,7 +53,7 @@ class Painter(QWidget):
     dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
-    resizeTriggered = Signal()
+    resizeTriggered = Signal(int)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -429,11 +429,12 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
-        set_size(self.data, bins=get_resolution())
-        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
+        resolution = get_resolution()
+        set_size(self.data, bins=resolution)
+        self.axis_ticks = get_axis_ticks(self.data, resolution)
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
-        self.resizeTriggered.emit()
+        self.resizeTriggered.emit(resolution)
         self.data_changed()
 
     @Slot(object)

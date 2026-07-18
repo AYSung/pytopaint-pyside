@@ -24,7 +24,7 @@ class BiplotGrid(QGridLayout):
     resizeTabs = Signal()
     updateData = Signal(object, object, object)
     updatePlot = Signal()
-    resizeTriggered = Signal()
+    resizeTriggered = Signal(int)
     menuActionTriggered = Signal(int, dict)
 
     def __init__(
