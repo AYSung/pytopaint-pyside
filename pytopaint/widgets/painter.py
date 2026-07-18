@@ -94,6 +94,9 @@ class Painter(QWidget):
 
         self.data = data
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
+        self.zoom_df = pd.DataFrame(
+            self.data.layers['zoom'], columns=self.data.var_names
+        )
         self.state = (
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
@@ -119,6 +122,7 @@ class Painter(QWidget):
 
         self.biplot_grid = BiplotGrid(
             df=self.df,
+            zoom_df=self.zoom_df,
             axis_ticks=self.axis_ticks,
             state=self.state,
             active_color=self.active_color,

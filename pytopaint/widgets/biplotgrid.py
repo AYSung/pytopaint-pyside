@@ -22,7 +22,6 @@ class BiplotGrid(QGridLayout):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     highlightsUpdated = Signal(list)
-    resizeTabs = Signal()
     updateData = Signal(object, object, object)
     updatePlot = Signal()
     resizeTriggered = Signal(int)
@@ -31,6 +30,7 @@ class BiplotGrid(QGridLayout):
     def __init__(
         self,
         df: pd.DataFrame,
+        zoom_df: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.Series,
         active_color: Color,
@@ -41,6 +41,7 @@ class BiplotGrid(QGridLayout):
         self.setSizeConstraint(QGridLayout.SizeConstraint.SetFixedSize)
 
         self.df = df
+        self.zoom_df = zoom_df
         self.axis_ticks = axis_ticks
         self.state = state
         self.active_color = active_color
@@ -106,6 +107,10 @@ class BiplotGrid(QGridLayout):
             resolution=get_resolution(),
             highlighted_colors=self.highlighted_colors,
         )
+        self.connect_biplot_signals(biplot)
+        return biplot
+
+    def connect_biplot_signals(self, biplot: Biplot) -> None:
         biplot.menuActionTriggered.connect(self.menuActionTriggered)
         biplot.updateFinished.connect(self.update_manager.on_update_finished)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
@@ -115,7 +120,6 @@ class BiplotGrid(QGridLayout):
         biplot.removeTriggered.connect(self.remove_biplot)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
         self.resizeTriggered.connect(biplot.resize)
-        return biplot
 
     def add_biplot(
         self,
@@ -233,7 +237,17 @@ class BiplotGrid(QGridLayout):
 
     @Slot(str, str)
     def open_zoom(self, x_label: str, y_label: str) -> None:
-        self.zoom_plot = self.new_biplot(labels=(x_label, y_label))
+        self.zoom_plot = Biplot(
+            data=self.zoom_df,
+            axis_ticks=self.axis_ticks,
+            state=self.state,
+            active_color=self.active_color,
+            x_label=x_label,
+            y_label=y_label,
+            resolution=512,
+            highlighted_colors=self.highlighted_colors,
+        )
+        self.connect_biplot_signals(self.zoom_plot)
         dialog = ZoomPlot(self.zoom_plot, parent=self.parent())
         dialog.open()
         dialog.finished.connect(self.close_zoom)

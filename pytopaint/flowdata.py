@@ -69,6 +69,7 @@ def initialize(
         upper_asinh_bound=adata.uns.get('upper_asinh_bound', get_upper_asinh_bound()),
     )
     set_size(adata, bins=get_resolution())
+    adata.layers['zoom'] = discretize_data(adata, bins=512)
     return adata
 
 
