@@ -104,6 +104,7 @@ class Painter(QWidget):
             self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
         )
         self.axis_ticks = get_axis_ticks(self.data, get_resolution())
+        self.zoom_axis_ticks = get_axis_ticks(self.data, get_zoom_resolution())
 
         self.undo_history = deque()
         self.undo_history.append(self.state.copy())
@@ -128,6 +129,7 @@ class Painter(QWidget):
             df=self.df,
             zoom_df=self.zoom_df,
             axis_ticks=self.axis_ticks,
+            zoom_axis_ticks=self.zoom_axis_ticks,
             state=self.state,
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
@@ -365,6 +367,8 @@ class Painter(QWidget):
     def change_zoom(self) -> None:
         zoom = get_zoom_resolution()
         set_zoom(self.data, bins=zoom)
+        self.zoom_axis_ticks = get_axis_ticks(self.data, zoom)
+        self.biplot_grid.zoom_axis_ticks = self.zoom_axis_ticks
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()

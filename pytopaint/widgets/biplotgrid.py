@@ -32,6 +32,7 @@ class BiplotGrid(QGridLayout):
         df: pd.DataFrame,
         zoom_df: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
+        zoom_axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.Series,
         active_color: Color,
         highlighted_colors: list[Color],
@@ -43,6 +44,7 @@ class BiplotGrid(QGridLayout):
         self.df = df
         self.zoom_df = zoom_df
         self.axis_ticks = axis_ticks
+        self.zoom_axis_ticks = zoom_axis_ticks
         self.state = state
         self.active_color = active_color
         self.highlighted_colors = highlighted_colors
@@ -239,7 +241,7 @@ class BiplotGrid(QGridLayout):
     def open_zoom(self, x_label: str, y_label: str) -> None:
         self.zoom_plot = Biplot(
             data=self.zoom_df,
-            axis_ticks=self.axis_ticks,
+            axis_ticks=self.zoom_axis_ticks,
             state=self.state,
             active_color=self.active_color,
             x_label=x_label,
