@@ -14,6 +14,7 @@ import flowio
 import pandas as pd
 from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import (
+    QCursor,
     QKeySequence,
     QShortcut,
 )
@@ -118,6 +119,8 @@ class Painter(QWidget):
             df=self.df,
             axis_ticks=self.axis_ticks,
             state=self.state,
+            active_color=self.active_color,
+            highlighted_colors=self.highlighted_colors,
         )
         self.biplot_grid.menuActionTriggered.connect(self.handle_menu_action)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
@@ -133,9 +136,10 @@ class Painter(QWidget):
         )
         biplot_grid_container.setLayout(self.biplot_grid)
 
-        self.biplot_grid.update_layout(
-            self.load_grid_layout(), self.active_color, self.highlighted_colors
-        )
+        self.activeColorChanged.emit(self.active_color)
+        self.highlightsUpdated.emit(self.highlighted_colors)
+
+        self.biplot_grid.update_layout(self.load_grid_layout())
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -449,22 +453,16 @@ class Painter(QWidget):
         n_rows, ok = add_row_dialog(self)
 
         if ok:
-            self.biplot_grid.add_rows(
-                n_rows, self.active_color, self.highlighted_colors
-            )
+            self.biplot_grid.add_rows(n_rows)
 
     def add_biplot_column(self) -> None:
-        n_cols, ok = add_column_dialog(
-            self,
-        )
+        n_cols, ok = add_column_dialog(self)
 
         if ok:
-            self.biplot_grid.add_columns(
-                n_cols, self.active_color, self.highlighted_colors
-            )
+            self.biplot_grid.add_columns(n_cols)
 
     def fill_empty_cells(self) -> None:
-        self.biplot_grid.fill_empty(self.active_color, self.highlighted_colors)
+        self.biplot_grid.fill_empty()
 
     def remove_empty_biplots(self) -> None:
         self.biplot_grid.remove_empty()

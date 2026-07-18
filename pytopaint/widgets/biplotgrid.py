@@ -32,6 +32,8 @@ class BiplotGrid(QGridLayout):
         df: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.Series,
+        active_color: Color,
+        highlighted_colors: list[Color],
     ) -> None:
         super().__init__()
         self.setSpacing(5)
@@ -40,10 +42,21 @@ class BiplotGrid(QGridLayout):
         self.df = df
         self.axis_ticks = axis_ticks
         self.state = state
+        self.active_color = active_color
+        self.highlighted_colors = highlighted_colors
 
         self.update_manager = BiplotUpdateManager(self)
 
         self.activeColorChanged.connect(self.update_active_color)
+        self.highlightsUpdated.connect(self.update_highlighted_colors)
+
+    @Slot(int)
+    def update_active_color(self, color: Color) -> None:
+        self.active_color = color
+
+    @Slot(list)
+    def update_highlighted_colors(self, highlighted_colors: list[Color]) -> None:
+        self.highlighted_colors = highlighted_colors
 
     @staticmethod
     def batch_update(func):
@@ -86,11 +99,11 @@ class BiplotGrid(QGridLayout):
             data=self.df,
             axis_ticks=self.axis_ticks,
             state=self.state,
-            active_color=active_color,
+            active_color=self.active_color,
             x_label=x_label,
             y_label=y_label,
             resolution=get_resolution(),
-            highlighted_colors=highlighted_colors,
+            highlighted_colors=self.highlighted_colors,
         )
         biplot.menuActionTriggered.connect(self.menuActionTriggered)
         biplot.updateFinished.connect(self.update_manager.on_update_finished)
@@ -111,21 +124,17 @@ class BiplotGrid(QGridLayout):
         self.addWidget(biplot, *coords)
 
     @batch_update
-    def add_rows(
-        self, n_rows: int, active_color: Color, highlighted_colors: list[Color]
-    ) -> None:
+    def add_rows(self, n_rows: int) -> None:
         col_range = range(self.columns if self.columns > 0 else 1)
         row_range = range(n_rows)
         new_row_coords = [
             (row + self.rows, col) for row in row_range for col in col_range
         ]
         for coords in new_row_coords:
-            self.add_biplot(self.new_biplot(active_color, highlighted_colors), coords)
+            self.add_biplot(self.new_biplot(), coords)
 
     @batch_update
-    def add_columns(
-        self, n_cols: int, active_color: Color, highlighted_colors: list[Color]
-    ) -> None:
+    def add_columns(self, n_cols: int) -> None:
         row_range = range(self.rows if self.rows > 0 else 1)
         col_range = range(n_cols)
         new_col_coords = [
@@ -133,7 +142,7 @@ class BiplotGrid(QGridLayout):
         ]
 
         for coords in new_col_coords:
-            self.add_biplot(self.new_biplot(active_color, highlighted_colors), coords)
+            self.add_biplot(self.new_biplot(), coords)
 
     @batch_update
     def remove_empty(self) -> None:
@@ -145,13 +154,9 @@ class BiplotGrid(QGridLayout):
             self.remove_biplot(biplot)
 
     @batch_update
-    def fill_empty(self, active_color: Color, highlighted_colors: list[Color]) -> None:
+    def fill_empty(self) -> None:
         for coords in self.empty_coords:
-            self.add_biplot(self.new_biplot(active_color, highlighted_colors), coords)
-
-    @Slot(int)
-    def update_active_color(self, color: Color):
-        self.active_color = color
+            self.add_biplot(self.new_biplot(), coords)
 
     @Slot(object)
     @batch_update
@@ -176,9 +181,7 @@ class BiplotGrid(QGridLayout):
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
             else:
-                self.add_biplot(
-                    self.new_biplot(active_color, highlighted_colors, labels), coords
-                )
+                self.add_biplot(self.new_biplot(labels), coords)
 
     @property
     def rows(self) -> int:
