@@ -22,6 +22,7 @@ from pytopaint.config import (
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
+    get_zoom_resolution,
 )
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
@@ -69,7 +70,7 @@ def initialize(
         upper_asinh_bound=adata.uns.get('upper_asinh_bound', get_upper_asinh_bound()),
     )
     set_size(adata, bins=get_resolution())
-    adata.layers['zoom'] = discretize_data(adata, bins=512)
+    set_zoom(adata, bins=get_zoom_resolution())
     return adata
 
 
@@ -92,6 +93,10 @@ def set_scale(
 
 def set_size(adata: ad.AnnData, bins: int) -> None:
     adata.layers['bin'] = discretize_data(adata, bins)
+
+
+def set_zoom(adata: ad.AnnData, bins: int) -> None:
+    adata.layers['zoom'] = discretize_data(adata, bins)
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:

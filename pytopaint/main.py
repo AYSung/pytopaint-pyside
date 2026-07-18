@@ -39,6 +39,7 @@ from pytopaint.config import (
     set_color_palette,
     set_resolution,
     set_window_position,
+    set_zoom_resolution,
 )
 from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
@@ -49,6 +50,7 @@ from pytopaint.widgets.dialogs import (
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
+    zoom_plot_dialog,
 )
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
@@ -58,6 +60,7 @@ class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
     resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
+    zoomUpdated = Signal()
 
     def __init__(self):
         super().__init__()
@@ -68,6 +71,7 @@ class MainWindow(QMainWindow):
         self.painter_tabs = PainterTabs()
         self.resizeTriggered.connect(self.painter_tabs.resizeTriggered)
         self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
+        self.zoomUpdated.connect(self.painter_tabs.zoomUpdated)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.io_manager = IOManager(self)
@@ -113,6 +117,13 @@ class MainWindow(QMainWindow):
         if ok:
             set_resolution(resolution)
             self.resizeTriggered.emit()
+
+    @Slot()
+    def change_zoom(self) -> None:
+        resolution, ok = zoom_plot_dialog(self)
+        if ok:
+            set_zoom_resolution(resolution)
+            self.zoomUpdated.emit()
 
     @Slot()
     def rescale_plots(self) -> None:
@@ -281,6 +292,9 @@ class MainWindow(QMainWindow):
         resize_action = QAction('Adjust Plot Size', self)
         resize_action.triggered.connect(self.resize_plots)
         layout_menu.addAction(resize_action)
+        change_zoom_action = QAction('Adjust Plot Zoom', self)
+        change_zoom_action.triggered.connect(self.change_zoom)
+        layout_menu.addAction(change_zoom_action)
         rescale_action = QAction('Adjust Plot Scaling', self)
         rescale_action.triggered.connect(self.rescale_plots)
         layout_menu.addAction(rescale_action)

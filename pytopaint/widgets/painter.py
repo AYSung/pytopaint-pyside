@@ -27,7 +27,7 @@ from pytopaint.colors import (
     merge_colors,
     subtract_color_from_series,
 )
-from pytopaint.config import get_resolution
+from pytopaint.config import get_resolution, get_zoom_resolution
 from pytopaint.flowdata import (
     get_axis_ticks,
     get_umap_dims,
@@ -35,6 +35,7 @@ from pytopaint.flowdata import (
     read_fcs,
     set_scale,
     set_size,
+    set_zoom,
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
@@ -450,6 +451,11 @@ class Painter(QWidget):
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
         set_scale(self.data, **scale_config)
         self.handle_resize()
+
+    @Slot(object)
+    def change_zoom(self) -> None:
+        zoom = get_zoom_resolution()
+        set_zoom(self.data, bins=zoom)
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()

@@ -28,6 +28,7 @@ from pytopaint.config import (
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
+    get_zoom_resolution,
     set_lower_asinh_bound,
     set_scaling_factor,
     set_upper_asinh_bound,
@@ -220,6 +221,18 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
         minValue=128,
         maxValue=512,
         step=16,
+    )
+
+
+def zoom_plot_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Size',
+        'Pixels per dimension (512-1024)',
+        value=get_zoom_resolution(),
+        minValue=512,
+        maxValue=1024,
+        step=128,
     )
 
 

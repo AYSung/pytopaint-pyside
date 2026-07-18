@@ -12,7 +12,7 @@ from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.colors import Color
-from pytopaint.config import get_resolution
+from pytopaint.config import get_resolution, get_zoom_resolution
 from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.zoomplot import ZoomPlot
@@ -244,7 +244,7 @@ class BiplotGrid(QGridLayout):
             active_color=self.active_color,
             x_label=x_label,
             y_label=y_label,
-            resolution=512,
+            resolution=get_zoom_resolution(),
             highlighted_colors=self.highlighted_colors,
         )
         self.connect_biplot_signals(self.zoom_plot)
