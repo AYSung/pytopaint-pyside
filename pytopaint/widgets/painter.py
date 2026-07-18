@@ -22,7 +22,6 @@ from PySide6.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    COLOR_SHORTCUTS,
     Color,
     add_color_to_series,
     merge_colors,
@@ -40,6 +39,7 @@ from pytopaint.flowdata import (
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
+from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
@@ -59,6 +59,7 @@ class Painter(QWidget):
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
+    menuActionTriggered = Signal(int, dict)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -109,13 +110,14 @@ class Painter(QWidget):
         self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = []
+        self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.load_memory_states()
         if 'umap' in self.data.obsm.keys():
             self.load_umap()
 
         palette = Palette(state=self.state, memory_states=self.memory_states)
-        palette.menuActionTriggered.connect(self.handle_menu_action)
+        palette.menuActionTriggered.connect(self.menuActionTriggered)
         self.colorStateReturned.connect(palette.update_color_memory)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.stateChanged.connect(palette.update_labels)
@@ -130,7 +132,7 @@ class Painter(QWidget):
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
         )
-        self.biplot_grid.menuActionTriggered.connect(self.handle_menu_action)
+        self.biplot_grid.menuActionTriggered.connect(self.menuActionTriggered)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
@@ -167,70 +169,7 @@ class Painter(QWidget):
         return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
-        def _color_shortcut(key: str, color: Color) -> QShortcut:
-            shortcut = QShortcut(QKeySequence(key), self)
-            shortcut.activated.connect(
-                lambda: self.handle_menu_action(
-                    MenuAction.SET_ACTIVE, dict(color=color)
-                )
-            )
-
-        for key, color in COLOR_SHORTCUTS:
-            _color_shortcut(key, color)
-
-        exact_zap_current_color = QShortcut(QKeySequence('E'), self)
-        exact_zap_current_color.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.EXACT_ZAP, dict(color=self.active_color)
-            )
-        )
-        zap_current_color = QShortcut(QKeySequence('Ctrl+E'), self)
-        zap_current_color.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.ZAP, dict(color=self.active_color)
-            )
-        )
-        zap_all = QShortcut(QKeySequence('Ctrl+Shift+E'), self)
-        zap_all.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.ZAP_ALL, dict())
-        )
-
-        undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, self)
-        undo_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.UNDO, dict())
-        )
-        redo_shortcut = QShortcut(QKeySequence('Ctrl+Shift+Z'), self)
-        redo_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.REDO, dict())
-        )
-
-        reset_shortcut = QShortcut(QKeySequence('Ctrl+Shift+R'), self)
-        reset_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.RESET, dict())
-        )
-        unhide_all_shortcut = QShortcut(QKeySequence('Ctrl+R'), self)
-        unhide_all_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.UNHIDE_ALL, dict())
-        )
-
-        hide_events_shortcut = QShortcut(QKeySequence('Backspace'), self)
-        hide_events_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.HIDE, dict(color=self.active_color)
-            )
-        )
-
-        isolate_events_shortcut = QShortcut(QKeySequence('Return'), self)
-        isolate_events_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.ISOLATE, dict(color=self.active_color)
-            )
-        )
-
-        hide_grey_shortcut = QShortcut(QKeySequence('Shift + Return'), self)
-        hide_grey_shortcut.activated.connect(
-            lambda: self.handle_menu_action(MenuAction.HIDE, dict(color=Color.GREY))
-        )
+        configure_paint_shortcuts(self)
 
         zoom_biplot_shortcut = QShortcut(QKeySequence('Space'), self)
         zoom_biplot_shortcut.activated.connect(self.zoom_plot)

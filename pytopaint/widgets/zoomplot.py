@@ -5,8 +5,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import QDialog, QLayout, QVBoxLayout
 
-from pytopaint.actions import MenuAction
-from pytopaint.colors import COLOR_SHORTCUTS, Color
+from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot
 
 
@@ -27,13 +26,4 @@ class ZoomPlot(QDialog):
         biplot.updateFinished.connect(lambda: close_shortcut.setEnabled(True))
         close_shortcut.activated.connect(self.accept)
 
-        def _color_shortcut(key: str, color: Color) -> QShortcut:
-            shortcut = QShortcut(QKeySequence(key), self)
-            shortcut.activated.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.SET_ACTIVE, dict(color=color)
-                )
-            )
-
-        for key, color in COLOR_SHORTCUTS:
-            _color_shortcut(key, color)
+        configure_paint_shortcuts(self)
