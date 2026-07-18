@@ -249,8 +249,9 @@ class BiplotGrid(QGridLayout):
         )
         self.connect_biplot_signals(self.zoom_plot)
         dialog = ZoomPlot(self.zoom_plot, parent=self.parent())
-        dialog.open()
+        dialog.menuActionTriggered.connect(self.menuActionTriggered)
         dialog.finished.connect(self.close_zoom)
+        dialog.open()
 
     @Slot()
     def close_zoom(self) -> None:
