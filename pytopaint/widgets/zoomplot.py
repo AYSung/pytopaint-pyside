@@ -17,4 +17,6 @@ class ZoomPlot(QDialog):
         self.setLayout(layout)
 
         close_shortcut = QShortcut(QKeySequence('Space'), self)
+        biplot.menuActionTriggered.connect(lambda: close_shortcut.setEnabled(False))
+        biplot.updateFinished.connect(lambda: close_shortcut.setEnabled(True))
         close_shortcut.activated.connect(self.accept)
