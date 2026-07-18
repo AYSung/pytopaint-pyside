@@ -10,6 +10,8 @@ from enum import IntEnum, auto
 
 class MenuAction(IntEnum):
     SET_ACTIVE = auto()
+    ADD_COLOR = auto()
+    OVERRIDE_COLOR = auto()
     ZAP = auto()
     EXACT_ZAP = auto()
     ZAP_ALL = auto()

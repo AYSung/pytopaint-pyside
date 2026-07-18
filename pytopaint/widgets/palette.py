@@ -21,6 +21,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
+    COLOR_ORDER,
     Color,
     events_by_color,
     get_color_map,
@@ -47,7 +48,7 @@ class Palette(QWidget):
         self.total_events_label.setFixedWidth(150)
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = {c: ColorLabel(c) for c in Color}
+        self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER.keys()}
         for color_label in self.color_labels.values():
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
@@ -103,7 +104,7 @@ class ColorLabel(QWidget):
         self.others_zappable = False
         self.memory = None
 
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
         self.setFixedWidth(150)
 
@@ -141,6 +142,10 @@ class ColorLabel(QWidget):
             self.color,
             {color: n / total_events for color, n in sorted(events.items())},
         )
+
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color == Color.GREY:
@@ -190,6 +195,16 @@ class ColorLabel(QWidget):
                     MenuAction.MERGE_COLOR,
                     dict(source_color=self.color, target_color=color),
                 )
+            )
+            return action
+
+        def _ratio_action(color: Color, label_info: tuple[float, float]) -> QAction:
+            action = QAction(
+                _color_icon(color),
+                f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
+            )
+            action.triggered.connect(
+                lambda: copy_ratio_to_clipboard(self.ratios[color][0])
             )
             return action
 
@@ -247,14 +262,16 @@ class ColorLabel(QWidget):
             merge_menu.setEnabled(self.has_events)
 
             merge_actions = [
-                _merge_action(color) for color in Color if color != self.color
+                _merge_action(color)
+                for color in COLOR_ORDER.keys()
+                if color != self.color
             ]
 
             for merge_action in merge_actions:
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
         else:
-            zap_all = QAction('Zap all')
+            zap_all = QAction('Zap All')
             zap_all.triggered.connect(
                 lambda: self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
             )
@@ -276,6 +293,14 @@ class ColorLabel(QWidget):
             )
         )
         menu.addAction(isolate)
+
+        if self.color == Color.GREY:
+            menu.addSeparator()
+            unhide = QAction('Show All Events')
+            unhide.triggered.connect(
+                lambda: self.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, dict())
+            )
+            menu.addAction(unhide)
 
         if self.color != Color.GREY:
             menu.addSeparator()
@@ -313,16 +338,9 @@ class ColorLabel(QWidget):
             menu.addSection('Ratios')
 
             ratio_labels = [
-                QAction(
-                    _color_icon(color),
-                    f'{_format_ratio(label_info[0])} ({_format_percent(label_info[1])})',
-                )
+                _ratio_action(color, label_info)
                 for color, label_info in self.ratios.items()
             ]
-            for color, ratio_label in zip(self.ratios.keys(), ratio_labels):
-                ratio_label.triggered.connect(
-                    lambda: copy_ratio_to_clipboard(self.ratios[color][0])
-                )
             menu.addActions(ratio_labels)
 
             menu.addSeparator()
@@ -352,7 +370,7 @@ def copy_ratio_to_clipboard(ratio: float):
 
 
 def _format_percent(percent: float) -> str:
-    return f'{percent:.{1 if (percent == 0) or (percent >= 0.01) else 2}%}'
+    return f'{percent:.{1 if (percent == 0) or (percent >= 0.00995) else 2}%}'
 
 
 def _format_ratio(ratio: float) -> str:
@@ -373,15 +391,23 @@ class MemorySlot(QToolButton):
 
     def __init__(self, id: int, has_events: bool, parent=None):
         super().__init__(parent)
+        self.mouse_pressed = False
+
         self.id = id
         self.has_events = has_events
         self.setText(str(id))
         self.update_appearance()
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
+    def mousePressEvent(self, e: QMouseEvent):
+        self.mouse_pressed = True
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
+
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if not self.has_events:
+        if not self.has_events or not self.mouse_pressed:
+            self.mouse_pressed = False
             super().mouseReleaseEvent(e)
             return
 
@@ -395,6 +421,7 @@ class MemorySlot(QToolButton):
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.clear_state()
 
+        self.mouse_pressed = False
         super().mouseReleaseEvent(e)
 
     def update_appearance(self) -> None:

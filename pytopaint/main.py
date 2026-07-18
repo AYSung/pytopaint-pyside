@@ -10,18 +10,13 @@ import pstats
 import sys
 from multiprocessing import freeze_support
 
-from PySide6.QtCore import (
-    QCoreApplication,
-    Qt,
-    Signal,
-)
+from PySide6.QtCore import QCoreApplication, Qt, Signal, Slot
 from PySide6.QtGui import (
     QAction,
     QDragEnterEvent,
     QDropEvent,
     QGuiApplication,
     QKeySequence,
-    QShortcut,
 )
 from PySide6.QtWidgets import (
     QApplication,
@@ -37,6 +32,9 @@ from pytopaint.actions import MenuAction
 from pytopaint.colors import COLOR_RGB_MAPS
 from pytopaint.config import (
     get_color_palette,
+    get_lower_asinh_bound,
+    get_scaling_factor,
+    get_upper_asinh_bound,
     get_window_position,
     set_color_palette,
     set_resolution,
@@ -77,7 +75,6 @@ class MainWindow(QMainWindow):
         self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
 
         self.configure_menu_bar()
-        self.configure_shortcuts()
 
         central_widget = QWidget()
         central_layout = QGridLayout()
@@ -91,6 +88,7 @@ class MainWindow(QMainWindow):
 
         self.setAcceptDrops(True)
 
+    @Slot()
     def load_layout(self) -> None:
         layout = self.io_manager.load_layout()
         if layout is not None:
@@ -99,6 +97,7 @@ class MainWindow(QMainWindow):
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
 
+    @Slot()
     def subsample(self) -> None:
         n, ok = subsample_dialog(
             self, total_events=self.get_active_painter().state['visible'].sum()
@@ -108,19 +107,25 @@ class MainWindow(QMainWindow):
                 MenuAction.SUBSAMPLE, dict(n=n)
             )
 
+    @Slot()
     def resize_plots(self) -> None:
         resolution, ok = resize_plot_dialog(self)
         if ok:
             set_resolution(resolution)
             self.resizeTriggered.emit()
 
+    @Slot()
     def rescale_plots(self) -> None:
         data = self.get_active_painter().data
         dialog = PlotScaleDialog(
+            scaling_factor=data.uns.get('scaling_factor', get_scaling_factor()),
+            lower_asinh_bound=data.uns.get(
+                'lower_asinh_bound', get_lower_asinh_bound()
+            ),
+            upper_asinh_bound=data.uns.get(
+                'upper_asinh_bound', get_upper_asinh_bound()
+            ),
             parent=self,
-            scaling_factor=data.uns.get('scaling_factor'),
-            lower_asinh_bound=data.uns.get('lower_asinh_bound'),
-            upper_asinh_bound=data.uns.get('upper_asinh_bound'),
         )
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
@@ -135,17 +140,6 @@ class MainWindow(QMainWindow):
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
         self.io_manager.open_files_from_urls(urls)
-
-    def configure_shortcuts(self):
-        close_tab_shortcut = QShortcut(QKeySequence('Ctrl+W'), self)
-        close_tab_shortcut.activated.connect(
-            lambda: self.painter_tabs.tabCloseRequested.emit(
-                self.painter_tabs.currentIndex()
-            )
-        )
-
-        close_all_tabs_shortcut = QShortcut(QKeySequence('Ctrl+Shift+W'), self)
-        close_all_tabs_shortcut.activated.connect(self.painter_tabs.close_all_tabs)
 
     def configure_menu_bar(self):
         def _palette_option(palette: str) -> QAction:
@@ -162,7 +156,7 @@ class MainWindow(QMainWindow):
             return action
 
         menu_bar = self.menuBar()
-        # menu_bar.setNativeMenuBar(False)
+
         file_menu = menu_bar.addMenu('&File')
 
         open_file_action = QAction('&Open File(s)', self)
@@ -174,6 +168,11 @@ class MainWindow(QMainWindow):
         open_dir_action.setShortcut(QKeySequence('Ctrl+Shift+O'))
         open_dir_action.triggered.connect(self.io_manager.open_dir_dialog)
         file_menu.addAction(open_dir_action)
+
+        new_case_action = QAction('Close Tabs and Open &New Directory', self)
+        new_case_action.setShortcut(QKeySequence('Ctrl+N'))
+        new_case_action.triggered.connect(self.open_new_case)
+        file_menu.addAction(new_case_action)
 
         save_session_action = QAction('&Save Session As', self, enabled=False)
         save_session_action.triggered.connect(
@@ -216,6 +215,28 @@ class MainWindow(QMainWindow):
             lambda: file_info_action.setEnabled(self.painter_tabs.count())
         )
         file_menu.addAction(file_info_action)
+
+        close_current_tab = QAction('Close Current Tab', self, enabled=False)
+        close_current_tab.setShortcut(QKeySequence('Ctrl+W'))
+        close_current_tab.triggered.connect(
+            lambda: self.painter_tabs.tabCloseRequested.emit(
+                self.painter_tabs.currentIndex()
+            )
+        )
+        self.painter_tabs.currentChanged.connect(
+            lambda: close_current_tab.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(close_current_tab)
+
+        close_all_tabs = QAction('Close All Tabs', self, enabled=False)
+        close_all_tabs.setShortcut(QKeySequence('Ctrl+Shift+W'))
+        close_all_tabs.triggered.connect(self.painter_tabs.close_all_tabs)
+        self.painter_tabs.currentChanged.connect(
+            lambda: close_all_tabs.setEnabled(self.painter_tabs.count())
+        )
+        file_menu.addAction(close_all_tabs)
+
+        file_menu.addSeparator()
 
         exit_action = QAction('E&xit', self)
         exit_action.setShortcut('Ctrl+Q')
@@ -300,6 +321,11 @@ class MainWindow(QMainWindow):
         about_action.setMenuRole(QAction.MenuRole.NoRole)
         about_action.triggered.connect(lambda: about_dialog(self))
         help_menu.addAction(about_action)
+
+    @Slot()
+    def open_new_case(self):
+        self.painter_tabs.close_all_tabs()
+        self.io_manager.open_dir_dialog()
 
     def closeEvent(self, event):
         set_window_position(self.pos())

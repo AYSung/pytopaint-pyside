@@ -18,10 +18,10 @@ class Color(IntEnum):
     GREY = 0
     BLUE = 1
     GREEN = 2
-    RED = 3
-    YELLOW = 4
+    CYAN = 3
+    RED = 4
     MAGENTA = 5
-    CYAN = 6
+    YELLOW = 6
     WHITE = 7
 
     @property
@@ -29,10 +29,26 @@ class Color(IntEnum):
         return self.name.title()
 
 
+COLOR_ORDER = {
+    Color.GREY: 0,
+    Color.BLUE: 1,
+    Color.GREEN: 2,
+    Color.RED: 3,
+    Color.YELLOW: 4,
+    Color.MAGENTA: 5,
+    Color.CYAN: 6,
+    Color.WHITE: 7,
+}
+
+
+def sort_colors(colors: list[Color]) -> list[Color]:
+    return sorted(colors, key=lambda c: COLOR_ORDER[c])
+
+
 COLOR_RGB_MAPS = {
     'Default': {
         Color.GREY: '#606060',
-        Color.BLUE: '#2b4cf1',
+        Color.BLUE: '#1070ff',
         Color.GREEN: '#46D829',
         Color.RED: '#d12f2f',
         Color.YELLOW: '#EBE824',
@@ -41,7 +57,7 @@ COLOR_RGB_MAPS = {
         Color.WHITE: '#E9E9E9',
     },
     'Okabe-Ito': {
-        Color.GREY: '#606060',
+        Color.GREY: '#828282',
         Color.BLUE: '#0072B2',
         Color.GREEN: '#009E73',
         Color.RED: '#D55E00',
@@ -244,10 +260,10 @@ def ratios_by_color(
     antecedent_color: Color,
     percents: dict[Color, float],
 ) -> dict[Color, float]:
-    if antecedent_color == Color.GREY:
+    antecedent_percent = percents.get(antecedent_color, 0)
+    if antecedent_color == Color.GREY or antecedent_percent == 0:
         return dict()
     else:
-        antecedent_percent = percents.get(antecedent_color, 0)
         return {
             consequent_color: (
                 antecedent_percent / consequent_percent,

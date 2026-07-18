@@ -1,3 +1,10 @@
+# Copyright (C) 2026 Andrew Y. Sung
+# This program is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License as published by the Free Software Foundation, either version 3 of the License, or (at your option) any later version.
+
+# This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
+
+# You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
 from collections.abc import Iterable
 from io import BytesIO
 from itertools import chain
@@ -46,11 +53,16 @@ class IOManager(QObject):
         for i, file in enumerate(files, start=1):
             if progress.wasCanceled():
                 break
-            painter = self.file_parsers[file.suffix.lower()](file)
-            progress.setValue(i)
-            QApplication.processEvents()
-            self.fileOpened.emit(painter)
-            self.last_open_dir = str(file.parent)
+
+            try:
+                painter = self.file_parsers[file.suffix.lower()](file)
+                self.fileOpened.emit(painter)
+            except ValueError:
+                print(f'error opening {file}')
+            finally:
+                progress.setValue(i)
+                QApplication.processEvents()
+
         self.finished.emit(True)
 
     @Slot()
@@ -58,8 +70,13 @@ class IOManager(QObject):
         files, _ = QFileDialog.getOpenFileNames(
             None, 'Select File(s)', self.last_open_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
         )
+
         paths = filter_valid_files(map(Path, files))
+        if not paths:
+            return
+
         self.open_files(paths)
+        self.last_open_dir = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
@@ -69,12 +86,19 @@ class IOManager(QObject):
             self.last_open_dir,
             QFileDialog.Option.ShowDirsOnly,
         )
-        self.open_files(get_child_files(dir))
+        dir = Path(dir)
+        files = get_child_files(dir)
+        if not files:
+            return
+
+        self.open_files(files)
+        self.last_open_dir = str(dir.parent)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
         self.open_files(paths)
 
+    @Slot()
     def export_fcs(self, painter: Painter) -> None:
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
@@ -104,6 +128,7 @@ class IOManager(QObject):
 
         self.last_save_dir = str(Path(file_path).parent)
 
+    @Slot()
     def save_session(self, painter: Painter) -> None:
         painter.update_anndata_state()
 
@@ -122,6 +147,7 @@ class IOManager(QObject):
 
         self.last_save_dir = str(Path(file_path).parent)
 
+    @Slot()
     def load_layout(self) -> LayoutConfig:
         file_path, _ = QFileDialog.getOpenFileName(
             None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'
@@ -152,21 +178,13 @@ class IOManager(QObject):
 
 
 def open_fcs(file: Path) -> Painter:
-    try:
-        fcs = flowio.FlowData(file)
-        return Painter.from_fcs(fcs)
-
-    except ValueError as e:
-        raise e
+    fcs = flowio.FlowData(file)
+    return Painter.from_fcs(fcs)
 
 
 def open_session(file: Path) -> Painter:
-    try:
-        adata = ad.io.read_h5ad(file)
-        return Painter.from_adata(adata)
-
-    except ValueError as e:
-        raise e
+    adata = ad.io.read_h5ad(file)
+    return Painter.from_adata(adata)
 
 
 def get_child_files(dir: Path) -> list[Path]:

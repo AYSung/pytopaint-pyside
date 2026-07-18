@@ -85,8 +85,8 @@ def set_scale(
     adata.layers['xform'] = asinh_transform(
         adata, scaling_factor=adata.uns['scaling_factor']
     )
-    adata.var['lower_bound'] = lower_clip_limits(adata)
-    adata.var['upper_bound'] = upper_clip_limits(adata)
+    adata.var['lower_bound'] = lower_clip_limits(adata, lower_asinh_bound)
+    adata.var['upper_bound'] = upper_clip_limits(adata, upper_asinh_bound)
 
 
 def set_size(adata: ad.AnnData, bins: int) -> None:
@@ -125,26 +125,24 @@ def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:
     ).astype(np.float32)
 
 
-# TODO: adjust floor with config
-def lower_clip_limits(adata: ad.AnnData) -> np.ndarray:
+def lower_clip_limits(adata: ad.AnnData, lower_bound: float) -> np.ndarray:
     return np.where(
         adata.var['channel_type'] == 'fluoro',
         np.minimum(
-            get_lower_asinh_bound(),
+            lower_bound,
             np.quantile(adata.layers['xform'], q=0.05, axis=0) - 0.5,
         ),
         0,
     )
 
 
-# TODO: adjust ceiling with config
-def upper_clip_limits(adata: ad.AnnData) -> np.ndarray:
+def upper_clip_limits(adata: ad.AnnData, upper_bound: float) -> np.ndarray:
     return np.where(
         adata.var['channel_type'] != 'time',
         np.where(
             adata.var['channel_type'] == 'fluoro',
             np.maximum(
-                get_upper_asinh_bound(),
+                upper_bound,
                 np.quantile(adata.layers['xform'], q=0.95, axis=0) + 0.5,
             ),
             np.maximum(255_000.0, np.quantile(adata.layers['xform'], q=0.95, axis=0)),
@@ -223,7 +221,7 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
                     bins=bins,
                     arr=np.arange(
                         0,
-                        50_000 * (bounds[channel_name]['upper_bound'] // 50_000),
+                        50_000 * (1 + bounds[channel_name]['upper_bound'] // 50_000),
                         50_000,
                     ),
                 ),
@@ -342,10 +340,8 @@ def _clean_marker_name(marker: str) -> str:
     if marker.startswith('CD'):
         if marker == 'CD45 RA' or marker == 'CD45 RO':
             return marker
-        elif re.match(r'CD\d+$', marker):
-            return marker
         else:
-            return re.match(r'(CD\d+\w*) ?', marker).group(1)
+            return re.match(r'(CD\d+\w*(\/CD\d+\w*)?) ?', marker).group(1)
     else:
         if 'lambda' in marker.lower():
             return 'Lambda'

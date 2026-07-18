@@ -41,6 +41,7 @@ class PainterTabs(QTabWidget):
         if widget:
             widget.handle_rescale(scale_config)
 
+    @Slot()
     def close_all_tabs(self):
         while self.count() > 0:
             self.handle_tab_close(0)
@@ -63,6 +64,6 @@ class PainterTabs(QTabWidget):
             painter = QPainter(self)
             painter.setPen('#bababa')
 
-            text = 'Welcome to PytoPaint!\n\nOpen files by dragging and dropping into this window or File > Open File(s)'
+            text = 'Welcome to PytoPaint!\n\nOpen files / directories by dragging and dropping into this window or via the File menu'
 
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, text)

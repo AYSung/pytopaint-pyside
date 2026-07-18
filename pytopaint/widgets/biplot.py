@@ -7,6 +7,10 @@
 
 import pandas as pd
 from PySide6.QtCore import (
+    QBuffer,
+    QDir,
+    QIODevice,
+    QMimeData,
     QPoint,
     QRect,
     QRunnable,
@@ -18,6 +22,7 @@ from PySide6.QtCore import (
 from PySide6.QtGui import QAction, QFont, QImage, QMouseEvent, QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
     QApplication,
+    QFileDialog,
     QGridLayout,
     QLabel,
     QMenu,
@@ -26,22 +31,26 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     BACKGROUND,
+    ZAPPABLE_COLORS,
     Color,
     get_color_map,
     indices_by_color,
+    sort_colors,
 )
-from pytopaint.config import get_resolution
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40
 
 
 class Biplot(QWidget):
-    pointsSelected = Signal(object, str, str, QMouseEvent)
     removeTriggered = Signal(object)
     updateFinished = Signal()
+    menuActionTriggered = Signal(int, dict)
+    activeColorChanged = Signal(int)
 
     def __init__(
         self,
@@ -52,6 +61,7 @@ class Biplot(QWidget):
         y_label: str,
         active_color: Color,
         resolution: int,
+        highlighted_colors: list[Color],
     ):
         super().__init__()
         self.df = data
@@ -62,15 +72,22 @@ class Biplot(QWidget):
         x_label = x_label if x_label in channels else None
         y_label = y_label if y_label in channels else None
 
-        self.plot = DotPlot(active_color=active_color, resolution=resolution)
-        self.plot.pointsSelected.connect(self.points_selected)
+        self.activeColorChanged.connect(self.set_active_color)
+
+        self.plot = DotPlot(
+            active_color=active_color,
+            resolution=resolution,
+            highlighted_colors=highlighted_colors,
+        )
+        self.plot.pointsSelected.connect(self.handle_selection)
+        self.activeColorChanged.connect(self.plot.set_active_color)
 
         self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
         self.x_axis.labelChanged.connect(self.update_plot_data)
-        self.x_axis.labelChanged.connect(self.plot.set_canvas)
+        self.x_axis.labelChanged.connect(self.plot.update_plot)
         self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=resolution)
         self.y_axis.labelChanged.connect(self.update_plot_data)
-        self.y_axis.labelChanged.connect(self.plot.set_canvas)
+        self.y_axis.labelChanged.connect(self.plot.update_plot)
 
         self.title_label = PlotTitle(
             x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
@@ -83,6 +100,7 @@ class Biplot(QWidget):
         )
         self.title_label.transposeAxesClicked.connect(self.transpose_axes)
         self.title_label.copyPlotClicked.connect(self.copy_plot_to_clipboard)
+        self.title_label.exportPlotClicked.connect(self.export_plot)
         self.title_label.removePlotClicked.connect(self.remove)
 
         layout = QGridLayout()
@@ -99,6 +117,99 @@ class Biplot(QWidget):
         layout.addWidget(self.x_axis, 2, 1, Qt.AlignmentFlag.AlignTop)
 
         self.setLayout(layout)
+
+    @Slot(int)
+    def set_active_color(self, color: Color) -> None:
+        self.active_color = color
+
+    @Slot(object, QMouseEvent)
+    def handle_selection(
+        self, selection_geometry: list[list[float]], e: QMouseEvent
+    ) -> None:
+        modifiers = e.modifiers()
+
+        if e.button() == Qt.MouseButton.MiddleButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.EXACT_ZAP, dict(color=self.active_color)
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.ZAP, dict(color=self.active_color)
+                )
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+            return
+
+        color = self.active_color
+        if e.button() == Qt.MouseButton.LeftButton:
+            selection = get_selection_index(
+                selection_geometry,
+                df=self.df.loc[self.state['color'] != self.active_color],
+                x_label=self.x_axis.label,
+                y_label=self.y_axis.label,
+            )
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                # add to selection
+                action = MenuAction.ADD_COLOR
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                # ignore grey events
+                action = MenuAction.ADD_COLOR
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s != Color.GREY].index
+                )
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                # ignore painted
+                action = MenuAction.ADD_COLOR
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s == Color.GREY].index
+                )
+            elif (
+                modifiers
+                == Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier
+            ):
+                # override colors
+                action = MenuAction.OVERRIDE_COLOR
+            else:
+                selection = pd.Index([])
+
+        elif e.button() == Qt.MouseButton.RightButton:
+            selection = get_selection_index(
+                selection_geometry,
+                df=self.df.loc[self.state.color != Color.GREY],
+                x_label=self.x_axis.label,
+                y_label=self.y_axis.label,
+            )
+
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                # exact zap color
+                action = MenuAction.EXACT_ZAP
+                selection = selection.intersection(
+                    self.state['color'].loc[lambda s: s == self.active_color].index
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                # zap color
+                action = MenuAction.ZAP
+                selection = selection.intersection(
+                    self
+                    .state['color']
+                    .loc[self.state['color'].isin(ZAPPABLE_COLORS[self.active_color])]
+                    .index
+                )
+            elif modifiers == Qt.KeyboardModifier.ControlModifier:
+                # paint grey
+                action = MenuAction.OVERRIDE_COLOR
+                color = Color.GREY
+            else:
+                selection = pd.Index([])
+
+        if not selection.empty:
+            self.menuActionTriggered.emit(
+                action, dict(color=color, selection=selection)
+            )
+        else:
+            self.plot.update_plot()
 
     @Slot(object, object, object)
     def update_data(
@@ -144,9 +255,8 @@ class Biplot(QWidget):
             y_data=df[self.y_axis.label],
             color_data=df['color'],
         )
-        self.plot.draw_canvas()
 
-    def copy_plot_to_clipboard(self, mode: str):
+    def _draw_plot(self, mode: str):
         match mode:
             case 'dark':
                 background_color = BACKGROUND
@@ -179,9 +289,36 @@ class Biplot(QWidget):
         )
 
         painter.end()
+        return image
+
+    def copy_plot_to_clipboard(self, mode: str):
+        image = self._draw_plot(mode)
+
+        byte_array = QBuffer()
+        byte_array.open(QIODevice.OpenModeFlag.WriteOnly)
+        image.save(byte_array, 'PNG', quality=100)
+        byte_array.close()
+
+        mime_data = QMimeData()
+        mime_data.setData('image/png', byte_array.data())
+        mime_data.setImageData(image)
 
         clipboard = QApplication.clipboard()
-        clipboard.setImage(image)
+        clipboard.setMimeData(mime_data)
+
+    def export_plot(self, mode: str):
+        image = self._draw_plot(mode)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Export PNG',
+            dir=QDir.homePath(),
+            filter='PNG (*.png)',
+        )
+        if not file_path:
+            return
+
+        image.save(file_path)
 
     def transpose_axes(self):
         self.set_axes(x_label=self.y_axis.label, y_label=self.x_axis.label)
@@ -195,14 +332,6 @@ class Biplot(QWidget):
         self.plot.update_plot()
         self.title_label.update_title(x_label=x_label, y_label=y_label)
 
-    @Slot(object, QMouseEvent)
-    def points_selected(
-        self, selection_geometry: list[tuple[int, int]], e: QMouseEvent
-    ):
-        self.pointsSelected.emit(
-            selection_geometry, self.x_axis.label, self.y_axis.label, e
-        )
-
     def paintEvent(self, pe):
         o = QStyleOption()
         o.initFrom(self)
@@ -213,9 +342,8 @@ class Biplot(QWidget):
     def labels(self) -> tuple[str, str]:
         return self.x_axis.label, self.y_axis.label
 
-    @Slot()
-    def resize(self) -> None:
-        resolution = get_resolution()
+    @Slot(int)
+    def resize(self, resolution: int) -> None:
         self.plot.resize(pixels=resolution)
         self.x_axis.resize(pixels=resolution)
         self.y_axis.resize(pixels=resolution)
@@ -229,11 +357,11 @@ class Biplot(QWidget):
 class PlotTitle(QLabel):
     transposeAxesClicked = Signal()
     copyPlotClicked = Signal(str)
+    exportPlotClicked = Signal(str)
     removePlotClicked = Signal()
 
     def __init__(self, x_label: str, y_label: str, resolution: int):
         super().__init__()
-        self.mouse_pressed = False
         self.x_label, self.y_label = x_label, y_label
 
         self.setStyleSheet('font-weight: bold; margin-bottom: 6px')
@@ -278,6 +406,24 @@ class PlotTitle(QLabel):
         )
         copy_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
         menu.addAction(copy_dark)
+
+        menu.addSeparator()
+
+        export_light = QAction(
+            'Export as PNG (Light)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        export_light.triggered.connect(lambda: self.exportPlotClicked.emit('light'))
+        menu.addAction(export_light)
+        export_dark = QAction(
+            'Export as PNG (Dark)',
+            enabled=self.x_label is not None and self.y_label is not None,
+        )
+        export_dark.triggered.connect(lambda: self.exportPlotClicked.emit('dark'))
+        menu.addAction(export_dark)
+
+        menu.addSeparator()
+
         remove_biplot = QAction('Remove Biplot', self)
         remove_biplot.triggered.connect(self.removePlotClicked)
         menu.addAction(remove_biplot)
@@ -293,16 +439,16 @@ class PlotTitle(QLabel):
 class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
 
-    def __init__(self, active_color: Color, resolution: int):
+    def __init__(
+        self, active_color: Color, resolution: int, highlighted_colors: list[Color]
+    ):
         super().__init__()
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.active_color = active_color
         self.resolution = resolution
+        self.highlighted_colors = highlighted_colors
 
-        self.last_x, self.last_y = None, None
-        self.selection_geometry = []
-        self.highlighted_colors = []
-
+        self.reset_lasso()
         self.set_working_data(x_data=None, y_data=None, color_data=None)
         self.update_plot()
 
@@ -314,7 +460,7 @@ class DotPlot(QLabel):
             return
 
         pos = e.position()
-        self.selection_geometry += [(pos.x(), self.resolution - pos.y())]
+        self.selection_geometry.append((pos.x(), self.resolution - pos.y()))
         if self.last_x is None:  # First event.
             self.last_x = pos.x()
             self.last_y = pos.y()
@@ -338,17 +484,13 @@ class DotPlot(QLabel):
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.color_indices is None:
             return
+        self.pointsSelected.emit(self.selection_geometry, e)
+        self.reset_lasso()
 
-        self.pointsSelected.emit(
-            self.selection_geometry,
-            e,
-        )
-
+    def reset_lasso(self) -> None:
         self.last_x = None
         self.last_y = None
         self.selection_geometry = []
-
-        self.update_plot()
 
     def set_working_data(
         self, x_data: pd.Series, y_data: pd.Series, color_data: pd.Series
@@ -368,7 +510,7 @@ class DotPlot(QLabel):
     def non_highlighted_colors(self) -> list[Color]:
         return [
             color
-            for color in self.color_indices.keys()
+            for color in sort_colors(self.color_indices.keys())
             if color not in self.highlighted_colors
         ]
 
@@ -443,8 +585,6 @@ class XAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
-        self.mouse_pressed = False
-
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
@@ -554,8 +694,6 @@ class YAxis(QLabel):
         resolution: int,
     ):
         super().__init__()
-        self.mouse_pressed = False
-
         self.label = label
         self.channels = channels
         self.axis_ticks = axis_ticks
@@ -674,7 +812,10 @@ class BiplotUpdater(QRunnable):
         self.state = state
 
     def run(self):
+        if self.data is None and self.state is None:
+            return
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
         self.biplot.update_plot_data(self.state)
+        self.biplot.plot.draw_canvas()
         self.biplot.updateFinished.emit()

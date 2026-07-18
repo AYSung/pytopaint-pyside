@@ -33,6 +33,7 @@ def test_clean_marker_name():
     assert _clean_marker_name('CD45 BV480') == 'CD45'
     assert _clean_marker_name('CD5 BV480') == 'CD5'
     assert _clean_marker_name('CD11b') == 'CD11b'
+    assert _clean_marker_name('CD41/CD61') == 'CD41/CD61'
 
 
 def load_panel_config() -> list[list[str]]:
@@ -148,6 +149,7 @@ def test_get_axis_ticks(adata_1):
         (100, '1e5'),
         (150, None),
         (200, '2e5'),
+        (250, None),
     ]
     assert axis_ticks['CD45'] == [
         (11, None),

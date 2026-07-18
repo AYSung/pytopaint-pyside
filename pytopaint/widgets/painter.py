@@ -6,15 +6,15 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 import json
+from collections import deque
 from functools import wraps
 
 import anndata as ad
 import flowio
 import pandas as pd
-from PySide6.QtCore import Qt, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import (
     QKeySequence,
-    QMouseEvent,
     QShortcut,
 )
 from PySide6.QtWidgets import QSizePolicy, QVBoxLayout, QWidget
@@ -37,7 +37,6 @@ from pytopaint.flowdata import (
     umap_transform,
 )
 from pytopaint.layout import get_best_layout, to_grid
-from pytopaint.selection import get_selection_index
 from pytopaint.widgets.biplotgrid import BiplotGrid
 from pytopaint.widgets.dialogs import (
     add_column_dialog,
@@ -54,7 +53,7 @@ class Painter(QWidget):
     dataChanged = Signal(object, object)
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
-    resizeTriggered = Signal()
+    resizeTriggered = Signal(int)
 
     def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -64,6 +63,8 @@ class Painter(QWidget):
         self.setStyleSheet('* {color: #bababa}')
 
         self.paint_actions = {
+            MenuAction.ADD_COLOR: self.add_color,
+            MenuAction.OVERRIDE_COLOR: self.override_color,
             MenuAction.SET_ACTIVE: self.change_color,
             MenuAction.ZAP: self.zap_color,
             MenuAction.EXACT_ZAP: self.exact_zap_color,
@@ -95,8 +96,9 @@ class Painter(QWidget):
         )
         self.axis_ticks = get_axis_ticks(self.data, get_resolution())
 
-        self.undo_history = [self.state.copy()]
-        self.redo_history = []
+        self.undo_history = deque()
+        self.undo_history.append(self.state.copy())
+        self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = []
 
@@ -116,10 +118,8 @@ class Painter(QWidget):
             df=self.df,
             axis_ticks=self.axis_ticks,
             state=self.state,
-            active_color=self.active_color,
-            resolution=get_resolution(),
         )
-        self.biplot_grid.pointsSelected.connect(self.handle_selection)
+        self.biplot_grid.menuActionTriggered.connect(self.handle_menu_action)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
         self.stateChanged.connect(self.biplot_grid.update_state)
         self.dataChanged.connect(self.biplot_grid.update_data)
@@ -133,7 +133,9 @@ class Painter(QWidget):
         )
         biplot_grid_container.setLayout(self.biplot_grid)
 
-        self.biplot_grid.update_layout(self.load_grid_layout())
+        self.biplot_grid.update_layout(
+            self.load_grid_layout(), self.active_color, self.highlighted_colors
+        )
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -144,6 +146,7 @@ class Painter(QWidget):
         self.setLayout(layout)
 
         self.activeColorChanged.emit(self.active_color)
+        self.highlightsUpdated.emit(self.highlighted_colors)
         self.state_changed()
 
     @classmethod
@@ -247,87 +250,10 @@ class Painter(QWidget):
             )
         )
 
-    @Slot(object, str, str, QMouseEvent)
-    def handle_selection(
-        self,
-        selection_geometry: list[list[int, int]],
-        x_label: str,
-        y_label: str,
-        e: QMouseEvent,
-    ):
-        modifiers = e.modifiers()
-
-        if e.button() == Qt.MouseButton.MiddleButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.exact_zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.zap_color(self.active_color)
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                self.zap_all()
-            return
-
-        selection = get_selection_index(
-            selection_geometry,
-            self.df.loc[self.state['visible']],
-            x_label=x_label,
-            y_label=y_label,
+        hide_grey_shortcut = QShortcut(QKeySequence('Shift + Return'), self)
+        hide_grey_shortcut.activated.connect(
+            lambda: self.handle_menu_action(MenuAction.HIDE, dict(color=Color.GREY))
         )
-        if selection.empty:
-            return
-
-        if e.button() == Qt.MouseButton.LeftButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                # add to selection
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                # ignore unselected points (paint composite color)
-                selection = selection.difference(
-                    self.state.loc[lambda x: x['color'] == Color.GREY, 'color'].index
-                )
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                # ignore painted
-                selection = selection.intersection(
-                    self.state.loc[lambda x: x['color'] == Color.GREY].index
-                )
-                self.state.loc[selection, 'color'] = add_color_to_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif (
-                modifiers
-                == Qt.KeyboardModifier.ControlModifier
-                | Qt.KeyboardModifier.ShiftModifier
-            ):
-                # override colors
-                self.state.loc[selection, 'color'] = self.active_color
-
-        elif e.button() == Qt.MouseButton.RightButton:
-            # if not selection.empty:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                # zap color from selection
-                selection = selection.intersection(
-                    self.state.loc[lambda x: x['color'] == self.active_color].index
-                )
-                self.state.loc[selection, 'color'] = Color.GREY
-
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                # exact zap color from selection
-                self.state.loc[selection, 'color'] = subtract_color_from_series(
-                    self.state.loc[selection, 'color'], self.active_color
-                )
-
-            elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                # subtract all
-                self.state.loc[selection, 'color'] = Color.GREY
-
-        self.record_current_state()
 
     @staticmethod
     def record_action(func):
@@ -347,24 +273,38 @@ class Painter(QWidget):
         self.activeColorChanged.emit(self.active_color)
 
     @record_action
-    def zap_color(self, color: Color):
-        self.state['color'] = subtract_color_from_series(self.state['color'], color)
+    def add_color(self, color: Color, selection: pd.Index):
+        self.state.loc[selection, 'color'] = add_color_to_series(
+            self.state.loc[selection, 'color'], color
+        )
 
     @record_action
-    def exact_zap_color(self, color: Color):
-        self.state.loc[lambda x: x['visible'] & (x['color'] == color), 'color'] = (
-            Color.GREY
-        )
+    def override_color(self, color: Color, selection: pd.Index):
+        self.state.loc[selection, 'color'] = color
+
+    @record_action
+    def zap_color(self, color: Color, selection: pd.Index = None):
+        if selection is None:
+            self.state['color'] = subtract_color_from_series(self.state['color'], color)
+        else:
+            self.state.loc[selection, 'color'] = subtract_color_from_series(
+                self.state.loc[selection, 'color'], color
+            )
+
+    @record_action
+    def exact_zap_color(self, color: Color, selection: pd.Index = None):
+        if selection is None:
+            self.state.loc[self.state['color'] == color, 'color'] = Color.GREY
+        else:
+            self.state.loc[selection, 'color'] = Color.GREY
 
     @record_action
     def zap_all(self):
-        self.state.loc[lambda x: x['visible'], 'color'] = Color.GREY
+        self.state['color'] = Color.GREY
 
     @record_action
     def zap_all_but(self, color: Color):
-        self.state.loc[lambda x: x['visible'] & (x['color'] != color), 'color'] = (
-            Color.GREY
-        )
+        self.state.loc[self.state['color'] != color, 'color'] = Color.GREY
 
     @record_action
     def replace_state(self, slot: int):
@@ -445,8 +385,8 @@ class Painter(QWidget):
         if self.state.equals(self.undo_history[-1]):
             return
 
-        self.undo_history += [self.state.copy()]
-        self.redo_history = []
+        self.undo_history.append(self.state.copy())
+        self.redo_history.clear()
         self.state_changed()
 
     @Slot()
@@ -456,7 +396,7 @@ class Painter(QWidget):
 
         current_state: pd.DataFrame = self.undo_history.pop()
         previous_state: pd.DataFrame = self.undo_history[-1]
-        self.redo_history += [current_state]
+        self.redo_history.append(current_state)
         self.state.update(previous_state)
 
         self.state_changed()
@@ -467,13 +407,13 @@ class Painter(QWidget):
             return
 
         previous_state: pd.DataFrame = self.redo_history.pop()
-        self.undo_history += [previous_state]
+        self.undo_history.append(previous_state)
         self.state.update(previous_state)
 
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.axis_ticks, None)
+        self.dataChanged.emit(self.df, self.axis_ticks)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
@@ -481,7 +421,7 @@ class Painter(QWidget):
     @Slot(int)
     def handle_highlights(self, color: Color):
         if color not in self.highlighted_colors:
-            self.highlighted_colors += [color]
+            self.highlighted_colors.append(color)
         else:
             self.highlighted_colors.remove(color)
 
@@ -489,12 +429,13 @@ class Painter(QWidget):
 
     @Slot()
     def handle_resize(self) -> None:
-        set_size(self.data, bins=get_resolution())
-        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
+        resolution = get_resolution()
+        set_size(self.data, bins=resolution)
+        self.axis_ticks = get_axis_ticks(self.data, resolution)
 
         self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
-        self.resizeTriggered.emit()
-        self.dataChanged.emit(self.df, self.axis_ticks)
+        self.resizeTriggered.emit(resolution)
+        self.data_changed()
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
@@ -508,16 +449,22 @@ class Painter(QWidget):
         n_rows, ok = add_row_dialog(self)
 
         if ok:
-            self.biplot_grid.add_rows(n_rows)
+            self.biplot_grid.add_rows(
+                n_rows, self.active_color, self.highlighted_colors
+            )
 
     def add_biplot_column(self) -> None:
-        n_cols, ok = add_column_dialog(self)
+        n_cols, ok = add_column_dialog(
+            self,
+        )
 
         if ok:
-            self.biplot_grid.add_columns(n_cols)
+            self.biplot_grid.add_columns(
+                n_cols, self.active_color, self.highlighted_colors
+            )
 
     def fill_empty_cells(self) -> None:
-        self.biplot_grid.fill_empty()
+        self.biplot_grid.fill_empty(self.active_color, self.highlighted_colors)
 
     def remove_empty_biplots(self) -> None:
         self.biplot_grid.remove_empty()
