@@ -207,6 +207,8 @@ class Biplot(QWidget):
                 color = Color.GREY
             else:
                 selection = pd.Index([])
+        else:
+            return
 
         if not selection.empty:
             self.menuActionTriggered.emit(
