@@ -40,6 +40,16 @@ COLOR_ORDER = {
     Color.WHITE: 7,
 }
 
+COLOR_SHORTCUTS = [
+    ('F', Color.RED),
+    ('D', Color.GREEN),
+    ('S', Color.BLUE),
+    ('Shift+F', Color.CYAN),
+    ('Shift+D', Color.MAGENTA),
+    ('Shift+S', Color.YELLOW),
+    ('A', Color.WHITE),
+]
+
 
 def sort_colors(colors: list[Color]) -> list[Color]:
     return sorted(colors, key=lambda c: COLOR_ORDER[c])

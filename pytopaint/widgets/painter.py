@@ -22,6 +22,7 @@ from PySide6.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
+    COLOR_SHORTCUTS,
     Color,
     add_color_to_series,
     merge_colors,
@@ -166,48 +167,17 @@ class Painter(QWidget):
         return cls(initialize(adata))
 
     def configure_shortcuts(self) -> None:
-        red_shortcut = QShortcut(QKeySequence('F'), self)
-        red_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.RED)
+        def _color_shortcut(key: str, color: Color) -> QShortcut:
+            shortcut = QShortcut(QKeySequence(key), self)
+            shortcut.activated.connect(
+                lambda: self.handle_menu_action(
+                    MenuAction.SET_ACTIVE, dict(color=color)
+                )
             )
-        )
-        green_shortcut = QShortcut(QKeySequence('D'), self)
-        green_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.GREEN)
-            )
-        )
-        blue_shortcut = QShortcut(QKeySequence('S'), self)
-        blue_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.BLUE)
-            )
-        )
-        cyan_shortcut = QShortcut(QKeySequence('Shift+F'), self)
-        cyan_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.CYAN)
-            )
-        )
-        magenta_shortcut = QShortcut(QKeySequence('Shift+D'), self)
-        magenta_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.MAGENTA)
-            )
-        )
-        yellow_shortcut = QShortcut(QKeySequence('Shift+S'), self)
-        yellow_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.YELLOW)
-            )
-        )
-        white_shortcut = QShortcut(QKeySequence('A'), self)
-        white_shortcut.activated.connect(
-            lambda: self.handle_menu_action(
-                MenuAction.SET_ACTIVE, dict(color=Color.WHITE)
-            )
-        )
+
+        for key, color in COLOR_SHORTCUTS:
+            _color_shortcut(key, color)
+
         exact_zap_current_color = QShortcut(QKeySequence('E'), self)
         exact_zap_current_color.activated.connect(
             lambda: self.handle_menu_action(
