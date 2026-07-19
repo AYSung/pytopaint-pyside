@@ -121,14 +121,6 @@ class FlowData:
         return self.adata.uns.get('upper_asinh_bound', get_upper_asinh_bound())
 
     @property
-    def binned_df(self) -> pd.DataFrame:
-        return pd.DataFrame(self.adata.layers['bin'], columns=self.adata.var_names)
-
-    @property
-    def zoom_df(self) -> pd.DataFrame:
-        return pd.DataFrame(self.adata.layers['zoom'], columns=self.adata.var_names)
-
-    @property
     def state_df(self) -> pd.DataFrame:
         return self.adata.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
 
@@ -171,10 +163,16 @@ class FlowData:
 
     def set_size(self, bins: int) -> None:
         self.adata.layers['bin'] = discretize_data(self.adata, bins)
+        self.binned_df = pd.DataFrame(
+            self.adata.layers['bin'], columns=self.adata.var_names
+        )
         self.axis_ticks = get_axis_ticks(self.adata, bins)
 
     def set_zoom(self, bins: int) -> None:
         self.adata.layers['zoom'] = discretize_data(self.adata, bins)
+        self.zoom_df = pd.DataFrame(
+            self.adata.layers['zoom'], columns=self.adata.var_names
+        )
         self.zoom_axis_ticks = get_axis_ticks(self.adata, bins)
 
     def update_state(

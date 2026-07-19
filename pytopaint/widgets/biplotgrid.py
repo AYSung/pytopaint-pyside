@@ -13,6 +13,7 @@ from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.colors import Color
 from pytopaint.config import get_resolution, get_zoom_resolution
+from pytopaint.flowdata import FlowData
 from pytopaint.layout import dict_to_yaml
 from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.zoomplot import ZoomPlot
@@ -29,10 +30,7 @@ class BiplotGrid(QGridLayout):
 
     def __init__(
         self,
-        df: pd.DataFrame,
-        zoom_df: pd.DataFrame,
-        axis_ticks: dict[str, list[tuple[int, str]]],
-        zoom_axis_ticks: dict[str, list[tuple[int, str]]],
+        data: FlowData,
         state: pd.Series,
         active_color: Color,
         highlighted_colors: list[Color],
@@ -41,10 +39,7 @@ class BiplotGrid(QGridLayout):
         self.setSpacing(5)
         self.setSizeConstraint(QGridLayout.SizeConstraint.SetFixedSize)
 
-        self.df = df
-        self.zoom_df = zoom_df
-        self.axis_ticks = axis_ticks
-        self.zoom_axis_ticks = zoom_axis_ticks
+        self.data = data
         self.state = state
         self.active_color = active_color
         self.highlighted_colors = highlighted_colors
@@ -78,15 +73,9 @@ class BiplotGrid(QGridLayout):
         return wrapper
 
     @Slot(object, object)
-    def update_data(
-        self,
-        df: pd.DataFrame,
-        axis_ticks: dict[str, list[tuple[int, str]]],
-    ) -> None:
-        self.df = df
-        self.axis_ticks = axis_ticks
-
-        self.updateData.emit(self.df, self.axis_ticks, None)
+    def update_data(self, data: FlowData) -> None:
+        self.data = data
+        self.updateData.emit(self.data.binned_df, self.data.axis_ticks, None)
 
     @Slot(object)
     def update_state(self, state: pd.DataFrame) -> None:
@@ -100,8 +89,8 @@ class BiplotGrid(QGridLayout):
         x_label, y_label = labels
 
         biplot = Biplot(
-            data=self.df,
-            axis_ticks=self.axis_ticks,
+            data=self.data.binned_df,
+            axis_ticks=self.data.axis_ticks,
             state=self.state,
             active_color=self.active_color,
             x_label=x_label,
@@ -180,8 +169,8 @@ class BiplotGrid(QGridLayout):
             layout_item = self.itemAtPosition(*coords)
             if layout_item is not None:
                 x_label, y_label = labels
-                x_label = x_label if x_label in self.df.columns else None
-                y_label = y_label if y_label in self.df.columns else None
+                x_label = x_label if x_label in self.data.binned_df.columns else None
+                y_label = y_label if y_label in self.data.binned_df.columns else None
 
                 biplot: Biplot = layout_item.widget()
                 biplot.set_axes(x_label, y_label)
@@ -240,8 +229,8 @@ class BiplotGrid(QGridLayout):
     @Slot(str, str)
     def open_zoom(self, x_label: str, y_label: str) -> None:
         self.zoom_plot = Biplot(
-            data=self.zoom_df,
-            axis_ticks=self.zoom_axis_ticks,
+            data=self.data.zoom_df,
+            axis_ticks=self.data.zoom_axis_ticks,
             state=self.state,
             active_color=self.active_color,
             x_label=x_label,

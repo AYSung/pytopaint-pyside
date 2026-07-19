@@ -47,7 +47,7 @@ class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     colorStateReturned = Signal(int, object)
-    dataChanged = Signal(object, object)
+    dataChanged = Signal(object)
     highlightsUpdated = Signal(list)
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
@@ -90,7 +90,6 @@ class Painter(QWidget):
         }
 
         self.data = data
-        self.df = self.data.binned_df
         self.state = self.data.state_df
         self.axis_ticks = self.data.axis_ticks
 
@@ -114,10 +113,7 @@ class Painter(QWidget):
         self.colorPaletteChanged.connect(palette.colorPaletteChanged)
 
         self.biplot_grid = BiplotGrid(
-            df=self.df,
-            zoom_df=self.data.zoom_df,
-            axis_ticks=self.data.axis_ticks,
-            zoom_axis_ticks=self.data.zoom_axis_ticks,
+            data=self.data,
             state=self.state,
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
@@ -329,7 +325,7 @@ class Painter(QWidget):
         self.state_changed()
 
     def data_changed(self):
-        self.dataChanged.emit(self.df, self.axis_ticks)
+        self.dataChanged.emit(self.data)
 
     def state_changed(self):
         self.stateChanged.emit(self.state)
@@ -348,8 +344,6 @@ class Painter(QWidget):
         resolution = get_resolution()
         self.data.set_size(bins=resolution)
 
-        self.df = self.data.binned_df
-        self.axis_ticks = self.data.axis_ticks
         self.resizeTriggered.emit(resolution)
         self.data_changed()
 
@@ -362,8 +356,6 @@ class Painter(QWidget):
     def change_zoom(self) -> None:
         zoom = get_zoom_resolution()
         self.data.set_zoom(bins=zoom)
-        self.zoom_axis_ticks = self.data.zoom_axis_ticks
-        self.biplot_grid.zoom_axis_ticks = self.zoom_axis_ticks
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()
