@@ -5,6 +5,7 @@ import pytest
 import yaml
 
 from pytopaint.flowdata import (
+    _channel_fluor_map,
     _clean_marker_name,
     extract_case_number,
     get_axis_ticks,
@@ -177,3 +178,23 @@ def test_extract_case_number():
     assert extract_case_number('Y 24-1234 SMITH1') == 'IP24-01234'
     assert extract_case_number('Z-24-1234 JOHN-SMITH') == 'IP24-01234'
     assert extract_case_number('Y 1234 SMITH') == 'IPxx-01234'
+
+
+@pytest.fixture
+def pnn_labels() -> pd.Series:
+    return pd.Series(
+        ['FSC-A', 'SSC-A', 'BV421', 'PE', 'PerCP', 'Time'],
+        index=['FSC-A', 'SSC-A', 'CD10', 'CD5', 'CD19', 'Time'],
+        name='pnn_label',
+    )
+
+
+def test_channel_name_map(pnn_labels):
+    assert _channel_fluor_map(pnn_labels) == {
+        'FSC-A': 'FSC-A',
+        'SSC-A': 'SSC-A',
+        'CD10': 'CD10 (BV421)',
+        'CD5': 'CD5 (PE)',
+        'CD19': 'CD19 (PerCP)',
+        'Time': 'Time',
+    }
