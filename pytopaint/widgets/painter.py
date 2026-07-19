@@ -29,16 +29,11 @@ from pytopaint.colors import (
 )
 from pytopaint.config import get_resolution, get_zoom_resolution
 from pytopaint.flowdata import (
-    get_axis_ticks,
+    FlowData,
     get_umap_dims,
-    initialize,
-    read_fcs,
-    set_scale,
-    set_size,
-    set_zoom,
     umap_transform,
 )
-from pytopaint.layout import get_best_layout, to_grid
+from pytopaint.layout import get_best_layout
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
@@ -61,7 +56,7 @@ class Painter(QWidget):
     zoomTriggered = Signal(str, str)
     menuActionTriggered = Signal(int, dict)
 
-    def __init__(self, data: ad.AnnData, fcs: flowio.FlowData = None):
+    def __init__(self, data: FlowData, fcs: flowio.FlowData = None):
         super().__init__()
         self.configure_shortcuts()
 
@@ -96,15 +91,9 @@ class Painter(QWidget):
         }
 
         self.data = data
-        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
-        self.zoom_df = pd.DataFrame(
-            self.data.layers['zoom'], columns=self.data.var_names
-        )
-        self.state = (
-            self.data.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
-        )
-        self.axis_ticks = get_axis_ticks(self.data, get_resolution())
-        self.zoom_axis_ticks = get_axis_ticks(self.data, get_zoom_resolution())
+        self.df = self.data.binned_df
+        self.state = self.data.state_df
+        self.axis_ticks = self.data.axis_ticks
 
         self.undo_history = deque()
         self.undo_history.append(self.state.copy())
@@ -113,8 +102,8 @@ class Painter(QWidget):
         self.highlighted_colors = []
         self.menuActionTriggered.connect(self.handle_menu_action)
 
-        self.memory_states = self.load_memory_states()
-        if 'umap' in self.data.obsm.keys():
+        self.memory_states = self.data.memory_states
+        if 'umap' in self.data.adata.obsm.keys():
             self.load_umap()
 
         palette = Palette(state=self.state, memory_states=self.memory_states)
@@ -127,9 +116,9 @@ class Painter(QWidget):
 
         self.biplot_grid = BiplotGrid(
             df=self.df,
-            zoom_df=self.zoom_df,
-            axis_ticks=self.axis_ticks,
-            zoom_axis_ticks=self.zoom_axis_ticks,
+            zoom_df=self.data.zoom_df,
+            axis_ticks=self.data.axis_ticks,
+            zoom_axis_ticks=self.data.zoom_axis_ticks,
             state=self.state,
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
@@ -148,7 +137,7 @@ class Painter(QWidget):
             QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
         )
         biplot_grid_container.setLayout(self.biplot_grid)
-        self.biplot_grid.update_layout(self.load_grid_layout())
+        self.biplot_grid.update_layout(self.data.layout)
 
         layout = QVBoxLayout()
         layout.setSpacing(0)
@@ -163,12 +152,13 @@ class Painter(QWidget):
 
     @classmethod
     def from_fcs(cls, fcs: flowio.FlowData):
-        data = read_fcs(fcs)
+        data = FlowData.from_fcs(fcs)
         return cls(data, fcs)
 
     @classmethod
     def from_adata(cls, adata: ad.AnnData):
-        return cls(initialize(adata))
+        data = FlowData(adata)
+        return cls(data)
 
     def configure_shortcuts(self) -> None:
         configure_paint_shortcuts(self)
@@ -290,8 +280,10 @@ class Painter(QWidget):
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
     def add_umap(self):
-        self.data.obsm['umap'] = umap_transform(
-            self.data[:, self.data.var['channel_type'] == 'fluoro'].layers['xform']
+        self.data.adata.obsm['umap'] = umap_transform(
+            self.data.adata[:, self.data.adata.var['channel_type'] == 'fluoro'].layers[
+                'xform'
+            ]
         )
 
         self.load_umap()
@@ -351,23 +343,23 @@ class Painter(QWidget):
     @Slot()
     def handle_resize(self) -> None:
         resolution = get_resolution()
-        set_size(self.data, bins=resolution)
-        self.axis_ticks = get_axis_ticks(self.data, resolution)
+        self.data.set_size(bins=resolution)
 
-        self.df = pd.DataFrame(self.data.layers['bin'], columns=self.data.var_names)
+        self.df = self.data.binned_df
+        self.axis_ticks = self.data.axis_ticks
         self.resizeTriggered.emit(resolution)
         self.data_changed()
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
-        set_scale(self.data, **scale_config)
+        self.data.set_scale(**scale_config)
         self.handle_resize()
 
     @Slot(object)
     def change_zoom(self) -> None:
         zoom = get_zoom_resolution()
-        set_zoom(self.data, bins=zoom)
-        self.zoom_axis_ticks = get_axis_ticks(self.data, zoom)
+        self.data.set_zoom(bins=zoom)
+        self.zoom_axis_ticks = self.data.zoom_axis_ticks
         self.biplot_grid.zoom_axis_ticks = self.zoom_axis_ticks
 
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
@@ -412,37 +404,27 @@ class Painter(QWidget):
                 temp_state.index = temp_state.index.astype(str)
                 self.data.obsm[f'mem_{i}'] = temp_state
 
-        if self.biplot_grid._to_dict() != get_best_layout(self.data.var_names).grid:
-            self.data.uns['layout'] = json.dumps(self.biplot_grid.to_yaml())
-
-    def load_memory_states(self) -> dict[int, pd.DataFrame]:
-        def _get_memory_state(index: int) -> pd.DataFrame | None:
-            memory_state = self.data.obsm.get(f'mem_{index}')
-            return (
-                memory_state.reset_index(drop=True)
-                if memory_state is not None
-                else None
-            )
-
-        N_MEMORY_SLOTS = 5
-        return {i: _get_memory_state(i) for i in range(N_MEMORY_SLOTS)}
-
-    def load_grid_layout(self) -> dict[tuple[int, int], tuple[str, str]]:
-        layout_grid = self.data.uns.get('layout')
-        if layout_grid is None:
-            return get_best_layout(channels=self.data.var_names).grid
-        else:
-            return to_grid(json.loads(layout_grid))
+        if self.biplot_grid._to_dict() != get_best_layout(self.data.channels).grid:
+            self.data.layout = json.dumps(self.biplot_grid.to_yaml())
 
     def load_umap(self) -> None:
-        umap_arr, umap_axis_ticks = get_umap_dims(self.data)
+        umap_arr, umap_axis_ticks = get_umap_dims(self.data, get_resolution())
+        zoom_umap_arr, zoom_umap_axis_ticks = get_umap_dims(
+            self.data, get_zoom_resolution()
+        )
 
         umap_df = pd.DataFrame(
             umap_arr,
             columns=['UMAP1', 'UMAP2'],
         )
         self.axis_ticks = self.axis_ticks | umap_axis_ticks
+        self.biplot_grid.zoom_axis_ticks = (
+            self.biplot_grid.zoom_axis_ticks | zoom_umap_axis_ticks
+        )
         self.df = self.df.join(umap_df)
+        self.biplot_grid.zoom_df = self.biplot_grid.zoom_df.join(
+            pd.DataFrame(zoom_umap_arr, columns=['UMAP1', 'UMAP2'])
+        )
 
     def zoom_plot(self) -> None:
         cursor_position = QCursor().pos()

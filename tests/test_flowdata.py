@@ -5,7 +5,6 @@ import pytest
 import yaml
 
 from pytopaint.flowdata import (
-    UPPER_PHYSICAL,
     _clean_marker_name,
     extract_case_number,
     get_axis_ticks,
@@ -14,6 +13,7 @@ from pytopaint.flowdata import (
 
 LOWER_ASINH = -1
 UPPER_ASINH = 8
+UPPER_PHYSICAL = 255_000
 
 
 def test_clean_marker_name():

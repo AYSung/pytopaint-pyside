@@ -57,8 +57,9 @@ class IOManager(QObject):
             try:
                 painter = self.file_parsers[file.suffix.lower()](file)
                 self.fileOpened.emit(painter)
-            except ValueError:
+            except ValueError as e:
                 print(f'error opening {file}')
+                raise e
             finally:
                 progress.setValue(i)
                 QApplication.processEvents()

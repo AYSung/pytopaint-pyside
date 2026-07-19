@@ -32,9 +32,6 @@ from pytopaint.actions import MenuAction
 from pytopaint.colors import COLOR_RGB_MAPS
 from pytopaint.config import (
     get_color_palette,
-    get_lower_asinh_bound,
-    get_scaling_factor,
-    get_upper_asinh_bound,
     get_window_position,
     set_color_palette,
     set_resolution,
@@ -129,13 +126,9 @@ class MainWindow(QMainWindow):
     def rescale_plots(self) -> None:
         data = self.get_active_painter().data
         dialog = PlotScaleDialog(
-            scaling_factor=data.uns.get('scaling_factor', get_scaling_factor()),
-            lower_asinh_bound=data.uns.get(
-                'lower_asinh_bound', get_lower_asinh_bound()
-            ),
-            upper_asinh_bound=data.uns.get(
-                'upper_asinh_bound', get_upper_asinh_bound()
-            ),
+            scaling_factor=data.scaling_factor,
+            lower_asinh_bound=data.lower_asinh_bound,
+            upper_asinh_bound=data.upper_asinh_bound,
             parent=self,
         )
 

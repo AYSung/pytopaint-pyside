@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import json
 import math
 import re
 from pathlib import Path
@@ -13,6 +14,7 @@ import anndata as ad
 import flowio
 import flowutils
 import numpy as np
+import pandas as pd
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
 
@@ -24,79 +26,162 @@ from pytopaint.config import (
     get_upper_asinh_bound,
     get_zoom_resolution,
 )
+from pytopaint.layout import get_best_layout, to_grid
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
-UPPER_PHYSICAL = 255_000
 
 
-def read_fcs(fcs: flowio.FlowData) -> ad.AnnData:
-    cleaned_channel_names = clean_channel_names(fcs)
-    empty_channel_mask = cleaned_channel_names != ''
-    adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask].astype(np.float32))
+class FlowData:
+    def __init__(self, adata: ad.AnnData) -> None:
+        self.adata = adata
 
-    adata.uns['filename'] = fcs.name
-    adata.uns['tube'] = fcs.text.get('tube name')
-    adata.uns['id'] = (
-        f'{extract_case_number(Path(fcs.name).stem)} {adata.uns["tube"]}'
-        if adata.uns['tube']
-        else f'{extract_case_number(Path(fcs.name).stem)}'
-    )
+        self.set_scale(
+            scaling_factor=adata.uns.get('scaling_factor', get_scaling_factor()),
+            lower_asinh_bound=adata.uns.get(
+                'lower_asinh_bound', get_lower_asinh_bound()
+            ),
+            upper_asinh_bound=adata.uns.get(
+                'upper_asinh_bound', get_upper_asinh_bound()
+            ),
+        )
+        self.set_size(bins=get_resolution())
+        self.set_zoom(bins=get_zoom_resolution())
 
-    adata.var_names = cleaned_channel_names[empty_channel_mask]
-    adata.var['channel_type'] = np.select(
-        [
-            adata.var_names.isin(cleaned_channel_names[fcs.scatter_indices]),
-            adata.var_names == cleaned_channel_names[fcs.time_index],
-        ],
-        ['scatter', 'time'],
-        default='fluoro',
-    )
-    adata.var['pnn_label'] = np.array(fcs.pnn_labels)[empty_channel_mask]
-    adata.var['pns_label'] = np.array(fcs.pns_labels)[empty_channel_mask]
+    @classmethod
+    def from_fcs(cls, fcs: flowio.FlowData):
+        cleaned_channel_names = clean_channel_names(fcs)
+        empty_channel_mask = cleaned_channel_names != ''
+        adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask].astype(np.float32))
 
-    adata.obs['color'] = Color.GREY
-    adata.obs['visible'] = True
+        adata.uns['filename'] = fcs.name
+        adata.uns['tube'] = fcs.text.get('tube name')
+        adata.uns['id'] = (
+            f'{extract_case_number(Path(fcs.name).stem)} {adata.uns["tube"]}'
+            if adata.uns['tube']
+            else f'{extract_case_number(Path(fcs.name).stem)}'
+        )
 
-    return initialize(adata)
+        adata.var_names = cleaned_channel_names[empty_channel_mask]
+        adata.var['channel_type'] = np.select(
+            [
+                adata.var_names.isin(cleaned_channel_names[fcs.scatter_indices]),
+                adata.var_names == cleaned_channel_names[fcs.time_index],
+            ],
+            ['scatter', 'time'],
+            default='fluoro',
+        )
+        adata.var['pnn_label'] = np.array(fcs.pnn_labels)[empty_channel_mask]
+        adata.var['pns_label'] = np.array(fcs.pns_labels)[empty_channel_mask]
 
+        adata.obs['color'] = Color.GREY
+        adata.obs['visible'] = True
 
-def initialize(
-    adata: ad.AnnData,
-) -> ad.AnnData:
-    set_scale(
-        adata,
-        scaling_factor=adata.uns.get('scaling_factor', get_scaling_factor()),
-        lower_asinh_bound=adata.uns.get('lower_asinh_bound', get_lower_asinh_bound()),
-        upper_asinh_bound=adata.uns.get('upper_asinh_bound', get_upper_asinh_bound()),
-    )
-    set_size(adata, bins=get_resolution())
-    set_zoom(adata, bins=get_zoom_resolution())
-    return adata
+        return cls(adata)
 
+    @property
+    def id(self) -> str:
+        return self.adata.uns.get('id')
 
-def set_scale(
-    adata: ad.AnnData,
-    scaling_factor: int,
-    lower_asinh_bound: float,
-    upper_asinh_bound: float,
-) -> None:
-    adata.uns['scaling_factor'] = scaling_factor
-    adata.uns['lower_asinh_bound'] = lower_asinh_bound
-    adata.uns['upper_asinh_bound'] = upper_asinh_bound
+    @property
+    def filename(self) -> str:
+        return self.adata.uns.get('filename')
 
-    adata.layers['xform'] = asinh_transform(
-        adata, scaling_factor=adata.uns['scaling_factor']
-    )
-    adata.var['lower_bound'] = lower_clip_limits(adata, lower_asinh_bound)
-    adata.var['upper_bound'] = upper_clip_limits(adata, upper_asinh_bound)
+    @property
+    def event_count(self) -> str:
+        return self.adata.n_obs
 
+    @property
+    def tube(self) -> str:
+        return self.adata.uns.get('tube')
 
-def set_size(adata: ad.AnnData, bins: int) -> None:
-    adata.layers['bin'] = discretize_data(adata, bins)
+    @property
+    def channels(self) -> list[str]:
+        return sort_channels(self.adata.var_names)  # account for umap and other obsm
 
+    @property
+    def fluoro_channels(self) -> list[str]:
+        return sort_channels(
+            self.adata.var_names[self.adata.var['channel_type'] == 'fluoro']
+        )
 
-def set_zoom(adata: ad.AnnData, bins: int) -> None:
-    adata.layers['zoom'] = discretize_data(adata, bins)
+    @property
+    def channel_fluor_map(self) -> dict[str, str]:
+        # channels = [
+        #     f'{marker} ({fluor})'
+        #     for fluor, marker in self.adata.var.loc[
+        #         self.adata.var['channel_type'] == 'fluoro', ['pnn_label', 'pns_label']
+        #     ].to_records(index=False)
+        # ]
+        return
+
+    @property
+    def scaling_factor(self) -> int:
+        return self.adata.uns.get('scaling_factor', get_scaling_factor())
+
+    @property
+    def lower_asinh_bound(self) -> float:
+        return self.adata.uns.get('lower_asinh_bound', get_lower_asinh_bound())
+
+    @property
+    def upper_asinh_bound(self) -> float:
+        return self.adata.uns.get('upper_asinh_bound', get_upper_asinh_bound())
+
+    @property
+    def binned_df(self) -> pd.DataFrame:
+        return pd.DataFrame(self.adata.layers['bin'], columns=self.adata.var_names)
+
+    @property
+    def zoom_df(self) -> pd.DataFrame:
+        return pd.DataFrame(self.adata.layers['zoom'], columns=self.adata.var_names)
+
+    @property
+    def state_df(self) -> pd.DataFrame:
+        return self.adata.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
+
+    @property
+    def memory_states(self) -> dict[int, pd.DataFrame]:
+        def _get_memory_state(index: int) -> pd.DataFrame | None:
+            memory_state = self.adata.obsm.get(f'mem_{index}')
+            return (
+                memory_state.reset_index(drop=True)
+                if memory_state is not None
+                else None
+            )
+
+        N_MEMORY_SLOTS = 5
+        return {i: _get_memory_state(i) for i in range(N_MEMORY_SLOTS)}
+
+    @property
+    def layout(self) -> dict[tuple[int, int], tuple[str, str]]:
+        layout_grid = self.adata.uns.get('layout')
+        if layout_grid is None:
+            return get_best_layout(channels=self.channels).grid
+        else:
+            return to_grid(json.loads(layout_grid))
+
+    def set_scale(
+        self,
+        scaling_factor: int,
+        lower_asinh_bound: float,
+        upper_asinh_bound: float,
+    ) -> None:
+        self.adata.uns['scaling_factor'] = scaling_factor
+        self.adata.uns['lower_asinh_bound'] = lower_asinh_bound
+        self.adata.uns['upper_asinh_bound'] = upper_asinh_bound
+
+        self.adata.layers['xform'] = asinh_transform(
+            self.adata, scaling_factor=self.adata.uns['scaling_factor']
+        )
+        self.adata.var['lower_bound'] = lower_clip_limits(self.adata, lower_asinh_bound)
+        self.adata.var['upper_bound'] = upper_clip_limits(self.adata, upper_asinh_bound)
+
+    def set_size(self, bins: int) -> None:
+        self.adata.layers['bin'] = discretize_data(self.adata, bins)
+        self.axis_ticks = get_axis_ticks(self.adata, bins)
+
+    def set_zoom(self, bins: int) -> None:
+        self.adata.layers['zoom'] = discretize_data(self.adata, bins)
+        self.zoom_axis_ticks = get_axis_ticks(self.adata, bins)
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
@@ -180,30 +265,30 @@ def discretize_array(
 
 
 def get_umap_dims(
-    adata: ad.AnnData,
+    flowdata: FlowData, bins: int
 ) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
     bounds = {
         channel: dict(
             lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
             upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
         )
-        for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
+        for channel, row in zip(['UMAP1', 'UMAP2'], flowdata.adata.obsm['umap'].T)
     }
-    adata.obsm['umap_bins'] = np.array([
+    flowdata.adata.obsm['umap_bins'] = np.array([
         discretize_array(
             **bounds[channel],
-            bins=get_resolution(),
+            bins=bins,
             arr=row,
         )
-        for channel, row in zip(['UMAP1', 'UMAP2'], adata.obsm['umap'].T)
+        for channel, row in zip(['UMAP1', 'UMAP2'], flowdata.adata.obsm['umap'].T)
     ]).T.astype(np.uint16)
 
     umap_axis_ticks = _umap_axis_ticks(
-        bins=get_resolution(),
+        bins=bins,
         channels=['UMAP1', 'UMAP2'],
         bounds=bounds,
     )
-    return adata.obsm['umap_bins'], umap_axis_ticks
+    return flowdata.adata.obsm['umap_bins'], umap_axis_ticks
 
 
 def umap_transform(arr: np.ndarray) -> np.ndarray:

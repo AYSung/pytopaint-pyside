@@ -5,7 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import anndata as ad
 from PySide6.QtCore import Slot
 from PySide6.QtWidgets import (
     QDialog,
@@ -33,7 +32,7 @@ from pytopaint.config import (
     set_scaling_factor,
     set_upper_asinh_bound,
 )
-from pytopaint.flowdata import sort_channels
+from pytopaint.flowdata import FlowData, sort_channels
 from pytopaint.widgets.reportgenerator import ReportTemplateDialog
 
 
@@ -241,16 +240,16 @@ def zoom_plot_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
-def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
+def file_info_dialog(parent: QWidget, data: FlowData) -> QDialog:
     dialog = QDialog(parent)
     dialog.setWindowTitle('File Info')
 
-    file_name = QLabel(f'File Name: {data.uns["filename"]}')
-    event_count = QLabel(f'Event Count: {data.n_obs:,}')
+    file_name = QLabel(f'File Name: {data.filename}')
+    event_count = QLabel(f'Event Count: {data.event_count:,}')
     channels = [
         f'{marker} ({fluor})'
-        for fluor, marker in data.var.loc[
-            data.var['channel_type'] == 'fluoro', ['pnn_label', 'pns_label']
+        for fluor, marker in data.adata.var.loc[
+            data.adata.var['channel_type'] == 'fluoro', ['pnn_label', 'pns_label']
         ].to_records(index=False)
     ]
     channels_label = QLabel(f'Channels: \n{"\n".join(sort_channels(channels))}')
@@ -260,7 +259,7 @@ def file_info_dialog(parent: QWidget, data: ad.AnnData) -> QDialog:
 
     layout = QVBoxLayout()
     layout.addWidget(file_name)
-    if (tube := data.uns.get('tube')) is not None:
+    if (tube := data.tube) is not None:
         tube_label = QLabel(f'Tube: {tube}')
         layout.addWidget(tube_label)
     layout.addWidget(event_count)
@@ -307,7 +306,7 @@ def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
-def report_generator_dialog(parent: QWidget, tubes: list[ad.AnnData]) -> int:
+def report_generator_dialog(parent: QWidget, tubes: list[FlowData]) -> int:
     report_generator = ReportTemplateDialog(tubes, parent)
 
     return report_generator.exec()

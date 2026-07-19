@@ -12,8 +12,6 @@ from pathlib import Path
 
 import yaml
 
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
-
 
 @dataclass
 class LayoutConfig:
@@ -28,7 +26,7 @@ class LayoutConfig:
 
     @property
     def channels(self) -> list[str]:
-        return sort_channels(set(chain(*self.grid.values())))
+        return list(set(chain(*self.grid.values())))
 
     @property
     def rows(self) -> int:
@@ -108,13 +106,24 @@ def replace_unused_channels(
         zip(
             filter(
                 lambda x: (
-                    x not in set(chain(data_channels, PHYSICAL_PARAMETERS, ['Time']))
+                    x
+                    not in set(
+                        chain(
+                            data_channels, ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
+                        )
+                    )
                 ),
                 layout.channels,
             ),
             filter(
                 lambda x: (
-                    x not in set(chain(layout.channels, PHYSICAL_PARAMETERS, ['Time']))
+                    x
+                    not in set(
+                        chain(
+                            layout.channels,
+                            ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time'],
+                        )
+                    )
                 ),
                 data_channels,
             ),
