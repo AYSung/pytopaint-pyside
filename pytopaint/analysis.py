@@ -50,6 +50,6 @@ class AnalysisProgressDialog(QProgressDialog):
 
     def keyPressEvent(self, e: QKeyEvent):
         if e.key() == Qt.Key.Key_Escape:
-            return
-
-        return super().keyPressEvent(e)
+            e.ignore()
+        else:
+            super().keyPressEvent(e)

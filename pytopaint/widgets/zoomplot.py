@@ -44,5 +44,5 @@ class ZoomPlot(QDialog):
     def keyPressEvent(self, e: QKeyEvent):
         if e.key() == Qt.Key.Key_Escape:
             e.ignore()
-
-        super().keyPressEvent(e)
+        else:
+            super().keyPressEvent(e)
