@@ -26,7 +26,7 @@ from pytopaint.config import (
     get_upper_asinh_bound,
     get_zoom_resolution,
 )
-from pytopaint.layout import get_best_layout, to_grid
+from pytopaint.layout import dict_to_yaml, get_best_layout, to_grid
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 
@@ -176,6 +176,29 @@ class FlowData:
     def set_zoom(self, bins: int) -> None:
         self.adata.layers['zoom'] = discretize_data(self.adata, bins)
         self.zoom_axis_ticks = get_axis_ticks(self.adata, bins)
+
+    def update_state(
+        self,
+        state: pd.DataFrame,
+        memory_states: dict[int, pd.DataFrame],
+        layout: dict[tuple[int, int], tuple[str, str]],
+    ):
+        def _copy_state(_state: pd.DataFrame) -> pd.DataFrame:
+            new_state = _state.copy()
+            new_state.index = new_state.index.astype(str)
+            return new_state
+
+        self.adata.obs = _copy_state(state)
+
+        for i, memory_state in memory_states.items():
+            key = f'mem_{i}'
+            if memory_state is not None:
+                self.adata.obsm[key] = _copy_state(memory_state)
+            elif key in self.adata.obsm.keys():
+                self.adata.obsm.pop(key)
+
+        if self.layout != layout:
+            self.adata.uns['layout'] = json.dumps(dict_to_yaml(layout))
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:

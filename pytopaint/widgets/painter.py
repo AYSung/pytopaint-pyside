@@ -5,7 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import json
 from collections import deque
 from functools import wraps
 
@@ -33,7 +32,6 @@ from pytopaint.flowdata import (
     get_umap_dims,
     umap_transform,
 )
-from pytopaint.layout import get_best_layout
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
@@ -84,6 +82,7 @@ class Painter(QWidget):
             MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
             MenuAction.REPLACE_STATE: self.replace_state,
             MenuAction.MERGE_STATE: self.merge_state,
+            MenuAction.FORGET_STATE: self.forget_state,
             MenuAction.STORE_COLOR: self.store_color,
             MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
             MenuAction.RECALL_COLOR: self.recall_color,
@@ -235,6 +234,10 @@ class Painter(QWidget):
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
         self.zap_all()
+
+    def forget_state(self, slot: int):
+        self.memory_states[slot] = None
+        print(self.memory_states)
 
     def store_color(self, color: Color):
         self.colorStateReturned.emit(
@@ -393,19 +396,10 @@ class Painter(QWidget):
         )
         dialog.exec()
 
-    def update_anndata_state(self) -> None:
-        new_state = self.state.copy()
-        new_state.index = new_state.index.astype(str)
-        self.data.obs = new_state
-
-        for i, memory_state in self.memory_states.items():
-            if memory_state is not None:
-                temp_state = memory_state.copy()
-                temp_state.index = temp_state.index.astype(str)
-                self.data.obsm[f'mem_{i}'] = temp_state
-
-        if self.biplot_grid._to_dict() != get_best_layout(self.data.channels).grid:
-            self.data.layout = json.dumps(self.biplot_grid.to_yaml())
+    def update_flowdata_state(self) -> None:
+        self.data.update_state(
+            self.state, self.memory_states, self.biplot_grid._to_dict()
+        )
 
     def load_umap(self) -> None:
         umap_arr, umap_axis_ticks = get_umap_dims(self.data, get_resolution())

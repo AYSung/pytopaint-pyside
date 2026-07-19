@@ -131,7 +131,7 @@ class IOManager(QObject):
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
-        painter.update_anndata_state()
+        painter.update_flowdata_state()
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
@@ -142,7 +142,7 @@ class IOManager(QObject):
         if not file_path:
             return
 
-        temp_data = painter.data.copy()
+        temp_data = painter.data.adata.copy()
         temp_data.layers.clear()
         temp_data.write(filename=file_path, compression='gzip')
 
