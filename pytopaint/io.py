@@ -13,14 +13,7 @@ from pathlib import Path
 import anndata as ad
 import flowio
 import yaml
-from PySide6.QtCore import (
-    QDir,
-    QObject,
-    Qt,
-    QUrl,
-    Signal,
-    Slot,
-)
+from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -46,9 +39,8 @@ class IOManager(QObject):
         progress = QProgressDialog(
             'Opening files...', 'Cancel', 0, len(files), self.parent()
         )
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
 
-        progress.show()
+        progress.open()
         self.finished.emit(False)
         for i, file in enumerate(files, start=1):
             if progress.wasCanceled():

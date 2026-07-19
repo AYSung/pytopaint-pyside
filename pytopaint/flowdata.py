@@ -15,8 +15,6 @@ import flowio
 import flowutils
 import numpy as np
 import pandas as pd
-from sklearn.preprocessing import RobustScaler
-from umap import UMAP
 
 from pytopaint.colors import Color
 from pytopaint.config import (
@@ -47,6 +45,8 @@ class FlowData:
         )
         self.set_size(bins=get_resolution())
         self.set_zoom(bins=get_zoom_resolution())
+
+        self.load_analyses()
 
     @classmethod
     def from_fcs(cls, fcs: flowio.FlowData):
@@ -170,6 +170,8 @@ class FlowData:
         self.adata.var['lower_bound'] = lower_clip_limits(self.adata, lower_asinh_bound)
         self.adata.var['upper_bound'] = upper_clip_limits(self.adata, upper_asinh_bound)
 
+        self.unload_analyses()
+
     def set_size(self, bins: int) -> None:
         self.adata.layers['bin'] = discretize_data(self.adata, bins)
         self.binned_df = pd.DataFrame(
@@ -212,8 +214,37 @@ class FlowData:
             highlighted_colors if highlighted_colors else None
         )
 
+    def load_analyses(self) -> None:
+        if 'umap' in self.adata.obsm.keys():
+            self._load_umap()
+
+    def unload_analyses(self) -> None:
+        analysis_keys = [
+            key for key in self.adata.obsm.keys() if not key.startswith('mem_')
+        ]
+        for key in analysis_keys:
+            self.adata.obsm.pop(key)
+
+    def _load_umap(self) -> None:
+        umap_transform = self.adata.obsm['umap']
+
+        umap_arr, umap_axis_ticks = get_umap_dims(umap_transform, bins=get_resolution())
+        zoom_umap_arr, zoom_umap_axis_ticks = get_umap_dims(
+            umap_transform, bins=get_zoom_resolution()
+        )
+
+        self.binned_df = self.binned_df.join(
+            pd.DataFrame(umap_arr, columns=['UMAP1', 'UMAP2'])
+        )
+        self.axis_ticks = self.axis_ticks | umap_axis_ticks
+        self.zoom_df = self.zoom_df.join(
+            pd.DataFrame(zoom_umap_arr, columns=['UMAP1', 'UMAP2'])
+        )
+        self.zoom_axis_ticks = self.zoom_axis_ticks | zoom_umap_axis_ticks
+
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
+
     return np.where(
         np.isin(
             np.arange(0, fcs.channel_count), fcs.scatter_indices + [fcs.time_index]
@@ -295,41 +326,6 @@ def discretize_array(
     return np.searchsorted(bins, arr, side='left')
 
 
-def get_umap_dims(
-    flowdata: FlowData, bins: int
-) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
-    bounds = {
-        channel: dict(
-            lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
-            upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
-        )
-        for channel, row in zip(['UMAP1', 'UMAP2'], flowdata.adata.obsm['umap'].T)
-    }
-    flowdata.adata.obsm['umap_bins'] = np.array([
-        discretize_array(
-            **bounds[channel],
-            bins=bins,
-            arr=row,
-        )
-        for channel, row in zip(['UMAP1', 'UMAP2'], flowdata.adata.obsm['umap'].T)
-    ]).T.astype(np.uint16)
-
-    umap_axis_ticks = _umap_axis_ticks(
-        bins=bins,
-        channels=['UMAP1', 'UMAP2'],
-        bounds=bounds,
-    )
-    return flowdata.adata.obsm['umap_bins'], umap_axis_ticks
-
-
-def umap_transform(arr: np.ndarray) -> np.ndarray:
-    scaled_arr = RobustScaler().fit_transform(arr)
-    umap = UMAP(init='pca', verbose=True, min_dist=0.4, n_neighbors=15, random_state=42)
-    rng = np.random.default_rng(seed=42)
-    umap.fit(rng.choice(scaled_arr, size=min(20_000, arr.shape[0]), replace=False))
-    return umap.transform(scaled_arr)
-
-
 def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, str]]]:
     def _scatter_axis_ticks(channel: str) -> list[tuple[int, str]]:
         tick_positions = discretize_array(
@@ -385,22 +381,6 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
     return scatter_axis_ticks | fluoro_axis_ticks | other_axis_ticks
 
 
-def _umap_axis_ticks(
-    bins: int,
-    channels: list[str],
-    bounds: dict[int, dict[str, float]],
-) -> dict[str, list[tuple[int, str]]]:
-    return {
-        channel_name: list(
-            zip(
-                discretize_array(**bounds[channel_name], bins=bins, arr=np.array([0])),
-                ['0'],
-            )
-        )
-        for channel_name in channels
-    }
-
-
 def sort_channels(channels: list[str] | set[str]) -> list[str]:
     light_scatter_channels = sorted(
         list(filter(lambda x: x in PHYSICAL_PARAMETERS, channels))
@@ -451,3 +431,28 @@ def extract_case_number(filename: str) -> str:
         return f'IP{match.group(1) or "xx"}-{int(match.group(2)):05}'
     else:
         return filename
+
+
+def get_umap_dims(
+    data: np.ndarray, bins: int
+) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
+    def _umap_axis_ticks(channel: str) -> list[tuple[int, str]]:
+        tick_positions = discretize_array(
+            **bounds[channel], bins=bins, arr=np.array([0])
+        )
+        return list(zip(tick_positions, ['0']))
+
+    bounds = {
+        channel: dict(
+            lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
+            upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
+        )
+        for channel, row in zip(['UMAP1', 'UMAP2'], data.T)
+    }
+    bin_arr = np.array([
+        discretize_array(**bounds[channel], bins=bins, arr=row)
+        for channel, row in zip(['UMAP1', 'UMAP2'], data.T)
+    ]).T.astype(np.uint16)
+
+    axis_ticks = {channel: _umap_axis_ticks(channel) for channel in ['UMAP1', 'UMAP2']}
+    return bin_arr, axis_ticks

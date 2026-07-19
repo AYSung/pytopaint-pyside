@@ -314,7 +314,7 @@ class MainWindow(QMainWindow):
 
         analyze_menu = menu_bar.addMenu('&Analyze')
         umap_action = QAction('UMAP', self)
-        umap_action.triggered.connect(lambda: self.get_active_painter().add_umap())
+        umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
         analyze_menu.addAction(umap_action)
 
         help_menu = menu_bar.addMenu('&Help')

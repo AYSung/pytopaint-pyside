@@ -11,15 +11,21 @@ from functools import wraps
 import anndata as ad
 import flowio
 import pandas as pd
-from PySide6.QtCore import Signal, Slot
+from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtGui import (
     QCursor,
     QKeySequence,
     QShortcut,
 )
-from PySide6.QtWidgets import QApplication, QSizePolicy, QVBoxLayout, QWidget
+from PySide6.QtWidgets import (
+    QApplication,
+    QSizePolicy,
+    QVBoxLayout,
+    QWidget,
+)
 
 from pytopaint.actions import MenuAction
+from pytopaint.analysis import AnalysisProgressDialog, umap_worker
 from pytopaint.colors import (
     Color,
     add_color_to_series,
@@ -27,11 +33,7 @@ from pytopaint.colors import (
     subtract_color_from_series,
 )
 from pytopaint.config import get_resolution, get_zoom_resolution
-from pytopaint.flowdata import (
-    FlowData,
-    get_umap_dims,
-    umap_transform,
-)
+from pytopaint.flowdata import FlowData
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
@@ -278,14 +280,24 @@ class Painter(QWidget):
         )
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
-    def add_umap(self):
-        self.data.adata.obsm['umap'] = umap_transform(
-            self.data.adata[:, self.data.adata.var['channel_type'] == 'fluoro'].layers[
-                'xform'
-            ]
-        )
+    def start_umap(self):
+        arr = self.data.adata[
+            :, self.data.adata.var['channel_type'] == 'fluoro'
+        ].layers['xform']
+        worker = umap_worker(arr)
+        worker.signals.analysisFinished.connect(self.umap_finished)
 
-        self.load_umap()
+        dialog = AnalysisProgressDialog('Running UMAP analysis...', '', 0, 0, self)
+        worker.signals.analysisFinished.connect(dialog.accept)
+
+        QThreadPool.globalInstance().start(worker)
+        dialog.open()
+
+    @Slot(object)
+    def umap_finished(self, result):
+
+        self.data.adata.obsm['umap'] = result
+        self.data.load_analyses()
         self.data_changed()
 
     @record_action
@@ -393,25 +405,6 @@ class Painter(QWidget):
             self.memory_states,
             self.biplot_grid._to_dict(),
             self.highlighted_colors,
-        )
-
-    def load_umap(self) -> None:
-        umap_arr, umap_axis_ticks = get_umap_dims(self.data, get_resolution())
-        zoom_umap_arr, zoom_umap_axis_ticks = get_umap_dims(
-            self.data, get_zoom_resolution()
-        )
-
-        umap_df = pd.DataFrame(
-            umap_arr,
-            columns=['UMAP1', 'UMAP2'],
-        )
-        self.axis_ticks = self.axis_ticks | umap_axis_ticks
-        self.biplot_grid.zoom_axis_ticks = (
-            self.biplot_grid.zoom_axis_ticks | zoom_umap_axis_ticks
-        )
-        self.df = self.df.join(umap_df)
-        self.biplot_grid.zoom_df = self.biplot_grid.zoom_df.join(
-            pd.DataFrame(zoom_umap_arr, columns=['UMAP1', 'UMAP2'])
         )
 
     def zoom_plot(self) -> None:
