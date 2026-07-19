@@ -6,7 +6,6 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 from itertools import chain
 
-import anndata as ad
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
@@ -17,19 +16,19 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.flowdata import PHYSICAL_PARAMETERS, FlowData, sort_channels
 from pytopaint.widgets.palette import _format_percent
 
 
 class ReportTemplateDialog(QDialog):
-    def __init__(self, tubes: list[ad.AnnData], parent=None):
+    def __init__(self, tubes: list[FlowData], parent=None):
         super().__init__(parent)
         layout = QVBoxLayout()
         self.tubes = tubes
 
         groupbox = QGroupBox('Tubes to include:')
         group_layout = QVBoxLayout()
-        self.checkboxes = [QCheckBox(tube_data.uns['id']) for tube_data in tubes]
+        self.checkboxes = [QCheckBox(tube_data.id) for tube_data in tubes]
         for checkbox in self.checkboxes:
             checkbox.setChecked(True)
             group_layout.addWidget(checkbox)
@@ -45,7 +44,7 @@ class ReportTemplateDialog(QDialog):
 
     def copy_clicked(self):
         checked_channels = [
-            tube_data.var_names[tube_data.var['channel_type'] == 'fluoro']
+            tube_data.fluoro_channels
             for checkbox, tube_data in zip(self.checkboxes, self.tubes)
             if checkbox.isChecked()
         ]

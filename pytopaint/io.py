@@ -13,14 +13,7 @@ from pathlib import Path
 import anndata as ad
 import flowio
 import yaml
-from PySide6.QtCore import (
-    QDir,
-    QObject,
-    Qt,
-    QUrl,
-    Signal,
-    Slot,
-)
+from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -46,9 +39,8 @@ class IOManager(QObject):
         progress = QProgressDialog(
             'Opening files...', 'Cancel', 0, len(files), self.parent()
         )
-        progress.setWindowModality(Qt.WindowModality.WindowModal)
 
-        progress.show()
+        progress.open()
         self.finished.emit(False)
         for i, file in enumerate(files, start=1):
             if progress.wasCanceled():
@@ -57,8 +49,9 @@ class IOManager(QObject):
             try:
                 painter = self.file_parsers[file.suffix.lower()](file)
                 self.fileOpened.emit(painter)
-            except ValueError:
+            except ValueError as e:
                 print(f'error opening {file}')
+                raise e
             finally:
                 progress.setValue(i)
                 QApplication.processEvents()
@@ -130,7 +123,7 @@ class IOManager(QObject):
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
-        painter.update_anndata_state()
+        painter.update_flowdata_state()
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
@@ -141,7 +134,7 @@ class IOManager(QObject):
         if not file_path:
             return
 
-        temp_data = painter.data.copy()
+        temp_data = painter.data.adata.copy()
         temp_data.layers.clear()
         temp_data.write(filename=file_path, compression='gzip')
 

@@ -29,6 +29,7 @@ class MenuAction(IntEnum):
     MERGE_STATE = auto()
     STORE_STATE = auto()
     STORE_STATE_AND_CLEAR = auto()
+    FORGET_STATE = auto()
     STORE_COLOR = auto()
     STORE_COLOR_AND_CLEAR = auto()
     RECALL_COLOR = auto()

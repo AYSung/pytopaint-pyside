@@ -52,7 +52,7 @@ class PainterTabs(QTabWidget):
         self.rescaleTriggered.connect(painter.handle_rescale)
         self.colorPaletteChanged.connect(painter.colorPaletteChanged)
         self.zoomUpdated.connect(painter.change_zoom)
-        self.addTab(painter, painter.data.uns['id'])
+        self.addTab(painter, painter.data.id)
         self.setCurrentWidget(painter)
 
     @property

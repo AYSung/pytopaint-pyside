@@ -646,9 +646,10 @@ class XAxis(QLabel):
 
         painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
-        if self.label is not None:
-            axis_ticks = self.axis_ticks.get(self.label)
-
+        if (
+            self.label is not None
+            and (axis_ticks := self.axis_ticks.get(self.label)) is not None
+        ):
             for tick, _ in axis_ticks:
                 painter.drawLine(QPoint(tick, tick_y0), QPoint(tick, tick_y1))
 
@@ -755,9 +756,10 @@ class YAxis(QLabel):
 
         painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, Y_MAX))
 
-        if self.label is not None:
-            axis_ticks = self.axis_ticks.get(self.label)
-
+        if (
+            self.label is not None
+            and (axis_ticks := self.axis_ticks.get(self.label)) is not None
+        ):
             for tick, _ in axis_ticks:
                 painter.drawLine(
                     QPoint(tick_x0, Y_MAX - tick),

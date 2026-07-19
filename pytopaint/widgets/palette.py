@@ -473,4 +473,5 @@ class MemorySlot(QToolButton):
 
     def clear_state(self):
         self.has_events = False
+        self.menuActionTriggered.emit(MenuAction.FORGET_STATE, dict(slot=self.id))
         self.update_appearance()

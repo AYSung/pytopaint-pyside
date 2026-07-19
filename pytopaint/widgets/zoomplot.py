@@ -5,8 +5,9 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import (
+    QKeyEvent,
     QKeySequence,
     QShortcut,
 )
@@ -39,3 +40,9 @@ class ZoomPlot(QDialog):
 
     def update_active_color(self, color: Color) -> None:
         self.active_color = color
+
+    def keyPressEvent(self, e: QKeyEvent):
+        if e.key() == Qt.Key.Key_Escape:
+            e.ignore()
+        else:
+            super().keyPressEvent(e)

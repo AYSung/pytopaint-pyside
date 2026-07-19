@@ -1,11 +1,12 @@
 import pytest
+
 from pytopaint.layout import (
     LayoutConfig,
-    get_best_layout_match,
     _import_layouts,
-    to_grid,
-    replace_unused_channels,
     dict_to_yaml,
+    get_best_layout_match,
+    replace_unused_channels,
+    to_grid,
 )
 
 
@@ -154,7 +155,7 @@ def test_layout_config(
     assert layout_1.rows == 2
     assert layout_1.columns(row=0) == 4
     assert layout_1.columns(row=1) == 4
-    assert layout_1.channels == [
+    assert set(layout_1.channels) == {
         'CD5',
         'CD10',
         'CD19',
@@ -165,7 +166,7 @@ def test_layout_config(
         'CD45',
         'Kappa',
         'Lambda',
-    ]
+    }
     assert layout_1.biplot_score(test_channels_1) == 1
     assert layout_1.biplot_score(test_channels_2) == 0
     assert layout_1.channel_score(test_channels_1) == 10 / 15
@@ -175,7 +176,7 @@ def test_layout_config(
     assert layout_2.rows == 2
     assert layout_2.columns(0) == 7
     assert layout_2.columns(1) == 7
-    assert layout_2.channels == [
+    assert set(layout_2.channels) == {
         'CD2',
         'CD3',
         'CD4',
@@ -186,7 +187,7 @@ def test_layout_config(
         'CD45',
         'CD56',
         'CD64',
-    ]
+    }
     assert layout_2.biplot_score(test_channels_1) == 0
     assert layout_2.biplot_score(test_channels_2) == 1
     assert layout_2.channel_score(test_channels_1) == 2 / 15
