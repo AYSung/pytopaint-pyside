@@ -95,6 +95,14 @@ class FlowData:
         return self.adata.uns.get('tube')
 
     @property
+    def highlighted_colors(self) -> list[Color]:
+        highlighted_colors = self.adata.uns.get('highlighted_colors')
+        if highlighted_colors is not None:
+            return list(map(Color, highlighted_colors))
+        else:
+            return []
+
+    @property
     def channels(self) -> list[str]:
         return sort_channels(self.adata.var_names)  # account for umap and other obsm
 
@@ -175,11 +183,12 @@ class FlowData:
         )
         self.zoom_axis_ticks = get_axis_ticks(self.adata, bins)
 
-    def update_state(
+    def update_session_state(
         self,
         state: pd.DataFrame,
         memory_states: dict[int, pd.DataFrame],
         layout: dict[tuple[int, int], tuple[str, str]],
+        highlighted_colors: list[Color],
     ):
         def _copy_state(_state: pd.DataFrame) -> pd.DataFrame:
             new_state = _state.copy()
@@ -197,6 +206,10 @@ class FlowData:
 
         if self.layout != layout:
             self.adata.uns['layout'] = json.dumps(dict_to_yaml(layout))
+
+        self.adata.uns['highlighted_colors'] = (
+            highlighted_colors if highlighted_colors else None
+        )
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:

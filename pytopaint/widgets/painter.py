@@ -97,7 +97,7 @@ class Painter(QWidget):
         self.undo_history.append(self.state.copy())
         self.redo_history = deque()
         self.active_color = Color.BLUE
-        self.highlighted_colors = []
+        self.highlighted_colors = self.data.highlighted_colors
         self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.data.memory_states
@@ -388,8 +388,11 @@ class Painter(QWidget):
         dialog.exec()
 
     def update_flowdata_state(self) -> None:
-        self.data.update_state(
-            self.state, self.memory_states, self.biplot_grid._to_dict()
+        self.data.update_session_state(
+            self.state,
+            self.memory_states,
+            self.biplot_grid._to_dict(),
+            self.highlighted_colors,
         )
 
     def load_umap(self) -> None:
