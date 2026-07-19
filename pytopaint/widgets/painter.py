@@ -25,7 +25,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.actions import MenuAction
-from pytopaint.analysis import AnalysisProgressDialog, umap_worker
+from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
 from pytopaint.colors import (
     Color,
     add_color_to_series,
@@ -103,8 +103,6 @@ class Painter(QWidget):
         self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.data.memory_states
-        if 'umap' in self.data.adata.obsm.keys():
-            self.load_umap()
 
         palette = Palette(state=self.state, memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.menuActionTriggered)
@@ -295,9 +293,28 @@ class Painter(QWidget):
 
     @Slot(object)
     def umap_finished(self, result):
+        self.data.adata.obsm['umap'], _ = result
+        self.data.load_umap()
+        self.data_changed()
 
-        self.data.adata.obsm['umap'] = result
-        self.data.load_analyses()
+    def start_pca(self):
+        arr = self.data.adata[
+            :, self.data.adata.var['channel_type'] == 'fluoro'
+        ].layers['xform']
+        worker = pca_worker(arr)
+        worker.signals.analysisFinished.connect(self.pca_finished)
+
+        dialog = AnalysisProgressDialog('Running PCA decomposition...', '', 0, 0, self)
+        worker.signals.analysisFinished.connect(dialog.accept)
+
+        QThreadPool.globalInstance().start(worker)
+        dialog.open()
+
+    @Slot(object)
+    def pca_finished(self, result):
+        # todo: pca explained variance dialog when finished
+        self.data.adata.obsm['pca'], _ = result
+        self.data.load_pca()
         self.data_changed()
 
     @record_action
@@ -362,6 +379,7 @@ class Painter(QWidget):
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:
         self.data.set_scale(**scale_config)
+        self.data.unload_analyses()
         self.handle_resize()
 
     @Slot(object)

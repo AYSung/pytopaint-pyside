@@ -11,16 +11,26 @@ import numpy as np
 from PySide6.QtCore import QObject, QRunnable, Qt, Signal
 from PySide6.QtGui import QKeyEvent
 from PySide6.QtWidgets import QProgressDialog
+from sklearn.base import BaseEstimator
+from sklearn.decomposition import PCA
 from sklearn.preprocessing import RobustScaler
 from umap import UMAP
 
 
-def umap_transform(arr: np.ndarray) -> np.ndarray:
+def umap_transform(arr: np.ndarray) -> tuple[np.ndarray, BaseEstimator]:
     scaled_arr = RobustScaler().fit_transform(arr)
     umap = UMAP(init='pca', verbose=True, min_dist=0.4, n_neighbors=15, random_state=42)
     rng = np.random.default_rng(seed=42)
     umap.fit(rng.choice(scaled_arr, size=min(20_000, arr.shape[0]), replace=False))
-    return umap.transform(scaled_arr)
+    result = umap.transform(scaled_arr)
+    return result, umap
+
+
+def pca_transform(arr: np.ndarray) -> tuple[np.ndarray, BaseEstimator]:
+    scaled_arr = RobustScaler().fit_transform(arr)
+    pca = PCA(n_components=5, random_state=42)
+    result = pca.fit_transform(scaled_arr)
+    return result, pca
 
 
 class WorkerSignal(QObject):
@@ -41,6 +51,10 @@ class AnalysisWorker(QRunnable):
 
 def umap_worker(arr: np.ndarray) -> AnalysisWorker:
     return AnalysisWorker(arr=arr, func=umap_transform)
+
+
+def pca_worker(arr: np.ndarray) -> AnalysisWorker:
+    return AnalysisWorker(arr=arr, func=pca_transform)
 
 
 class AnalysisProgressDialog(QProgressDialog):

@@ -105,7 +105,7 @@ class FlowData:
 
     @property
     def channels(self) -> list[str]:
-        return sort_channels(self.adata.var_names)  # account for umap and other obsm
+        return sort_channels(self.adata.var_names)
 
     @property
     def fluoro_channels(self) -> list[str]:
@@ -170,8 +170,6 @@ class FlowData:
         self.adata.var['lower_bound'] = lower_clip_limits(self.adata, lower_asinh_bound)
         self.adata.var['upper_bound'] = upper_clip_limits(self.adata, upper_asinh_bound)
 
-        self.unload_analyses()
-
     def set_size(self, bins: int) -> None:
         self.adata.layers['bin'] = discretize_data(self.adata, bins)
         self.binned_df = pd.DataFrame(
@@ -200,11 +198,14 @@ class FlowData:
 
         self.adata.obs = _copy_state(state)
 
+        memory_state_keys = [
+            key for key in self.adata.obsm.keys() if key.startswith('mem_')
+        ]
         for i, memory_state in memory_states.items():
             key = f'mem_{i}'
             if memory_state is not None:
                 self.adata.obsm[key] = _copy_state(memory_state)
-            elif key in self.adata.obsm.keys():
+            elif key in memory_state_keys:
                 self.adata.obsm.pop(key)
 
         if self.layout != layout:
@@ -216,7 +217,10 @@ class FlowData:
 
     def load_analyses(self) -> None:
         if 'umap' in self.adata.obsm.keys():
-            self._load_umap()
+            self.load_umap()
+
+        if 'pca' in self.adata.obsm.keys():
+            self.load_pca()
 
     def unload_analyses(self) -> None:
         analysis_keys = [
@@ -225,22 +229,23 @@ class FlowData:
         for key in analysis_keys:
             self.adata.obsm.pop(key)
 
-    def _load_umap(self) -> None:
-        umap_transform = self.adata.obsm['umap']
-
-        umap_arr, umap_axis_ticks = get_umap_dims(umap_transform, bins=get_resolution())
-        zoom_umap_arr, zoom_umap_axis_ticks = get_umap_dims(
-            umap_transform, bins=get_zoom_resolution()
+    def _load_analysis(self, data: np.ndarray, columns: list[str]) -> None:
+        arr, axis_ticks = get_analysis_dims(data, columns, get_resolution())
+        zoom_arr, zoom_axis_ticks = get_analysis_dims(
+            data, columns, get_zoom_resolution()
         )
 
-        self.binned_df = self.binned_df.join(
-            pd.DataFrame(umap_arr, columns=['UMAP1', 'UMAP2'])
-        )
-        self.axis_ticks = self.axis_ticks | umap_axis_ticks
-        self.zoom_df = self.zoom_df.join(
-            pd.DataFrame(zoom_umap_arr, columns=['UMAP1', 'UMAP2'])
-        )
-        self.zoom_axis_ticks = self.zoom_axis_ticks | zoom_umap_axis_ticks
+        self.binned_df = self.binned_df.assign(**dict(zip(columns, arr.T)))
+        self.axis_ticks = self.axis_ticks | axis_ticks
+        self.zoom_df = self.zoom_df.assign(**dict(zip(columns, zoom_arr.T)))
+        self.zoom_axis_ticks = self.zoom_axis_ticks | zoom_axis_ticks
+
+    def load_umap(self) -> None:
+        self._load_analysis(self.adata.obsm['umap'], ['UMAP 1', 'UMAP 2'])
+
+    def load_pca(self) -> None:
+        data = self.adata.obsm['pca']
+        self._load_analysis(data, [f'PC {i + 1}' for i in range(data.shape[1])])
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
@@ -433,26 +438,26 @@ def extract_case_number(filename: str) -> str:
         return filename
 
 
-def get_umap_dims(
-    data: np.ndarray, bins: int
+def get_analysis_dims(
+    data: np.ndarray, columns: list[str], bins: int
 ) -> tuple[np.ndarray, dict[str, list[tuple[int, str]]]]:
-    def _umap_axis_ticks(channel: str) -> list[tuple[int, str]]:
+    def _umap_axis_ticks(column: str) -> list[tuple[int, str]]:
         tick_positions = discretize_array(
-            **bounds[channel], bins=bins, arr=np.array([0])
+            **bounds[column], bins=bins, arr=np.array([0])
         )
         return list(zip(tick_positions, ['0']))
 
     bounds = {
-        channel: dict(
+        column: dict(
             lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
             upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
         )
-        for channel, row in zip(['UMAP1', 'UMAP2'], data.T)
+        for column, row in zip(columns, data.T)
     }
     bin_arr = np.array([
-        discretize_array(**bounds[channel], bins=bins, arr=row)
-        for channel, row in zip(['UMAP1', 'UMAP2'], data.T)
+        discretize_array(**bounds[column], bins=bins, arr=row)
+        for column, row in zip(columns, data.T)
     ]).T.astype(np.uint16)
 
-    axis_ticks = {channel: _umap_axis_ticks(channel) for channel in ['UMAP1', 'UMAP2']}
+    axis_ticks = {column: _umap_axis_ticks(column) for column in columns}
     return bin_arr, axis_ticks

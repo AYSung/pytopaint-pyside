@@ -313,6 +313,9 @@ class MainWindow(QMainWindow):
         layout_menu.addAction(remove_empty_cells_action)
 
         analyze_menu = menu_bar.addMenu('&Analyze')
+        pca_action = QAction('PCA', self)
+        pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
+        analyze_menu.addAction(pca_action)
         umap_action = QAction('UMAP', self)
         umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
         analyze_menu.addAction(umap_action)
