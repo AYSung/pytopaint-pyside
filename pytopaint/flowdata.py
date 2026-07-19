@@ -29,6 +29,7 @@ from pytopaint.config import (
 from pytopaint.layout import dict_to_yaml, get_best_layout, to_grid
 
 PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
+UPPER_PHYSICAL_BOUND = 255_000
 
 
 class FlowData:
@@ -65,10 +66,10 @@ class FlowData:
         adata.var['channel_type'] = np.select(
             [
                 adata.var_names.isin(cleaned_channel_names[fcs.scatter_indices]),
-                adata.var_names == cleaned_channel_names[fcs.time_index],
+                adata.var_names.isin(cleaned_channel_names[fcs.fluoro_indices]),
             ],
-            ['scatter', 'time'],
-            default='fluoro',
+            ['scatter', 'fluoro'],
+            default='other',
         )
         adata.var['pnn_label'] = np.array(fcs.pnn_labels)[empty_channel_mask]
         adata.var['pns_label'] = np.array(fcs.pns_labels)[empty_channel_mask]
@@ -257,14 +258,16 @@ def lower_clip_limits(adata: ad.AnnData, lower_bound: float) -> np.ndarray:
 
 def upper_clip_limits(adata: ad.AnnData, upper_bound: float) -> np.ndarray:
     return np.where(
-        adata.var['channel_type'] != 'time',
+        adata.var['channel_type'] != 'other',
         np.where(
             adata.var['channel_type'] == 'fluoro',
             np.maximum(
                 upper_bound,
                 np.quantile(adata.layers['xform'], q=0.95, axis=0) + 0.5,
             ),
-            np.maximum(255_000.0, np.quantile(adata.layers['xform'], q=0.95, axis=0)),
+            np.maximum(
+                UPPER_PHYSICAL_BOUND, np.quantile(adata.layers['xform'], q=0.95, axis=0)
+            ),
         ),
         np.max(adata.X, axis=0),
     )
@@ -328,92 +331,58 @@ def umap_transform(arr: np.ndarray) -> np.ndarray:
 
 
 def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, str]]]:
+    def _scatter_axis_ticks(channel: str) -> list[tuple[int, str]]:
+        tick_positions = discretize_array(
+            **bounds[channel], bins=bins, arr=SCATTER_TICK_VALUES
+        )
+        return list(zip(tick_positions, SCATTER_TICK_LABELS))
+
+    def _fluoro_axis_ticks(channel: str) -> list[tuple[int, str]]:
+        upper_bound = bounds[channel]['upper_bound']
+        tick_values = np.fromiter(
+            filter(lambda x: x < upper_bound, FLUORO_TICK_VALUES),
+            dtype=float,
+        )
+        tick_positions = discretize_array(**bounds[channel], bins=bins, arr=tick_values)
+        return list(zip(tick_positions, FLUORO_TICK_LABELS))
+
+    def _other_axis_ticks(channel: str) -> list[tuple[int, str]]:
+        tick_positions = discretize_array(
+            **bounds[channel],
+            bins=bins,
+            arr=np.linspace(0, bounds[channel]['upper_bound'], 5),
+        )
+        return [(pos, None) for pos in tick_positions]
+
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
     bins = bins
     scaling_factor = adata.uns['scaling_factor']
 
+    SCATTER_TICK_VALUES = np.arange(0, UPPER_PHYSICAL_BOUND, 50_000)
+    SCATTER_TICK_LABELS = ['0', None, '1e5', None, '2e5', None, '3e5']
+
     scatter_axis_ticks = {
-        channel_name: list(
-            zip(
-                discretize_array(
-                    **bounds[channel_name],
-                    bins=bins,
-                    arr=np.arange(
-                        0,
-                        50_000 * (1 + bounds[channel_name]['upper_bound'] // 50_000),
-                        50_000,
-                    ),
-                ),
-                ['0', None, '1e5', None, '2e5', None, '3e5'],
-            )
-        )
-        for channel_name in adata.var_names[adata.var['channel_type'] == 'scatter']
-    }
-    fluoro_axis_ticks = _fluoro_axis_ticks(
-        bins=bins,
-        scaling_factor=scaling_factor,
-        channels=adata.var_names[adata.var['channel_type'] == 'fluoro'],
-        bounds=bounds,
-    )
-
-    time_axis_ticks = {
-        'Time': list(
-            zip(
-                discretize_array(
-                    **bounds['Time'],
-                    bins=bins,
-                    arr=np.linspace(0, bounds['Time']['upper_bound'], 5),
-                ),
-                [None, None, None, None, None],
-            )
-        )
-    }
-    return scatter_axis_ticks | fluoro_axis_ticks | time_axis_ticks
-
-
-def _scatter_axis_ticks(
-    bins: int,
-    scaling_factor: float,
-    channels: list[str],
-    bounds: dict[int, dict[str, float]],
-) -> dict[str, list[tuple[int, str]]]:
-
-    return
-
-
-def _fluoro_axis_ticks(
-    bins: int,
-    scaling_factor: float,
-    channels: list[str],
-    bounds: dict[int, dict[str, float]],
-) -> dict[str, list[tuple[int, str]]]:
-    return {
-        channel_name: list(
-            zip(
-                discretize_array(
-                    **bounds[channel_name],
-                    bins=bins,
-                    arr=np.array(
-                        list(
-                            filter(
-                                lambda x: x < bounds[channel_name]['upper_bound'],
-                                map(
-                                    lambda x: math.asinh(x / scaling_factor),
-                                    [-100, 0, 100, 1_000, 10_000, 100_000, 1_000_000],
-                                ),
-                            )
-                        )
-                    ),
-                ),
-                [None, '0', None, '1e3', '1e4', '1e5', '1e6', '1e7'],
-            )
-        )
-        for channel_name in channels
+        channel: _scatter_axis_ticks(channel)
+        for channel in adata.var_names[adata.var['channel_type'] == 'scatter']
     }
 
+    FLUORO_TICK_VALUES = [
+        math.asinh(x / scaling_factor)
+        for x in [-100, 0, 100, 1_000, 10_000, 100_000, 1_000_000]
+    ]
+    FLUORO_TICK_LABELS = [None, '0', None, '1e3', '1e4', '1e5', '1e6', '1e7']
 
-def _time_axis_ticks() -> dict[str, list[tuple[int, str]]]:
-    return
+    fluoro_axis_ticks = {
+        channel: _fluoro_axis_ticks(channel)
+        for channel in adata.var_names[adata.var['channel_type'] == 'fluoro']
+    }
+
+    other_axis_ticks = {
+        channel: _other_axis_ticks(channel)
+        for channel in adata.var_names[adata.var['channel_type'] == 'other']
+    }
+
+    return scatter_axis_ticks | fluoro_axis_ticks | other_axis_ticks
 
 
 def _umap_axis_ticks(
@@ -424,11 +393,7 @@ def _umap_axis_ticks(
     return {
         channel_name: list(
             zip(
-                discretize_array(
-                    **bounds[channel_name],
-                    bins=bins,
-                    arr=np.array([0]),
-                ),
+                discretize_array(**bounds[channel_name], bins=bins, arr=np.array([0])),
                 ['0'],
             )
         )
