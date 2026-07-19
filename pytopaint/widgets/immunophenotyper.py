@@ -33,7 +33,6 @@ class Immunophenotyper(QDialog):
         self,
         data: FlowData,
         state: pd.DataFrame,
-        axis_ticks: dict[str, list[tuple[int, str]]],
         color: Color,
         parent=None,
     ):
@@ -67,7 +66,7 @@ class Immunophenotyper(QDialog):
                         data=df[[channel, 'color']],
                         channel=channel,
                         target_color=color,
-                        axis_ticks=axis_ticks[channel],
+                        axis_ticks=data.axis_ticks[channel],
                         resolution=get_resolution(),
                     )
                 )
