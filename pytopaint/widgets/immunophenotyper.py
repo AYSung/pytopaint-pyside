@@ -8,7 +8,6 @@
 
 from itertools import batched
 
-import anndata as ad
 import pandas as pd
 from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
@@ -25,14 +24,14 @@ from PySide6.QtWidgets import (
 
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.flowdata import PHYSICAL_PARAMETERS, FlowData
 from pytopaint.widgets.reportgenerator import copy_report_template
 
 
 class Immunophenotyper(QDialog):
     def __init__(
         self,
-        data: ad.AnnData,
+        data: FlowData,
         state: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         color: Color,
@@ -44,17 +43,9 @@ class Immunophenotyper(QDialog):
             'QDialog {background-color: #333333;} QPushButton {color: auto}'
         )
 
-        self.channels = sort_channels(
-            ['FSC-A', 'SSC-A']
-            + data.var_names[data.var['channel_type'] == 'fluoro'].to_list()
-        )
+        self.channels = ['FSC-A', 'SSC-A'] + data.fluoro_channels
 
-        df = (
-            pd
-            .DataFrame(data.layers['bin'], columns=data.var_names)
-            .join(state[['color']])
-            .loc[state['visible']]
-        )
+        df = data.binned_df.join(state[['color']]).loc[state['visible']]
 
         self.percent = (
             state['color'].loc[state['visible'] & (state['color'] == color)].size
@@ -69,7 +60,7 @@ class Immunophenotyper(QDialog):
         columns = batched(self.channels, ROWS_PER_COLUMN)
         for column in columns:
             column_layout = QVBoxLayout()
-            column_layout.setSpacing(0)
+            column_layout.setSpacing(5)
             for channel in column:
                 column_layout.addWidget(
                     immunophenotype_plot(
