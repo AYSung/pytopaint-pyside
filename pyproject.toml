@@ -1,6 +1,6 @@
 [project]
 name = "pytopaint-pyside"
-version = "0.3.3"
+version = "0.3.4"
 description = "Cluster analysis software for flow cytometry data"
 readme = "README.md"
 requires-python = ">=3.14"
