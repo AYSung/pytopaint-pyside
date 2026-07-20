@@ -24,6 +24,9 @@ class ZoomPlot(QDialog):
     def __init__(self, biplot: Biplot, parent=None):
         super().__init__(parent)
         self.active_color = biplot.active_color
+        self.setStyleSheet(
+            'QDialog {background-color: #333333;} QPushButton {color: auto}'
+        )
         layout = QVBoxLayout()
 
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
