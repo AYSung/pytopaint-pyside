@@ -73,6 +73,7 @@ class Biplot(QWidget):
         y_label = y_label if y_label in channels else None
 
         self.activeColorChanged.connect(self.set_active_color)
+        self.setStyleSheet('color: #bababa')
 
         self.plot = DotPlot(
             active_color=active_color,
