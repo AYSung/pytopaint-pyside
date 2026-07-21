@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     BACKGROUND,
+    IGNORE_COLORS,
     ZAPPABLE_COLORS,
     Color,
     get_color_map,
@@ -151,7 +152,8 @@ class Biplot(QWidget):
             selection = get_selection_index(
                 selection_geometry,
                 df=self.df.loc[
-                    self.state['visible'] & (self.state['color'] != self.active_color)
+                    self.state['visible']
+                    & (~self.state['color'].isin(IGNORE_COLORS[color]))
                 ],
                 x_label=self.x_axis.label,
                 y_label=self.y_axis.label,
