@@ -39,7 +39,7 @@ class Immunophenotyper(QDialog):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
         self.setStyleSheet(
-            '.QDialog {background-color: #333333} QLabel {color: #bababa}'
+            'QDialog {background-color: #333333} QLabel {color: #bababa}'
         )
 
         self.channels = ['FSC-A', 'SSC-A'] + data.fluoro_channels
