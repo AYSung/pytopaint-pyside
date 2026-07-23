@@ -35,8 +35,8 @@ COLOR_ORDER = {
     Color.GREEN: 2,
     Color.RED: 3,
     Color.YELLOW: 4,
-    Color.MAGENTA: 5,
-    Color.CYAN: 6,
+    Color.CYAN: 5,
+    Color.MAGENTA: 6,
     Color.WHITE: 7,
 }
 
