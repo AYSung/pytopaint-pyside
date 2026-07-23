@@ -17,7 +17,6 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.flowdata import PHYSICAL_PARAMETERS, FlowData, sort_channels
-from pytopaint.widgets.palette import _format_percent
 
 
 class ReportTemplateDialog(QDialog):
@@ -54,19 +53,19 @@ class ReportTemplateDialog(QDialog):
         self.accept()
 
 
-def copy_report_template(channels: list[str], percent: float = None) -> None:
+def copy_report_template(channels: list[str]) -> None:
     clipboard = QApplication.clipboard()
-    clipboard.setText(generate_report_template(channels, percent))
+    clipboard.setText(generate_report_template(channels))
 
 
-def generate_report_template(ip_channels: list[str], percent: float) -> str:
+def generate_report_template(ip_channels: list[str]) -> str:
     immunophenotype_markers = [
         _add_marker_smartlist(channel)
         for channel in ip_channels
         if channel not in PHYSICAL_PARAMETERS
     ]
 
-    template = f"""Immunophenotypic analysis reveals a population of {{cell lineage selection:40658}} cells ({_format_percent(percent) if percent else '***%'} of total events) with {{light scatter strength:40657}} forward light scatter, {{light scatter strength:40657}} orthogonal light scatter, and the following immunophenotype: {_join_list(immunophenotype_markers)}"""
+    template = f"""{_join_list(immunophenotype_markers)}"""
 
     return template
 
