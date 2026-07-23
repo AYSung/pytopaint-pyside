@@ -258,7 +258,7 @@ class MainWindow(QMainWindow):
         paint_menu.addAction(subsample_action)
 
         paint_menu.addSeparator()
-        generate_report = QAction('Generate Report Template', self)
+        generate_report = QAction('Copy IP Template', self)
         generate_report.triggered.connect(
             lambda: report_generator_dialog(
                 self, [painter.data for painter in self.painter_tabs.painters]
