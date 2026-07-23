@@ -68,7 +68,7 @@ class Immunophenotyper(QDialog):
             column_layout.addStretch()
             ip_layout.addLayout(column_layout)
         layout.addLayout(ip_layout)
-        copy_button = QPushButton('Copy Report Template', self)
+        copy_button = QPushButton('Copy IP Template', self)
         copy_button.setFixedWidth(200)
         copy_button.clicked.connect(lambda: self.copy_clicked(copy_button))
         layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
