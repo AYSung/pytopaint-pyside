@@ -46,11 +46,6 @@ class Immunophenotyper(QDialog):
 
         df = data.binned_df.join(state[['color']]).loc[state['visible']]
 
-        self.percent = (
-            state['color'].loc[state['visible'] & (state['color'] == color)].size
-            / state['visible'].sum()
-        )
-
         layout = QVBoxLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         ip_layout = QHBoxLayout()
@@ -83,9 +78,9 @@ class Immunophenotyper(QDialog):
     def copy_clicked(self, button: QPushButton) -> None:
         def restore_button():
             button.setEnabled(True)
-            button.setText('Copy Report Template')
+            button.setText('Copy IP Template')
 
-        copy_report_template(self.channels, self.percent)
+        copy_report_template(self.channels)
         button.setEnabled(False)
         button.setText('Copied!')
         QTimer.singleShot(2000, restore_button)
