@@ -35,8 +35,8 @@ COLOR_ORDER = {
     Color.GREEN: 2,
     Color.RED: 3,
     Color.YELLOW: 4,
-    Color.MAGENTA: 5,
-    Color.CYAN: 6,
+    Color.CYAN: 5,
+    Color.MAGENTA: 6,
     Color.WHITE: 7,
 }
 
@@ -81,6 +81,17 @@ ZAPPABLE_COLORS = {
     Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
     Color.CYAN: [Color.CYAN, Color.WHITE],
     Color.YELLOW: [Color.YELLOW, Color.WHITE],
+    Color.WHITE: [Color.WHITE],
+}
+
+IGNORE_COLORS = {
+    Color.GREY: [Color.GREY],
+    Color.RED: [Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE],
+    Color.BLUE: [Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE],
+    Color.GREEN: [Color.GREEN, Color.YELLOW, Color.CYAN, Color.WHITE],
+    Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
+    Color.CYAN: [Color.CYAN, Color.WHITE],
+    Color.YELLOW: [Color.MAGENTA, Color.WHITE],
     Color.WHITE: [Color.WHITE],
 }
 

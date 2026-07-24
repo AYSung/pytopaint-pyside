@@ -25,6 +25,7 @@ class MenuAction(IntEnum):
     RESET = auto()
     SUBSAMPLE = auto()
     HIGHLIGHT = auto()
+    TOGGLE_ALL_HIGHLIGHTS = auto()
     REPLACE_STATE = auto()
     MERGE_STATE = auto()
     STORE_STATE = auto()

@@ -39,6 +39,7 @@ class Palette(QWidget):
 
     def __init__(self, state: pd.DataFrame, memory_states: dict[int, pd.DataFrame]):
         super().__init__()
+        self.setStyleSheet('color: #bababa')
 
         layout = QHBoxLayout()
         layout.setSpacing(0)

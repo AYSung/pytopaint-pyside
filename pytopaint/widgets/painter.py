@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
 from pytopaint.colors import (
+    COLOR_ORDER,
     Color,
     add_color_to_series,
     merge_colors,
@@ -61,7 +62,6 @@ class Painter(QWidget):
         self.configure_shortcuts()
 
         self.fcs = fcs
-        self.setStyleSheet('* {color: #bababa}')
 
         self.paint_actions = {
             MenuAction.ADD_COLOR: self.add_color,
@@ -79,7 +79,8 @@ class Painter(QWidget):
             MenuAction.REDO: self.redo_paint,
             MenuAction.RESET: self.reset_df,
             MenuAction.SUBSAMPLE: self.subsample_df,
-            MenuAction.HIGHLIGHT: self.handle_highlights,
+            MenuAction.HIGHLIGHT: self.toggle_highlights,
+            MenuAction.TOGGLE_ALL_HIGHLIGHTS: self.toggle_all_highlights,
             MenuAction.STORE_STATE: self.store_state,
             MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
             MenuAction.REPLACE_STATE: self.replace_state,
@@ -359,13 +360,19 @@ class Painter(QWidget):
     def state_changed(self):
         self.stateChanged.emit(self.state)
 
-    @Slot(int)
-    def handle_highlights(self, color: Color):
+    def toggle_highlights(self, color: Color):
         if color not in self.highlighted_colors:
             self.highlighted_colors.append(color)
         else:
             self.highlighted_colors.remove(color)
 
+        self.highlightsUpdated.emit(self.highlighted_colors)
+
+    def toggle_all_highlights(self):
+        if self.highlighted_colors:
+            self.highlighted_colors.clear()
+        else:
+            self.highlighted_colors = [c for c in COLOR_ORDER.keys() if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
 
     @Slot()

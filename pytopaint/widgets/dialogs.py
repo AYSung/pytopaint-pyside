@@ -40,7 +40,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.3.3 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.3.4 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
     )
 
 
@@ -97,12 +97,14 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Red', 'F'),
             ('Paint Green', 'D'),
             ('Paint Blue', 'S'),
-            ('Paint Cyan', 'Shift + F'),
-            ('Paint Magenta', 'Shift + D'),
-            ('Paint Yellow', 'Shift + S'),
+            ('Paint Magenta', 'V'),
+            ('Paint Cyan', 'C'),
+            ('Paint Yellow', 'X'),
             ('Paint White', 'A'),
+            ('Toggle Color Highlight', 'Shift + <Color>'),
+            ('Exact Zap Color', 'Ctrl + <Color>'),
             ('Exact Zap Current Color', 'E'),
-            ('Zap Current Color', 'Shift + E'),
+            ('Toggle All Highlights', 'Shift + E'),
             ('Zap All', 'Ctrl + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),

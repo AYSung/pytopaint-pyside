@@ -39,17 +39,12 @@ class Immunophenotyper(QDialog):
         super().__init__(parent)
         self.setWindowTitle('Immunophenotyper')
         self.setStyleSheet(
-            'QDialog {background-color: #333333;} QPushButton {color: auto}'
+            'QDialog {background-color: #333333} QLabel {color: #bababa}'
         )
 
         self.channels = ['FSC-A', 'SSC-A'] + data.fluoro_channels
 
         df = data.binned_df.join(state[['color']]).loc[state['visible']]
-
-        self.percent = (
-            state['color'].loc[state['visible'] & (state['color'] == color)].size
-            / state['visible'].sum()
-        )
 
         layout = QVBoxLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
@@ -73,7 +68,7 @@ class Immunophenotyper(QDialog):
             column_layout.addStretch()
             ip_layout.addLayout(column_layout)
         layout.addLayout(ip_layout)
-        copy_button = QPushButton('Copy Report Template', self)
+        copy_button = QPushButton('Copy IP Template', self)
         copy_button.setFixedWidth(200)
         copy_button.clicked.connect(lambda: self.copy_clicked(copy_button))
         layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
@@ -83,9 +78,9 @@ class Immunophenotyper(QDialog):
     def copy_clicked(self, button: QPushButton) -> None:
         def restore_button():
             button.setEnabled(True)
-            button.setText('Copy Report Template')
+            button.setText('Copy IP Template')
 
-        copy_report_template(self.channels, self.percent)
+        copy_report_template(self.channels)
         button.setEnabled(False)
         button.setText('Copied!')
         QTimer.singleShot(2000, restore_button)

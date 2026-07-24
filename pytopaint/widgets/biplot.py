@@ -34,6 +34,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
     BACKGROUND,
+    IGNORE_COLORS,
     ZAPPABLE_COLORS,
     Color,
     get_color_map,
@@ -73,6 +74,7 @@ class Biplot(QWidget):
         y_label = y_label if y_label in channels else None
 
         self.activeColorChanged.connect(self.set_active_color)
+        self.setStyleSheet('color: #bababa')
 
         self.plot = DotPlot(
             active_color=active_color,
@@ -150,7 +152,8 @@ class Biplot(QWidget):
             selection = get_selection_index(
                 selection_geometry,
                 df=self.df.loc[
-                    self.state['visible'] & (self.state['color'] != self.active_color)
+                    self.state['visible']
+                    & (~self.state['color'].isin(IGNORE_COLORS[color]))
                 ],
                 x_label=self.x_axis.label,
                 y_label=self.y_axis.label,
