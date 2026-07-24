@@ -273,7 +273,7 @@ def ratios_by_color(
 ) -> dict[Color, float]:
     antecedent_percent = percents.get(antecedent_color, 0)
     if antecedent_color == Color.GREY or antecedent_percent == 0:
-        return dict()
+        return {}
     else:
         return {
             consequent_color: (
@@ -286,4 +286,4 @@ def ratios_by_color(
 
 
 def is_zappable(color: Color, events: dict[Color, int]) -> bool:
-    return any(c in ZAPPABLE_COLORS[color] for c in events.keys())
+    return any(c in ZAPPABLE_COLORS[color] for c in events)

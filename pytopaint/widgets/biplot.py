@@ -137,14 +137,14 @@ class Biplot(QWidget):
         if e.button() == Qt.MouseButton.MiddleButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(
-                    MenuAction.EXACT_ZAP, dict(color=self.active_color)
+                    MenuAction.EXACT_ZAP, {'color': self.active_color}
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.menuActionTriggered.emit(
-                    MenuAction.ZAP, dict(color=self.active_color)
+                    MenuAction.ZAP, {'color': self.active_color}
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
-                self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+                self.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
             return
 
         color = self.active_color
@@ -219,7 +219,7 @@ class Biplot(QWidget):
 
         if not selection.empty:
             self.menuActionTriggered.emit(
-                action, dict(color=color, selection=selection)
+                action, {'color': color, 'selection': selection}
             )
         else:
             self.plot.update_plot()
@@ -228,7 +228,7 @@ class Biplot(QWidget):
     def update_data(
         self,
         df: pd.DataFrame = None,
-        axis_ticks: dict[str, list[tuple[int, str]]] = None,
+        axis_ticks: dict[str, list[tuple[int, str]]] | None = None,
         state: pd.DataFrame = None,
     ):
         updater = BiplotUpdater(self, df, axis_ticks, state)
@@ -388,7 +388,9 @@ class PlotTitle(QLabel):
         self.setFixedWidth(resolution)
 
     @Slot(str, str)
-    def update_title(self, x_label: str = None, y_label: str = None) -> None:
+    def update_title(
+        self, x_label: str | None = None, y_label: str | None = None
+    ) -> None:
         self.x_label, self.y_label = x_label, y_label
 
         if x_label is None or y_label is None:
@@ -614,13 +616,13 @@ class XAxis(QLabel):
             self.axis_ticks = axis_ticks
             self.update_axis()
 
-        if self.label not in self.axis_ticks.keys():
+        if self.label not in self.axis_ticks:
             self.label = None
             self.labelChanged.emit()
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        if self.label not in self.axis_ticks.keys():
+        if self.label not in self.axis_ticks:
             self.label = None
             self.labelChanged.emit()
         self.update_axis()
@@ -724,13 +726,13 @@ class YAxis(QLabel):
             self.axis_ticks = axis_ticks
             self.update_axis()
 
-        if self.label not in self.axis_ticks.keys():
+        if self.label not in self.axis_ticks:
             self.label = None
             self.labelChanged.emit()
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        if self.label not in self.axis_ticks.keys():
+        if self.label not in self.axis_ticks:
             self.label = None
             self.labelChanged.emit()
         self.update_axis()

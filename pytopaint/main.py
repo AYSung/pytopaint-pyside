@@ -104,9 +104,7 @@ class MainWindow(QMainWindow):
             self, total_events=self.get_active_painter().state['visible'].sum()
         )
         if ok:
-            self.get_active_painter().handle_menu_action(
-                MenuAction.SUBSAMPLE, dict(n=n)
-            )
+            self.get_active_painter().handle_menu_action(MenuAction.SUBSAMPLE, {'n': n})
 
     @Slot()
     def resize_plots(self) -> None:
@@ -203,9 +201,7 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         color_palette_menu = QMenu('Color Palette')
 
-        palette_options = [
-            _palette_option(palette) for palette in COLOR_RGB_MAPS.keys()
-        ]
+        palette_options = [_palette_option(palette) for palette in COLOR_RGB_MAPS]
         color_palette_menu.addActions(palette_options)
 
         file_menu.addMenu(color_palette_menu)

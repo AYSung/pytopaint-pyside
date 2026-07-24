@@ -198,9 +198,7 @@ class FlowData:
 
         self.adata.obs = _copy_state(state)
 
-        memory_state_keys = [
-            key for key in self.adata.obsm.keys() if key.startswith('mem_')
-        ]
+        memory_state_keys = [key for key in self.adata.obsm if key.startswith('mem_')]
         for i, memory_state in memory_states.items():
             key = f'mem_{i}'
             if memory_state is not None:
@@ -216,16 +214,14 @@ class FlowData:
         )
 
     def load_analyses(self) -> None:
-        if 'umap' in self.adata.obsm.keys():
+        if 'umap' in self.adata.obsm:
             self.load_umap()
 
-        if 'pca' in self.adata.obsm.keys():
+        if 'pca' in self.adata.obsm:
             self.load_pca()
 
     def unload_analyses(self) -> None:
-        analysis_keys = [
-            key for key in self.adata.obsm.keys() if not key.startswith('mem_')
-        ]
+        analysis_keys = [key for key in self.adata.obsm if not key.startswith('mem_')]
         for key in analysis_keys:
             self.adata.obsm.pop(key)
 
@@ -356,7 +352,6 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
         return [(pos, None) for pos in tick_positions]
 
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
-    bins = bins
     scaling_factor = adata.uns['scaling_factor']
 
     SCATTER_TICK_VALUES = np.arange(0, UPPER_PHYSICAL_BOUND, 50_000)
@@ -388,7 +383,7 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
 
 def sort_channels(channels: list[str] | set[str]) -> list[str]:
     light_scatter_channels = sorted(
-        list(filter(lambda x: x in PHYSICAL_PARAMETERS, channels))
+        filter(lambda x: x in PHYSICAL_PARAMETERS, channels)
     )
     cd_channels = sorted(
         [channel for channel in channels if channel.startswith('CD')],
@@ -448,10 +443,10 @@ def get_analysis_dims(
         return list(zip(tick_positions, ['0']))
 
     bounds = {
-        column: dict(
-            lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
-            upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
-        )
+        column: {
+            'lower_bound': np.amin(row) - (0.05 * np.ptp(row)),
+            'upper_bound': np.amax(row) + (0.05 * np.ptp(row)),
+        }
         for column, row in zip(columns, data.T)
     }
     bin_arr = np.array([

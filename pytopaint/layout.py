@@ -30,10 +30,10 @@ class LayoutConfig:
 
     @property
     def rows(self) -> int:
-        return max([x for x, _ in self.grid.keys()]) + 1
+        return max([x for x, _ in self.grid]) + 1
 
     def columns(self, row: int) -> int:
-        return max([y for x, y in self.grid.keys() if x == row]) + 1
+        return max([y for x, y in self.grid if x == row]) + 1
 
     def biplot_score(self, panel: list[str]) -> float:
         return len([
@@ -83,9 +83,9 @@ def get_best_layout(channels: list[str]) -> LayoutConfig:
 def get_best_layout_match(
     channels: list[str], layouts: list[LayoutConfig]
 ) -> LayoutConfig:
-    return sorted(
+    return max(
         layouts, key=lambda x: x.biplot_score(channels) * x.channel_score(channels)
-    )[-1]
+    )
 
 
 def replace_unused_channels(
@@ -96,9 +96,9 @@ def replace_unused_channels(
             return None
 
         x_label, y_label = labels
-        if x_label in unused_channel_map.keys():
+        if x_label in unused_channel_map:
             x_label = unused_channel_map[x_label]
-        if y_label in unused_channel_map.keys():
+        if y_label in unused_channel_map:
             y_label = unused_channel_map[y_label]
         return x_label, y_label
 
@@ -143,8 +143,8 @@ def dict_to_yaml(
         return list(labels) if labels is not None else None
 
     def _columns(row: int) -> int:
-        return max([y for x, y in layout_grid.keys() if x == row]) + 1
+        return max([y for x, y in layout_grid if x == row]) + 1
 
-    rows = max([x for x, _ in layout_grid.keys()]) + 1
+    rows = max([x for x, _ in layout_grid]) + 1
 
     return [[_get_labels(x, y) for y in range(_columns(row=x))] for x in range(rows)]

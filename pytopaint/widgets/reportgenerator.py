@@ -4,6 +4,8 @@
 # This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details.
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+
 from itertools import chain
 
 from PySide6.QtCore import Qt
@@ -34,7 +36,7 @@ class ReportTemplateDialog(QDialog):
         groupbox.setLayout(group_layout)
         layout.addWidget(groupbox)
 
-        copy_button = QPushButton('Copy Report Template', self)
+        copy_button = QPushButton('Copy IP Template', self)
         copy_button.setFixedWidth(200)
         copy_button.clicked.connect(self.copy_clicked)
         layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)

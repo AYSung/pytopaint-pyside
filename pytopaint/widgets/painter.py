@@ -372,7 +372,7 @@ class Painter(QWidget):
         if self.highlighted_colors:
             self.highlighted_colors.clear()
         else:
-            self.highlighted_colors = [c for c in COLOR_ORDER.keys() if c != Color.GREY]
+            self.highlighted_colors = [c for c in COLOR_ORDER if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
 
     @Slot()

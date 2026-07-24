@@ -28,7 +28,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         shortcut = QShortcut(QKeySequence(key), widget)
         shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.SET_ACTIVE, dict(color=color)
+                MenuAction.SET_ACTIVE, {'color': color}
             )
         )
 
@@ -36,7 +36,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         shortcut = QShortcut(QKeySequence(f'Shift+{key}'), widget)
         shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.HIGHLIGHT, dict(color=color)
+                MenuAction.HIGHLIGHT, {'color': color}
             )
         )
 
@@ -44,7 +44,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         shortcut = QShortcut(QKeySequence(f'Ctrl+{key}'), widget)
         shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.EXACT_ZAP, dict(color=color)
+                MenuAction.EXACT_ZAP, {'color': color}
             )
         )
 
@@ -65,55 +65,53 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
     exact_zap_current_color = QShortcut(QKeySequence('E'), widget)
     exact_zap_current_color.activated.connect(
         lambda: widget.menuActionTriggered.emit(
-            MenuAction.EXACT_ZAP, dict(color=widget.active_color)
+            MenuAction.EXACT_ZAP, {'color': widget.active_color}
         )
     )
 
     zap_all = QShortcut(QKeySequence('Ctrl+E'), widget)
     zap_all.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+        lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
     )
 
     toggle_all_highlights = QShortcut(QKeySequence('Shift+E'), widget)
     toggle_all_highlights.activated.connect(
-        lambda: widget.menuActionTriggered.emit(
-            MenuAction.TOGGLE_ALL_HIGHLIGHTS, dict()
-        )
+        lambda: widget.menuActionTriggered.emit(MenuAction.TOGGLE_ALL_HIGHLIGHTS, {})
     )
 
     undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, widget)
     undo_shortcut.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.UNDO, dict())
+        lambda: widget.menuActionTriggered.emit(MenuAction.UNDO, {})
     )
     redo_shortcut = QShortcut(QKeySequence('Ctrl+Shift+Z'), widget)
     redo_shortcut.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.REDO, dict())
+        lambda: widget.menuActionTriggered.emit(MenuAction.REDO, {})
     )
 
     reset_shortcut = QShortcut(QKeySequence('Ctrl+Shift+R'), widget)
     reset_shortcut.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.RESET, dict())
+        lambda: widget.menuActionTriggered.emit(MenuAction.RESET, {})
     )
     unhide_all_shortcut = QShortcut(QKeySequence('Ctrl+R'), widget)
     unhide_all_shortcut.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, dict())
+        lambda: widget.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, {})
     )
 
     hide_events_shortcut = QShortcut(QKeySequence('Backspace'), widget)
     hide_events_shortcut.activated.connect(
         lambda: widget.menuActionTriggered.emit(
-            MenuAction.HIDE, dict(color=widget.active_color)
+            MenuAction.HIDE, {'color': widget.active_color}
         )
     )
 
     isolate_events_shortcut = QShortcut(QKeySequence('Return'), widget)
     isolate_events_shortcut.activated.connect(
         lambda: widget.menuActionTriggered.emit(
-            MenuAction.ISOLATE, dict(color=widget.active_color)
+            MenuAction.ISOLATE, {'color': widget.active_color}
         )
     )
 
     hide_grey_shortcut = QShortcut(QKeySequence('Shift + Return'), widget)
     hide_grey_shortcut.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.HIDE, dict(color=Color.GREY))
+        lambda: widget.menuActionTriggered.emit(MenuAction.HIDE, {'color': Color.GREY})
     )

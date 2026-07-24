@@ -5,7 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from typing import Callable
+from collections.abc import Callable
 
 import numpy as np
 from PySide6.QtCore import QObject, QRunnable, Qt, Signal
