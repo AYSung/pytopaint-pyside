@@ -668,16 +668,12 @@ class XAxis(QLabel):
             self.channel is not None
             and (axis_ticks := self.axis_ticks.get(self.channel)) is not None
         ):
-            for tick, _ in axis_ticks:
+            for tick, label in axis_ticks:
                 painter.drawLine(QPoint(tick, tick_y0), QPoint(tick, tick_y1))
 
-            axis_labels = (
-                [(4, '0')] + axis_ticks[1:]
-                if self.channel in PHYSICAL_PARAMETERS
-                else axis_ticks
-            )
+                if tick == 0:
+                    tick = 4
 
-            for tick, label in filter(lambda x: x is not None, axis_labels):
                 painter.drawText(
                     QRect(tick - 20, label_y, 40, 20),
                     label,
@@ -781,24 +777,20 @@ class YAxis(QLabel):
             self.channel is not None
             and (axis_ticks := self.axis_ticks.get(self.channel)) is not None
         ):
-            for tick, _ in axis_ticks:
-                painter.drawLine(
-                    QPoint(tick_x0, Y_MAX - tick),
-                    QPoint(tick_x1, Y_MAX - tick),
-                )
-
-            axis_labels = (
-                [(4, '0')] + axis_ticks[1:]
-                if self.channel in PHYSICAL_PARAMETERS
-                else axis_ticks
-            )
-
             painter.translate(0, Y_MAX)
             painter.rotate(-90)
             font = QFont()
             font.setWeight(QFont.Weight(600))
             painter.setFont(font)
-            for tick, label in filter(lambda x: x is not None, axis_labels):
+            for tick, label in axis_ticks:
+                painter.drawLine(
+                    QPoint(tick, tick_x0),
+                    QPoint(tick, tick_x1),
+                )
+
+                if tick == 0:
+                    tick = 4
+
                 painter.drawText(
                     QRect(tick - 20, label_x, 40, 20),
                     label,
