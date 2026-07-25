@@ -12,6 +12,8 @@ from pathlib import Path
 
 import yaml
 
+from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
+
 
 @dataclass
 class LayoutConfig:
@@ -26,7 +28,7 @@ class LayoutConfig:
 
     @property
     def channels(self) -> list[str]:
-        return list(set(chain(*self.grid.values())))
+        return sort_channels(set(chain(*self.grid.values())))
 
     @property
     def rows(self) -> int:
@@ -49,7 +51,6 @@ class LayoutConfig:
 
 
 def _import_layouts(anchor: str) -> list[LayoutConfig]:
-
     dir = resources.files(anchor)
     return [
         LayoutConfig.from_yaml(item)
@@ -102,33 +103,17 @@ def replace_unused_channels(
             y_channel = unused_channel_map[y_channel]
         return x_channel, y_channel
 
-    unused_channel_map = dict(
-        zip(
-            filter(
-                lambda x: (
-                    x
-                    not in set(
-                        chain(
-                            data_channels, ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time']
-                        )
-                    )
-                ),
-                layout.channels,
-            ),
-            filter(
-                lambda x: (
-                    x
-                    not in set(
-                        chain(
-                            layout.channels,
-                            ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'Time'],
-                        )
-                    )
-                ),
-                data_channels,
-            ),
-        )
+    unused_data_channels = (
+        x
+        for x in data_channels
+        if x not in set(chain(layout.channels, PHYSICAL_PARAMETERS, ['Time']))
     )
+    unused_layout_channels = (
+        x
+        for x in layout.channels
+        if x not in set(chain(data_channels, PHYSICAL_PARAMETERS, ['Time']))
+    )
+    unused_channel_map = dict(zip(unused_layout_channels, unused_data_channels))
 
     return LayoutConfig({
         coord: _replace_channel(channels) for coord, channels in layout.grid.items()

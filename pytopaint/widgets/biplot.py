@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+
 import pandas as pd
 from PySide6.QtCore import (
     QBuffer,
@@ -32,6 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.actions import MenuAction
+from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
 from pytopaint.colors import (
     BACKGROUND,
     IGNORE_COLORS,
@@ -41,7 +43,6 @@ from pytopaint.colors import (
     indices_by_color,
     sort_colors,
 )
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, sort_channels
 from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40

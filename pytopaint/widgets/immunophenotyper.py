@@ -22,9 +22,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from pytopaint.channels import PHYSICAL_PARAMETERS
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, FlowData
+from pytopaint.flowdata import FlowData
 from pytopaint.widgets.reportgenerator import copy_report_template
 
 

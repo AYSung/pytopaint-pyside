@@ -18,7 +18,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
 )
 
-from pytopaint.flowdata import PHYSICAL_PARAMETERS, FlowData, sort_channels
+from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.flowdata import FlowData
 
 
 class ReportTemplateDialog(QDialog):
