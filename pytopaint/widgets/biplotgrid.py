@@ -196,7 +196,7 @@ class BiplotGrid(QGridLayout):
 
     def _to_dict(self) -> dict[tuple[int, int], tuple[str, str]]:
         return {
-            self._get_biplot_coords(i): self._get_biplot_labels(i)
+            self._get_biplot_coords(i): self._get_biplot_channels(i)
             for i in range(self.count())
         }
 
@@ -206,8 +206,8 @@ class BiplotGrid(QGridLayout):
     def _get_biplot(self, index: int) -> Biplot:
         return self.itemAt(index).widget()
 
-    def _get_biplot_labels(self, index: int) -> tuple[str, str]:
-        return self._get_biplot(index).labels
+    def _get_biplot_channels(self, index: int) -> tuple[str, str]:
+        return self._get_biplot(index).channels
 
     def _get_biplot_coords(self, index: int) -> tuple[int, int]:
         return self.getItemPosition(index)[:2]
@@ -232,16 +232,17 @@ class BiplotGrid(QGridLayout):
         self.updatePlot.emit()
 
     @Slot(str, str)
-    def open_zoom(self, x_label: str, y_label: str) -> None:
+    def open_zoom(self, x_channel: str, y_channel: str) -> None:
         self.zoom_plot = Biplot(
             data=self.data.zoom_df,
             axis_ticks=self.data.zoom_axis_ticks,
             state=self.state,
             active_color=self.active_color,
-            x_label=x_label,
-            y_label=y_label,
+            x_channel=x_channel,
+            y_channel=y_channel,
             resolution=get_zoom_resolution(),
             highlighted_colors=self.highlighted_colors,
+            channel_fluor_map=self.data.channel_fluor_map,
         )
         self.connect_biplot_signals(self.zoom_plot)
         dialog = ZoomPlot(self.zoom_plot, parent=self.parent())

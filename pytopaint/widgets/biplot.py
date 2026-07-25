@@ -164,8 +164,8 @@ class Biplot(QWidget):
                     self.state['visible']
                     & (~self.state['color'].isin(IGNORE_COLORS[color]))
                 ],
-                x_label=self.x_axis.channel,
-                y_label=self.y_axis.channel,
+                x_channel=self.x_axis.channel,
+                y_channel=self.y_axis.channel,
             )
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
@@ -198,8 +198,8 @@ class Biplot(QWidget):
                 df=self.df.loc[
                     self.state['visible'] & (self.state.color != Color.GREY)
                 ],
-                x_label=self.x_axis.channel,
-                y_label=self.y_axis.channel,
+                x_channel=self.x_axis.channel,
+                y_channel=self.y_axis.channel,
             )
 
             if modifiers == Qt.KeyboardModifier.NoModifier:
@@ -362,7 +362,7 @@ class Biplot(QWidget):
 
     @property
     def channels(self) -> tuple[str, str]:
-        return self.x_axis.channels, self.y_axis.channels
+        return self.x_axis.channel, self.y_axis.channel
 
     @Slot(int)
     def resize(self, resolution: int) -> None:

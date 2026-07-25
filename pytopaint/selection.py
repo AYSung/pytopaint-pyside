@@ -11,12 +11,15 @@ from shapely.geometry import Polygon
 
 
 def get_selection_index(
-    point_array: list[list[float, float]], df: pd.DataFrame, x_label: str, y_label: str
+    point_array: list[list[float, float]],
+    df: pd.DataFrame,
+    x_channel: str,
+    y_channel: str,
 ) -> pd.Index:
     if len(point_array) < 4:
         return pd.Index([])
 
     poly = Polygon(point_array).simplify(tolerance=0.01, preserve_topology=True)
-    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(df[x_label], df[y_label]))
+    gdf = gpd.GeoDataFrame(geometry=gpd.points_from_xy(df[x_channel], df[y_channel]))
     selection_index = gdf.sindex.query(poly, predicate='contains')
     return df.index[selection_index]
