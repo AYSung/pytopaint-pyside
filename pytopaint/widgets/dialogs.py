@@ -6,8 +6,6 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 
-from itertools import chain
-
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
@@ -39,7 +37,7 @@ from pytopaint.config import (
     set_upper_asinh_bound,
 )
 from pytopaint.flowdata import FlowData, sort_channels
-from pytopaint.reporting import copy_report_template
+from pytopaint.widgets.painter import Painter
 
 
 def about_dialog(parent: QWidget) -> None:
@@ -315,14 +313,14 @@ def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
 
 
 class TubeSelector(QDialog):
-    def __init__(self, tubes: list[FlowData], button_text: str, parent=None):
+    def __init__(self, tubes: list[Painter], button_text: str, parent=None):
         super().__init__(parent)
         layout = QVBoxLayout()
         self.tubes = tubes
 
         groupbox = QGroupBox('Tubes to include:')
         group_layout = QVBoxLayout()
-        self.checkboxes = [QCheckBox(tube_data.id) for tube_data in tubes]
+        self.checkboxes = [QCheckBox(tube.data.id) for tube in tubes]
         for checkbox in self.checkboxes:
             checkbox.setChecked(True)
             group_layout.addWidget(checkbox)
@@ -337,9 +335,9 @@ class TubeSelector(QDialog):
         self.setLayout(layout)
 
     @property
-    def selected_tubes(self) -> list[FlowData]:
+    def selected_tubes(self) -> list[Painter]:
         return [
-            data
-            for checkbox, data in zip(self.checkboxes, self.tubes)
+            tube
+            for checkbox, tube in zip(self.checkboxes, self.tubes)
             if checkbox.isChecked()
         ]

@@ -12,6 +12,7 @@ import pandas as pd
 from PySide6.QtCore import QLine, QPoint, QRect, Qt, QTimer
 from PySide6.QtGui import QPainter, QPen, QPixmap
 from PySide6.QtWidgets import (
+    QApplication,
     QDialog,
     QGridLayout,
     QHBoxLayout,
@@ -26,7 +27,6 @@ from pytopaint.channels import PHYSICAL_PARAMETERS
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import FlowData
-from pytopaint.reporting import copy_report_template
 
 
 class Immunophenotyper(QDialog):
@@ -196,3 +196,33 @@ def histogram_axis(
 
     axis.setPixmap(canvas)
     return axis
+
+
+def copy_report_template(channels: list[str]) -> None:
+    clipboard = QApplication.clipboard()
+    clipboard.setText(generate_report_template(channels))
+
+
+def generate_report_template(ip_channels: list[str]) -> str:
+    immunophenotype_markers = [
+        _add_marker_smartlist(channel)
+        for channel in ip_channels
+        if channel not in PHYSICAL_PARAMETERS
+    ]
+
+    template = f"""{_join_list(immunophenotype_markers)}"""
+
+    return template
+
+
+def _add_marker_smartlist(channel) -> str:
+    if channel in ['Kappa', 'Lambda']:
+        return f'{{surface/IC:46754}} {channel.lower()} light chain ({{+/-:40630}})'
+    return f'{channel} ({{+/-:40630}})'
+
+
+def _join_list(_list: list[str]) -> str:
+    if len(_list) <= 2:
+        return ' and '.join(_list)
+    else:
+        return f'{", ".join(_list[:-1])}, and {_list[-1]}'

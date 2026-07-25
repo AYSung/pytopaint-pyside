@@ -38,10 +38,6 @@ from pytopaint.flowdata import FlowData
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
-from pytopaint.widgets.dialogs import (
-    add_column_dialog,
-    add_row_dialog,
-)
 from pytopaint.widgets.immunophenotyper import Immunophenotyper
 from pytopaint.widgets.palette import Palette
 
@@ -397,17 +393,11 @@ class Painter(QWidget):
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()
 
-    def add_biplot_row(self) -> None:
-        n_rows, ok = add_row_dialog(self)
+    def add_biplot_row(self, n_rows: int) -> None:
+        self.biplot_grid.add_rows(n_rows)
 
-        if ok:
-            self.biplot_grid.add_rows(n_rows)
-
-    def add_biplot_column(self) -> None:
-        n_cols, ok = add_column_dialog(self)
-
-        if ok:
-            self.biplot_grid.add_columns(n_cols)
+    def add_biplot_column(self, n_cols: int) -> None:
+        self.biplot_grid.add_columns(n_cols)
 
     def fill_empty_cells(self) -> None:
         self.biplot_grid.fill_empty()

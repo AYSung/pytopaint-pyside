@@ -1,4 +1,4 @@
-from pytopaint.reporting import (
+from pytopaint.widgets.immunophenotyper import (
     _add_marker_smartlist,
     _join_list,
     generate_report_template,

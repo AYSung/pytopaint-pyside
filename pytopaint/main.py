@@ -46,6 +46,8 @@ from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     TubeSelector,
     about_dialog,
+    add_column_dialog,
+    add_row_dialog,
     file_info_dialog,
     resize_plot_dialog,
     shortcut_dialog,
@@ -148,17 +150,28 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def copy_ip_template(self):
-        dialog = TubeSelector(
-            [painter.data for painter in self.painter_tabs.painters],
-            'Copy IP Template',
-            self,
-        )
+        dialog = TubeSelector(self.painter_tabs.painters, 'Copy IP Template', self)
 
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            channels = sort_channels(
-                set(chain(*(tube.fluoro_channels for tube in dialog.selected_tubes)))
+            selected_channels = (
+                tube.data.fluoro_channels for tube in dialog.selected_tubes
             )
+            channels = sort_channels(set(chain(*(selected_channels))))
             copy_report_template(channels)
+
+    @Slot()
+    def add_row(self) -> None:
+        n_rows, ok = add_row_dialog(self)
+
+        if ok:
+            self.get_active_painter().biplot_grid.add_rows(n_rows)
+
+    @Slot()
+    def add_column(self) -> None:
+        n_cols, ok = add_column_dialog(self)
+
+        if ok:
+            self.get_active_painter().biplot_grid.add_columns(n_cols)
 
     def configure_menu_bar(self):
         def _palette_option(palette: str) -> QAction:
