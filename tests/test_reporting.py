@@ -1,4 +1,4 @@
-from pytopaint.widgets.reportgenerator import (
+from pytopaint.reporting import (
     _add_marker_smartlist,
     _join_list,
     generate_report_template,

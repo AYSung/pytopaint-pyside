@@ -5,55 +5,12 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+from pathlib import Path
 
-from itertools import chain
+from PySide6.QtWidgets import QApplication
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import (
-    QApplication,
-    QCheckBox,
-    QDialog,
-    QGroupBox,
-    QPushButton,
-    QVBoxLayout,
-)
-
-from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.channels import PHYSICAL_PARAMETERS
 from pytopaint.flowdata import FlowData
-
-
-class ReportTemplateDialog(QDialog):
-    def __init__(self, tubes: list[FlowData], parent=None):
-        super().__init__(parent)
-        layout = QVBoxLayout()
-        self.tubes = tubes
-
-        groupbox = QGroupBox('Tubes to include:')
-        group_layout = QVBoxLayout()
-        self.checkboxes = [QCheckBox(tube_data.id) for tube_data in tubes]
-        for checkbox in self.checkboxes:
-            checkbox.setChecked(True)
-            group_layout.addWidget(checkbox)
-        groupbox.setLayout(group_layout)
-        layout.addWidget(groupbox)
-
-        copy_button = QPushButton('Copy IP Template', self)
-        copy_button.setFixedWidth(200)
-        copy_button.clicked.connect(self.copy_clicked)
-        layout.addWidget(copy_button, alignment=Qt.AlignmentFlag.AlignCenter)
-
-        self.setLayout(layout)
-
-    def copy_clicked(self):
-        checked_channels = [
-            tube_data.fluoro_channels
-            for checkbox, tube_data in zip(self.checkboxes, self.tubes)
-            if checkbox.isChecked()
-        ]
-
-        sorted_channels = sort_channels(set(chain(*checked_channels)))
-        copy_report_template(sorted_channels)
-        self.accept()
 
 
 def copy_report_template(channels: list[str]) -> None:

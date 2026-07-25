@@ -5,18 +5,24 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Slot
+
+from itertools import chain
+
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QFrame,
     QGridLayout,
+    QGroupBox,
     QInputDialog,
     QLabel,
     QLayout,
     QMessageBox,
+    QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -33,7 +39,7 @@ from pytopaint.config import (
     set_upper_asinh_bound,
 )
 from pytopaint.flowdata import FlowData, sort_channels
-from pytopaint.widgets.reportgenerator import ReportTemplateDialog
+from pytopaint.reporting import copy_report_template
 
 
 def about_dialog(parent: QWidget) -> None:
@@ -308,7 +314,32 @@ def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
-def report_generator_dialog(parent: QWidget, tubes: list[FlowData]) -> int:
-    report_generator = ReportTemplateDialog(tubes, parent)
+class TubeSelector(QDialog):
+    def __init__(self, tubes: list[FlowData], button_text: str, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout()
+        self.tubes = tubes
 
-    return report_generator.exec()
+        groupbox = QGroupBox('Tubes to include:')
+        group_layout = QVBoxLayout()
+        self.checkboxes = [QCheckBox(tube_data.id) for tube_data in tubes]
+        for checkbox in self.checkboxes:
+            checkbox.setChecked(True)
+            group_layout.addWidget(checkbox)
+        groupbox.setLayout(group_layout)
+        layout.addWidget(groupbox)
+
+        ok_button = QPushButton(button_text, self)
+        ok_button.setFixedWidth(200)
+        ok_button.clicked.connect(self.accept)
+        layout.addWidget(ok_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(layout)
+
+    @property
+    def selected_tubes(self) -> list[FlowData]:
+        return [
+            data
+            for checkbox, data in zip(self.checkboxes, self.tubes)
+            if checkbox.isChecked()
+        ]

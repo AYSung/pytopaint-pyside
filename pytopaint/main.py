@@ -8,6 +8,7 @@
 import cProfile
 import pstats
 import sys
+from itertools import chain
 from multiprocessing import freeze_support
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal, Slot
@@ -29,6 +30,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.actions import MenuAction
+from pytopaint.channels import sort_channels
 from pytopaint.colors import COLOR_RGB_MAPS
 from pytopaint.config import (
     get_color_palette,
@@ -39,11 +41,12 @@ from pytopaint.config import (
     set_zoom_resolution,
 )
 from pytopaint.io import IOManager
+from pytopaint.reporting import copy_report_template
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
+    TubeSelector,
     about_dialog,
     file_info_dialog,
-    report_generator_dialog,
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
@@ -142,6 +145,20 @@ class MainWindow(QMainWindow):
     def dropEvent(self, event: QDropEvent):
         urls = event.mimeData().urls()
         self.io_manager.open_files_from_urls(urls)
+
+    @Slot()
+    def copy_ip_template(self):
+        dialog = TubeSelector(
+            [painter.data for painter in self.painter_tabs.painters],
+            'Copy IP Template',
+            self,
+        )
+
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            channels = sort_channels(
+                set(chain(*(tube.fluoro_channels for tube in dialog.selected_tubes)))
+            )
+            copy_report_template(channels)
 
     def configure_menu_bar(self):
         def _palette_option(palette: str) -> QAction:
@@ -313,6 +330,9 @@ class MainWindow(QMainWindow):
 
         # Reporting Menu
         reporting_menu = menu_bar.addMenu('&Reporting')
+        generate_ip_template = QAction('Copy IP Template', self)
+        generate_ip_template.triggered.connect(self.copy_ip_template)
+        reporting_menu.addAction(generate_ip_template)
         generate_report = QAction('Copy IP Template', self)
         generate_report.triggered.connect(
             lambda: report_generator_dialog(

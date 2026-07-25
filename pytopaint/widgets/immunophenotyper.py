@@ -26,7 +26,7 @@ from pytopaint.channels import PHYSICAL_PARAMETERS
 from pytopaint.colors import BACKGROUND, Color, get_color_map
 from pytopaint.config import get_resolution
 from pytopaint.flowdata import FlowData
-from pytopaint.widgets.reportgenerator import copy_report_template
+from pytopaint.reporting import copy_report_template
 
 
 class Immunophenotyper(QDialog):

@@ -32,6 +32,7 @@ class IOManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.last_open_dir = QDir.homePath()
+        self.last_open_file_dir = QDir.homePath()
         self.last_save_dir = QDir.homePath()
         self.file_parsers = {'.fcs': open_fcs, '.h5ad': open_session}
 
@@ -60,7 +61,10 @@ class IOManager(QObject):
     @Slot()
     def open_files_dialog(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select File(s)', self.last_open_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
+            None,
+            'Select File(s)',
+            self.last_open_file_dir,
+            'FCS (*.fcs);;H5AD (*.h5ad)',
         )
 
         paths = filter_valid_files(map(Path, files))
@@ -68,7 +72,7 @@ class IOManager(QObject):
             return
 
         self.open_files(paths)
-        self.last_open_dir = str(paths[-1].parent)
+        self.last_open_file_dir = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
@@ -167,6 +171,18 @@ class IOManager(QObject):
                 sort_keys=False,
                 explicit_start=True,
             )
+
+    def export_to_pdf(self, painter: Painter) -> None:
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Export Deidentified FCS',
+            dir=self.last_open_file_dir,
+            filter='FCS (*.fcs)',
+        )
+
+        if not file_path:
+            return
 
 
 def open_fcs(file: Path) -> Painter:
