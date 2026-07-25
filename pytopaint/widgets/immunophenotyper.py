@@ -43,7 +43,7 @@ class Immunophenotyper(QDialog):
             'QDialog {background-color: #333333} QLabel {color: #bababa}'
         )
 
-        self.channels = ['FSC-A', 'SSC-A'] + data.fluoro_channels
+        self.channels = data.ip_channels
 
         df = data.binned_df.join(state[['color']]).loc[state['visible']]
 

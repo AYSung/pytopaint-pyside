@@ -108,6 +108,15 @@ class FlowData:
         return sort_channels(self.adata.var_names)
 
     @property
+    def ip_channels(self) -> list[str]:
+        return (
+            self.adata.var_names[
+                self.adata.var_names.isin(['FSC-A', 'SSC-A'])
+            ].to_list()
+            + self.fluoro_channels
+        )
+
+    @property
     def fluoro_channels(self) -> list[str]:
         return sort_channels(
             self.adata.var_names[self.adata.var['channel_type'] == 'fluoro']
