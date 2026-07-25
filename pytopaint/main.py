@@ -159,6 +159,7 @@ class MainWindow(QMainWindow):
 
         menu_bar = self.menuBar()
 
+        # File Menu
         file_menu = menu_bar.addMenu('&File')
 
         open_file_action = QAction('&Open File(s)', self)
@@ -244,6 +245,7 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
+        # Paint Menu
         paint_menu = menu_bar.addMenu('&Paint')
         paint_menu.setEnabled(False)
         self.painter_tabs.currentChanged.connect(
@@ -253,15 +255,7 @@ class MainWindow(QMainWindow):
         subsample_action.triggered.connect(self.subsample)
         paint_menu.addAction(subsample_action)
 
-        paint_menu.addSeparator()
-        generate_report = QAction('Copy IP Template', self)
-        generate_report.triggered.connect(
-            lambda: report_generator_dialog(
-                self, [painter.data for painter in self.painter_tabs.painters]
-            )
-        )
-        paint_menu.addAction(generate_report)
-
+        # Layout Menu
         layout_menu = menu_bar.addMenu('&Layout')
         layout_menu.setEnabled(False)
         self.painter_tabs.currentChanged.connect(
@@ -308,6 +302,7 @@ class MainWindow(QMainWindow):
         )
         layout_menu.addAction(remove_empty_cells_action)
 
+        # Analyze Menu
         analyze_menu = menu_bar.addMenu('&Analyze')
         pca_action = QAction('PCA', self)
         pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
@@ -316,6 +311,17 @@ class MainWindow(QMainWindow):
         umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
         analyze_menu.addAction(umap_action)
 
+        # Reporting Menu
+        reporting_menu = menu_bar.addMenu('&Reporting')
+        generate_report = QAction('Copy IP Template', self)
+        generate_report.triggered.connect(
+            lambda: report_generator_dialog(
+                self, [painter.data for painter in self.painter_tabs.painters]
+            )
+        )
+        reporting_menu.addAction(generate_report)
+
+        # Help Menu
         help_menu = menu_bar.addMenu('&Help')
 
         shortcut_help_action = QAction('Shortcuts', self)
