@@ -84,19 +84,20 @@ class BiplotGrid(QGridLayout):
 
     def new_biplot(
         self,
-        labels: tuple[str, str] = (None, None),
+        channels: tuple[str, str] = (None, None),
     ) -> Biplot:
-        x_label, y_label = labels
+        x_channel, y_channel = channels
 
         biplot = Biplot(
             data=self.data.binned_df,
             axis_ticks=self.data.axis_ticks,
             state=self.state,
             active_color=self.active_color,
-            x_label=x_label,
-            y_label=y_label,
+            x_channel=x_channel,
+            y_channel=y_channel,
             resolution=get_resolution(),
             highlighted_colors=self.highlighted_colors,
+            channel_fluor_map=self.data.channel_fluor_map,
         )
         self.connect_biplot_signals(biplot)
         return biplot
@@ -143,7 +144,7 @@ class BiplotGrid(QGridLayout):
     @batch_update
     def remove_empty(self) -> None:
         empty_biplots = [
-            biplot for biplot in self.get_biplots() if None in biplot.labels
+            biplot for biplot in self.get_biplots() if None in biplot.channels
         ]
 
         for biplot in empty_biplots:
@@ -165,17 +166,21 @@ class BiplotGrid(QGridLayout):
         self,
         grid: dict[tuple[int, int], tuple[str, str]],
     ) -> None:
-        for coords, labels in grid.items():
+        for coords, channels in grid.items():
             layout_item = self.itemAtPosition(*coords)
             if layout_item is not None:
-                x_label, y_label = labels
-                x_label = x_label if x_label in self.data.binned_df.columns else None
-                y_label = y_label if y_label in self.data.binned_df.columns else None
+                x_channel, y_channel = channels
+                x_channel = (
+                    x_channel if x_channel in self.data.binned_df.columns else None
+                )
+                y_channel = (
+                    y_channel if y_channel in self.data.binned_df.columns else None
+                )
 
                 biplot: Biplot = layout_item.widget()
-                biplot.set_axes(x_label, y_label)
+                biplot.set_axes(x_channel, y_channel)
             else:
-                self.add_biplot(self.new_biplot(labels), coords)
+                self.add_biplot(self.new_biplot(channels), coords)
 
     @property
     def rows(self) -> int:

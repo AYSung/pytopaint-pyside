@@ -64,10 +64,10 @@ def to_grid(
     layout: list[list[tuple[str, str]]],
 ) -> dict[tuple[int, int], tuple[str, str]]:
     return {
-        (x, y): tuple(labels)
+        (x, y): tuple(channels)
         for x, row in enumerate(layout)
-        for y, labels in enumerate(row)
-        if labels is not None
+        for y, channels in enumerate(row)
+        if channels is not None
     }
 
 
@@ -91,16 +91,16 @@ def get_best_layout_match(
 def replace_unused_channels(
     layout: LayoutConfig, data_channels: list[str]
 ) -> LayoutConfig:
-    def _replace_label(labels: list[str] | None) -> tuple[str, str]:
-        if labels is None:
+    def _replace_channel(channels: list[str] | None) -> tuple[str, str]:
+        if channels is None:
             return None
 
-        x_label, y_label = labels
-        if x_label in unused_channel_map:
-            x_label = unused_channel_map[x_label]
-        if y_label in unused_channel_map:
-            y_label = unused_channel_map[y_label]
-        return x_label, y_label
+        x_channel, y_channel = channels
+        if x_channel in unused_channel_map:
+            x_channel = unused_channel_map[x_channel]
+        if y_channel in unused_channel_map:
+            y_channel = unused_channel_map[y_channel]
+        return x_channel, y_channel
 
     unused_channel_map = dict(
         zip(
@@ -131,20 +131,20 @@ def replace_unused_channels(
     )
 
     return LayoutConfig({
-        coord: _replace_label(labels) for coord, labels in layout.grid.items()
+        coord: _replace_channel(channels) for coord, channels in layout.grid.items()
     })
 
 
 def dict_to_yaml(
     layout_grid: dict[tuple[int, int], tuple[str, str]],
 ) -> list[list[list[str, str]]]:
-    def _get_labels(x: int, y: int) -> list[str, str]:
-        labels = layout_grid.get((x, y), None)
-        return list(labels) if labels is not None else None
+    def _get_channels(x: int, y: int) -> list[str, str]:
+        channels = layout_grid.get((x, y), None)
+        return list(channels) if channels is not None else None
 
     def _columns(row: int) -> int:
         return max([y for x, y in layout_grid if x == row]) + 1
 
     rows = max([x for x, _ in layout_grid]) + 1
 
-    return [[_get_labels(x, y) for y in range(_columns(row=x))] for x in range(rows)]
+    return [[_get_channels(x, y) for y in range(_columns(row=x))] for x in range(rows)]

@@ -58,11 +58,12 @@ class Biplot(QWidget):
         data: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.DataFrame,
-        x_label: str,
-        y_label: str,
+        x_channel: str,
+        y_channel: str,
         active_color: Color,
         resolution: int,
         highlighted_colors: list[Color],
+        channel_fluor_map: dict[str, str],
     ):
         super().__init__()
         self.df = data
@@ -70,8 +71,8 @@ class Biplot(QWidget):
         self.active_color = active_color
 
         channels = sort_channels(data.columns)
-        x_label = x_label if x_label in channels else None
-        y_label = y_label if y_label in channels else None
+        x_channel = x_channel if x_channel in channels else None
+        y_channel = y_channel if y_channel in channels else None
 
         self.activeColorChanged.connect(self.set_active_color)
         self.setStyleSheet('color: #bababa')
@@ -84,25 +85,33 @@ class Biplot(QWidget):
         self.plot.pointsSelected.connect(self.handle_selection)
         self.activeColorChanged.connect(self.plot.set_active_color)
 
-        self.x_axis = XAxis(x_label, channels, axis_ticks, resolution=resolution)
-        self.x_axis.labelChanged.connect(self.update_plot_data)
-        self.x_axis.labelChanged.connect(self.plot.update_plot)
-        self.y_axis = YAxis(y_label, channels, axis_ticks, resolution=resolution)
-        self.y_axis.labelChanged.connect(self.update_plot_data)
-        self.y_axis.labelChanged.connect(self.plot.update_plot)
+        self.x_axis = XAxis(
+            x_channel, channels, axis_ticks, resolution, channel_fluor_map
+        )
+        self.x_axis.channelChanged.connect(self.update_plot_data)
+        self.x_axis.channelChanged.connect(self.plot.update_plot)
+        self.y_axis = YAxis(
+            y_channel, channels, axis_ticks, resolution, channel_fluor_map
+        )
+        self.y_axis.channelChanged.connect(self.update_plot_data)
+        self.y_axis.channelChanged.connect(self.plot.update_plot)
 
         self.set_data(self.df, axis_ticks)
         self.update_plot_data(self.state)
         self.plot.update_plot()
 
         self.title_label = PlotTitle(
-            x_label=self.x_axis.label, y_label=self.y_axis.label, resolution=resolution
+            self.x_axis.channel, self.y_axis.channel, resolution=resolution
         )
-        self.x_axis.labelChanged.connect(
-            lambda: self.title_label.update_title(self.x_axis.label, self.y_axis.label)
+        self.x_axis.channelChanged.connect(
+            lambda: self.title_label.update_title(
+                self.x_axis.channel, self.y_axis.channel
+            )
         )
-        self.y_axis.labelChanged.connect(
-            lambda: self.title_label.update_title(self.x_axis.label, self.y_axis.label)
+        self.y_axis.channelChanged.connect(
+            lambda: self.title_label.update_title(
+                self.x_axis.channel, self.y_axis.channel
+            )
         )
         self.title_label.transposeAxesClicked.connect(self.transpose_axes)
         self.title_label.copyPlotClicked.connect(self.copy_plot_to_clipboard)
@@ -111,7 +120,7 @@ class Biplot(QWidget):
 
         layout = QGridLayout()
         layout.setSpacing(0)
-        layout.setContentsMargins(5, 0, 5, 0)
+        layout.setContentsMargins(5, 5, 5, 0)
         layout.addWidget(
             self.title_label,
             0,
@@ -155,8 +164,8 @@ class Biplot(QWidget):
                     self.state['visible']
                     & (~self.state['color'].isin(IGNORE_COLORS[color]))
                 ],
-                x_label=self.x_axis.label,
-                y_label=self.y_axis.label,
+                x_label=self.x_axis.channel,
+                y_label=self.y_axis.channel,
             )
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
@@ -189,8 +198,8 @@ class Biplot(QWidget):
                 df=self.df.loc[
                     self.state['visible'] & (self.state.color != Color.GREY)
                 ],
-                x_label=self.x_axis.label,
-                y_label=self.y_axis.label,
+                x_label=self.x_axis.channel,
+                y_label=self.y_axis.channel,
             )
 
             if modifiers == Qt.KeyboardModifier.NoModifier:
@@ -250,22 +259,22 @@ class Biplot(QWidget):
         if state is not None:
             self.state = state
 
-        if self.x_axis.label is None or self.y_axis.label is None:
+        if self.x_axis.channel is None or self.y_axis.channel is None:
             self.plot.clear()
             self.plot.update_plot()
             return
 
         df = (
             self
-            .df[[self.x_axis.label, self.y_axis.label]]
+            .df[[self.x_axis.channel, self.y_axis.channel]]
             .loc[self.state['visible']]
             .join(self.state['color'])
             .drop_duplicates()
         )
 
         self.plot.set_working_data(
-            x_data=df[self.x_axis.label],
-            y_data=df[self.y_axis.label],
+            x_data=df[self.x_axis.channel],
+            y_data=df[self.y_axis.channel],
             color_data=df['color'],
         )
 
@@ -334,16 +343,16 @@ class Biplot(QWidget):
         image.save(file_path)
 
     def transpose_axes(self):
-        self.set_axes(x_label=self.y_axis.label, y_label=self.x_axis.label)
+        self.set_axes(x_channel=self.y_axis.channel, y_channel=self.x_axis.channel)
 
-    def set_axes(self, x_label: str, y_label: str) -> None:
-        self.x_axis.label = x_label
-        self.y_axis.label = y_label
+    def set_axes(self, x_channel: str, y_channel: str) -> None:
+        self.x_axis.channel = x_channel
+        self.y_axis.channel = y_channel
         self.x_axis.update_axis()
         self.y_axis.update_axis()
         self.update_plot_data()
         self.plot.update_plot()
-        self.title_label.update_title(x_label=x_label, y_label=y_label)
+        self.title_label.update_title(x_channel=x_channel, y_channel=y_channel)
 
     def paintEvent(self, pe):
         o = QStyleOption()
@@ -352,8 +361,8 @@ class Biplot(QWidget):
         self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, o, p, self)
 
     @property
-    def labels(self) -> tuple[str, str]:
-        return self.x_axis.label, self.y_axis.label
+    def channels(self) -> tuple[str, str]:
+        return self.x_axis.channels, self.y_axis.channels
 
     @Slot(int)
     def resize(self, resolution: int) -> None:
@@ -373,30 +382,30 @@ class PlotTitle(QLabel):
     exportPlotClicked = Signal(str)
     removePlotClicked = Signal()
 
-    def __init__(self, x_label: str, y_label: str, resolution: int):
+    def __init__(self, x_channel: str, y_channel: str, resolution: int):
         super().__init__()
-        self.x_label, self.y_label = x_label, y_label
+        self.x_channel, self.y_channel = x_channel, y_channel
 
-        self.setStyleSheet('font-weight: bold; margin-bottom: 6px')
+        self.setStyleSheet('font-weight: bold; margin-bottom: 4px')
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
         self.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.setFixedWidth(resolution)
-        self.update_title(x_label=x_label, y_label=y_label)
+        self.update_title(x_channel=x_channel, y_channel=y_channel)
 
     def resize(self, resolution: int) -> None:
         self.setFixedWidth(resolution)
 
     @Slot(str, str)
     def update_title(
-        self, x_label: str | None = None, y_label: str | None = None
+        self, x_channel: str | None = None, y_channel: str | None = None
     ) -> None:
-        self.x_label, self.y_label = x_label, y_label
+        self.x_channel, self.y_channel = x_channel, y_channel
 
-        if x_label is None or y_label is None:
+        if x_channel is None or y_channel is None:
             title = ''
         else:
-            title = f'{y_label} vs {x_label}'
+            title = f'{y_channel} vs {x_channel}'
 
         self.setText(title)
 
@@ -404,20 +413,20 @@ class PlotTitle(QLabel):
         menu = QMenu()
         transpose = QAction(
             'Transpose Axes',
-            enabled=self.x_label is not None and self.y_label is not None,
+            enabled=self.x_channel is not None and self.y_channel is not None,
         )
         transpose.triggered.connect(self.transposeAxesClicked)
         menu.addAction(transpose)
         menu.addSeparator()
         copy_light = QAction(
             'Copy to Clipboard (Light)',
-            enabled=self.x_label is not None and self.y_label is not None,
+            enabled=self.x_channel is not None and self.y_channel is not None,
         )
         copy_light.triggered.connect(lambda: self.copyPlotClicked.emit('light'))
         menu.addAction(copy_light)
         copy_dark = QAction(
             'Copy to Clipboard (Dark)',
-            enabled=self.x_label is not None and self.y_label is not None,
+            enabled=self.x_channel is not None and self.y_channel is not None,
         )
         copy_dark.triggered.connect(lambda: self.copyPlotClicked.emit('dark'))
         menu.addAction(copy_dark)
@@ -426,13 +435,13 @@ class PlotTitle(QLabel):
 
         export_light = QAction(
             'Export as PNG (Light)',
-            enabled=self.x_label is not None and self.y_label is not None,
+            enabled=self.x_channel is not None and self.y_channel is not None,
         )
         export_light.triggered.connect(lambda: self.exportPlotClicked.emit('light'))
         menu.addAction(export_light)
         export_dark = QAction(
             'Export as PNG (Dark)',
-            enabled=self.x_label is not None and self.y_label is not None,
+            enabled=self.x_channel is not None and self.y_channel is not None,
         )
         export_dark.triggered.connect(lambda: self.exportPlotClicked.emit('dark'))
         menu.addAction(export_dark)
@@ -590,20 +599,23 @@ class DotPlot(QLabel):
 
 
 class XAxis(QLabel):
-    labelChanged = Signal()
+    channelChanged = Signal()
 
     def __init__(
         self,
-        label: str,
+        channel: str,
         channels: list[str],
         axis_ticks: dict[str, list[tuple[int, str]]],
         resolution: int,
+        channel_fluor_map: dict[str, str],
     ):
         super().__init__()
-        self.label = label
+        self.channel = channel
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
+        self.channel_fluor_map = channel_fluor_map
+        self.label = channel_fluor_map.get(self.channel, self.channel)
         self.setContentsMargins(0, 4, 0, 0)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
@@ -616,15 +628,15 @@ class XAxis(QLabel):
             self.axis_ticks = axis_ticks
             self.update_axis()
 
-        if self.label not in self.axis_ticks:
-            self.label = None
-            self.labelChanged.emit()
+        if self.channel not in self.axis_ticks:
+            self.channel = None
+            self.channelChanged.emit()
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        if self.label not in self.axis_ticks:
-            self.label = None
-            self.labelChanged.emit()
+        if self.channel not in self.axis_ticks:
+            self.channel = None
+            self.channelChanged.emit()
         self.update_axis()
 
     def mousePressEvent(self, e: QMouseEvent):
@@ -652,15 +664,15 @@ class XAxis(QLabel):
         painter.drawLine(QPoint(0, tick_y0), QPoint(X_MAX, tick_y0))
 
         if (
-            self.label is not None
-            and (axis_ticks := self.axis_ticks.get(self.label)) is not None
+            self.channel is not None
+            and (axis_ticks := self.axis_ticks.get(self.channel)) is not None
         ):
             for tick, _ in axis_ticks:
                 painter.drawLine(QPoint(tick, tick_y0), QPoint(tick, tick_y1))
 
             axis_labels = (
                 [(4, '0')] + axis_ticks[1:]
-                if self.label in PHYSICAL_PARAMETERS
+                if self.channel in PHYSICAL_PARAMETERS
                 else axis_ticks
             )
 
@@ -672,7 +684,6 @@ class XAxis(QLabel):
                 )
 
             font = QFont()
-            font.setBold(True)
             painter.setFont(font)
             painter.drawText(
                 canvas.rect(),
@@ -693,27 +704,31 @@ class XAxis(QLabel):
             menu.addAction(channel)
 
         action = menu.exec(self.mapToGlobal(pos))
-        if action and (action != self.label):
-            self.label = action.text()
+        if action and (action != self.channel):
+            self.channel = action.text()
+            self.label = self.channel_fluor_map.get(self.channel, self.channel)
             self.update_axis()
-            self.labelChanged.emit()
+            self.channelChanged.emit()
 
 
 class YAxis(QLabel):
-    labelChanged = Signal()
+    channelChanged = Signal()
 
     def __init__(
         self,
-        label: str,
+        channel: str,
         channels: list[str],
         axis_ticks: dict[str, tuple[int, str]],
         resolution: int,
+        channel_fluor_map: dict[str, str],
     ):
         super().__init__()
-        self.label = label
+        self.channel = channel
         self.channels = channels
         self.axis_ticks = axis_ticks
         self.resolution = resolution
+        self.channel_fluor_map = channel_fluor_map
+        self.label = channel_fluor_map.get(self.channel, self.channel)
         self.setContentsMargins(0, 0, 4, 0)
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
@@ -726,15 +741,15 @@ class YAxis(QLabel):
             self.axis_ticks = axis_ticks
             self.update_axis()
 
-        if self.label not in self.axis_ticks:
-            self.label = None
-            self.labelChanged.emit()
+        if self.channel not in self.axis_ticks:
+            self.channel = None
+            self.channelChanged.emit()
 
     def resize(self, pixels: int) -> None:
         self.resolution = pixels
-        if self.label not in self.axis_ticks:
-            self.label = None
-            self.labelChanged.emit()
+        if self.channel not in self.axis_ticks:
+            self.channel = None
+            self.channelChanged.emit()
         self.update_axis()
 
     def mousePressEvent(self, e: QMouseEvent):
@@ -754,7 +769,7 @@ class YAxis(QLabel):
         pen.setColor(label_color)
         painter.setPen(pen)
 
-        label_x = AXIS_WIDTH - 48
+        label_x = AXIS_WIDTH - 27
         tick_x1 = AXIS_WIDTH - 1
         tick_x0 = tick_x1 - 4
         Y_MAX = self.resolution - 1
@@ -762,8 +777,8 @@ class YAxis(QLabel):
         painter.drawLine(QPoint(tick_x1, 0), QPoint(tick_x1, Y_MAX))
 
         if (
-            self.label is not None
-            and (axis_ticks := self.axis_ticks.get(self.label)) is not None
+            self.channel is not None
+            and (axis_ticks := self.axis_ticks.get(self.channel)) is not None
         ):
             for tick, _ in axis_ticks:
                 painter.drawLine(
@@ -773,22 +788,22 @@ class YAxis(QLabel):
 
             axis_labels = (
                 [(4, '0')] + axis_ticks[1:]
-                if self.label in PHYSICAL_PARAMETERS
+                if self.channel in PHYSICAL_PARAMETERS
                 else axis_ticks
             )
-
-            for tick, label in filter(lambda x: x is not None, axis_labels):
-                painter.drawText(
-                    QRect(label_x, Y_MAX - tick - 12, 40, 20),
-                    label,
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom,
-                )
 
             painter.translate(0, Y_MAX)
             painter.rotate(-90)
             font = QFont()
-            font.setWeight(QFont.Weight(800))
+            font.setWeight(QFont.Weight(600))
             painter.setFont(font)
+            for tick, label in filter(lambda x: x is not None, axis_labels):
+                painter.drawText(
+                    QRect(tick - 20, label_x, 40, 20),
+                    label,
+                    Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignBottom,
+                )
+
             painter.drawText(
                 canvas.rect().transposed(),
                 self.label,
@@ -808,10 +823,11 @@ class YAxis(QLabel):
             menu.addAction(channel)
 
         action = menu.exec(self.mapToGlobal(pos))
-        if action and (action != self.label):
-            self.label = action.text()
+        if action and (action != self.channel):
+            self.channel = action.text()
+            self.label = self.channel_fluor_map.get(self.channel, self.channel)
             self.update_axis()
-            self.labelChanged.emit()
+            self.channelChanged.emit()
 
 
 class BiplotUpdater(QRunnable):

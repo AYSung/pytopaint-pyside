@@ -438,5 +438,5 @@ class Painter(QWidget):
         if isinstance(widget, DotPlot):
             parent_widget: Biplot = widget.parentWidget()
             self.zoomTriggered.emit(
-                parent_widget.x_axis.label, parent_widget.y_axis.label
+                parent_widget.x_axis.channel, parent_widget.y_axis.channel
             )

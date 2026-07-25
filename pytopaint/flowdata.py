@@ -115,7 +115,9 @@ class FlowData:
 
     @property
     def channel_fluor_map(self) -> dict[str, str]:
-        return _channel_fluor_map(self.adata.var['pnn_label'])
+        return _channel_fluor_map(
+            self.adata.var['pnn_label'].loc[self.adata.var['pns_label'] != '']
+        )
 
     @property
     def scaling_factor(self) -> int:
@@ -420,10 +422,7 @@ def _clean_marker_name(marker: str) -> str:
 
 
 def _channel_fluor_map(pnn_labels: pd.Series):
-    return {
-        name: f'{name} ({pnn})' if pnn != name else name
-        for name, pnn in pnn_labels.items()
-    }
+    return {name: f'{name} ({pnn[:-2]})' for name, pnn in pnn_labels.items()}
 
 
 def extract_case_number(filename: str) -> str:
