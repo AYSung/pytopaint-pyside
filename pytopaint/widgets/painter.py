@@ -248,7 +248,6 @@ class Painter(QWidget):
         self.memorySlotUpdated.emit(slot, False)
 
     def forget_all_states(self):
-        print('forget all')
         for slot in self.memory_states:
             self.forget_state(slot)
 
