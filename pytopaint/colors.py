@@ -91,7 +91,7 @@ IGNORE_COLORS = {
     Color.GREEN: [Color.GREEN, Color.YELLOW, Color.CYAN, Color.WHITE],
     Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
     Color.CYAN: [Color.CYAN, Color.WHITE],
-    Color.YELLOW: [Color.MAGENTA, Color.WHITE],
+    Color.YELLOW: [Color.YELLOW, Color.WHITE],
     Color.WHITE: [Color.WHITE],
 }
 
