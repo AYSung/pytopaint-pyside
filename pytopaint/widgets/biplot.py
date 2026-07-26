@@ -33,7 +33,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.actions import MenuAction
-from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.channels import sort_channels
 from pytopaint.colors import (
     BACKGROUND,
     IGNORE_COLORS,
@@ -290,6 +290,19 @@ class Biplot(QWidget):
                 color_map = get_color_map() | {
                     Color.WHITE: '#000000',
                     Color.GREY: '#828282',
+                }
+                label_color = '#000000'
+            case 'report':
+                background_color = '#ffffff'
+                color_map = {
+                    Color.GREY: '#8f8f8f',
+                    Color.BLUE: '#0000ff',
+                    Color.GREEN: '#00ff00',
+                    Color.RED: '#ff0000',
+                    Color.YELLOW: '#ffbf00',
+                    Color.MAGENTA: '#ff00ff',
+                    Color.CYAN: '#00ffff',
+                    Color.WHITE: '#000000',
                 }
                 label_color = '#000000'
 
@@ -692,6 +705,7 @@ class XAxis(QLabel):
         return canvas
 
     def update_axis(self) -> None:
+        self.label = self.channel_fluor_map.get(self.channel, self.channel)
         canvas = self.draw_axis(label_color='#bababa')
         self.setPixmap(canvas)
 
@@ -703,7 +717,6 @@ class XAxis(QLabel):
         action = menu.exec(self.mapToGlobal(pos))
         if action and (action != self.channel):
             self.channel = action.text()
-            self.label = self.channel_fluor_map.get(self.channel, self.channel)
             self.update_axis()
             self.channelChanged.emit()
 
@@ -807,6 +820,7 @@ class YAxis(QLabel):
         return canvas
 
     def update_axis(self) -> None:
+        self.label = self.channel_fluor_map.get(self.channel, self.channel)
         canvas = self.draw_axis(label_color='#bababa')
         self.setPixmap(canvas)
 
@@ -818,7 +832,6 @@ class YAxis(QLabel):
         action = menu.exec(self.mapToGlobal(pos))
         if action and (action != self.channel):
             self.channel = action.text()
-            self.label = self.channel_fluor_map.get(self.channel, self.channel)
             self.update_axis()
             self.channelChanged.emit()
 

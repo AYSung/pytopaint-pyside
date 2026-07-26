@@ -41,7 +41,6 @@ from pytopaint.config import (
     set_zoom_resolution,
 )
 from pytopaint.io import IOManager
-from pytopaint.reporting import copy_report_template
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
     TubeSelector,
@@ -54,6 +53,7 @@ from pytopaint.widgets.dialogs import (
     subsample_dialog,
     zoom_plot_dialog,
 )
+from pytopaint.widgets.immunophenotyper import copy_report_template
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
 
@@ -150,14 +150,20 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def copy_ip_template(self):
-        dialog = TubeSelector(self.painter_tabs.painters, 'Copy IP Template', self)
+        if self.painter_tabs.count() == 1:
+            channels = self.get_active_painter().data.fluoro_channels
+        elif self.painter_tabs.count() > 1:
+            dialog = TubeSelector(self.painter_tabs.painters, 'Copy IP Template', self)
 
-        if dialog.exec() == QDialog.DialogCode.Accepted:
-            selected_channels = (
-                tube.data.fluoro_channels for tube in dialog.selected_tubes
-            )
-            channels = sort_channels(set(chain(*(selected_channels))))
-            copy_report_template(channels)
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                selected_channels = (
+                    tube.data.fluoro_channels for tube in dialog.selected_tubes
+                )
+                channels = sort_channels(set(chain(*(selected_channels))))
+            else:
+                return
+
+        copy_report_template(channels)
 
     @Slot()
     def add_row(self) -> None:
@@ -334,6 +340,10 @@ class MainWindow(QMainWindow):
 
         # Analyze Menu
         analyze_menu = menu_bar.addMenu('&Analyze')
+        analyze_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: analyze_menu.setEnabled(self.painter_tabs.count())
+        )
         pca_action = QAction('PCA', self)
         pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
         analyze_menu.addAction(pca_action)
@@ -343,16 +353,21 @@ class MainWindow(QMainWindow):
 
         # Reporting Menu
         reporting_menu = menu_bar.addMenu('&Reporting')
+        reporting_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: reporting_menu.setEnabled(self.painter_tabs.count())
+        )
         generate_ip_template = QAction('Copy IP Template', self)
         generate_ip_template.triggered.connect(self.copy_ip_template)
         reporting_menu.addAction(generate_ip_template)
-        generate_report = QAction('Copy IP Template', self)
-        generate_report.triggered.connect(
-            lambda: report_generator_dialog(
-                self, [painter.data for painter in self.painter_tabs.painters]
+        export_pdf = QAction('Export Report PDF', self)
+        export_pdf.setShortcut(QKeySequence('Ctrl+P'))
+        export_pdf.triggered.connect(
+            lambda: self.io_manager.export_to_pdf(
+                self.painter_tabs.painters, parent=self
             )
         )
-        reporting_menu.addAction(generate_report)
+        reporting_menu.addAction(export_pdf)
 
         # Help Menu
         help_menu = menu_bar.addMenu('&Help')

@@ -16,12 +16,15 @@ import yaml
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QProgressDialog,
 )
 
 from pytopaint.layout import LayoutConfig
 from pytopaint.paths import layout_dir
+from pytopaint.reporting import generate_pdf
+from pytopaint.widgets.dialogs import TubeSelector
 from pytopaint.widgets.painter import Painter
 
 
@@ -88,11 +91,13 @@ class IOManager(QObject):
             return
 
         self.open_files(files)
+        self.last_open_file_dir = str(dir)
         self.last_open_dir = str(dir.parent)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
-        self.open_files(paths)
+        if paths:
+            self.open_files(paths)
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
@@ -172,17 +177,30 @@ class IOManager(QObject):
                 explicit_start=True,
             )
 
-    def export_to_pdf(self, painter: Painter) -> None:
+    def export_to_pdf(self, tubes: list[Painter], parent=None) -> None:
+        if len(tubes) > 1:
+            dialog = TubeSelector(
+                tubes,
+                'Select Tubes',
+                parent,
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                tubes = dialog.selected_tubes
+            else:
+                return
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
-            caption='Export Deidentified FCS',
+            caption='Export PDF Report',
             dir=self.last_open_file_dir,
-            filter='FCS (*.fcs)',
+            filter='PDF (*.pdf)',
         )
 
         if not file_path:
             return
+
+        generate_pdf(file_path, tubes)
 
 
 def open_fcs(file: Path) -> Painter:
