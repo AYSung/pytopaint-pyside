@@ -10,6 +10,7 @@ import pstats
 import sys
 from itertools import chain
 from multiprocessing import freeze_support
+from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -22,10 +23,12 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QFileDialog,
     QGridLayout,
     QLayout,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QWidget,
 )
 
@@ -34,8 +37,11 @@ from pytopaint.channels import sort_channels
 from pytopaint.colors import COLOR_RGB_MAPS
 from pytopaint.config import (
     get_color_palette,
+    get_painter_layout_directory,
     get_window_position,
+    reset_painter_layout_directory,
     set_color_palette,
+    set_painter_layout_directory,
     set_resolution,
     set_window_position,
     set_zoom_resolution,
@@ -99,6 +105,28 @@ class MainWindow(QMainWindow):
         layout = self.io_manager.load_layout()
         if layout is not None:
             self.get_active_painter().biplot_grid.update_layout(layout.grid)
+
+    @Slot()
+    def change_layout_directory(self) -> None:
+        dir = QFileDialog.getExistingDirectory(
+            None,
+            'Select Default Layout Directory',
+            str(get_painter_layout_directory()),
+            QFileDialog.Option.ShowDirsOnly,
+        )
+        if not dir:
+            return
+
+        try:
+            set_painter_layout_directory(Path(dir))
+        except PermissionError:
+            QMessageBox.warning(
+                self, 'Error', 'Error accessing directory, please try another directory'
+            )
+
+    @Slot()
+    def reset_layout_directory(self) -> None:
+        reset_painter_layout_directory()
 
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
@@ -242,6 +270,15 @@ class MainWindow(QMainWindow):
         color_palette_menu.addActions(palette_options)
 
         file_menu.addMenu(color_palette_menu)
+
+        change_layout_directory = QAction('Change Default Layout Directory', self)
+        change_layout_directory.triggered.connect(self.change_layout_directory)
+        file_menu.addAction(change_layout_directory)
+
+        reset_layout_directory = QAction('Reset Layout Directory', self)
+        reset_layout_directory.triggered.connect(self.reset_layout_directory)
+        file_menu.addAction(reset_layout_directory)
+
         file_menu.addSeparator()
 
         file_info_action = QAction('File Info', self, enabled=False)

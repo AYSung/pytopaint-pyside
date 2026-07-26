@@ -6,7 +6,21 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 
+import os
+import shutil
+from importlib import resources
+from pathlib import Path
+
+from platformdirs import user_config_path
 from PySide6.QtCore import QPoint, QSettings
+
+_default_layout_dir = resources.files('pytopaint.resources').joinpath(
+    'painter_layouts/'
+)
+
+_config_dir = user_config_path(appname='PytoPaint', ensure_exists=True)
+_user_layout_dir = _config_dir / 'layouts'
+_user_layout_dir.mkdir(parents=True, exist_ok=True)
 
 
 def get_color_palette() -> str:
@@ -63,3 +77,53 @@ def get_window_position() -> QPoint:
 
 def set_window_position(pos: QPoint) -> None:
     QSettings().setValue('MainWindow/position', pos)
+
+
+def get_painter_layout_directory() -> Path:
+    path = Path(QSettings().value('Paths/painter_layouts', _user_layout_dir))
+    if _is_valid_directory(path) and (path != _default_layout_dir):
+        copy_default_layouts(path)
+        return path
+    else:
+        reset_painter_layout_directory()
+        return _get_default_layout_dir()
+
+
+def set_painter_layout_directory(path: Path) -> None:
+    copy_default_layouts(path)
+    QSettings().setValue('Paths/painter_layouts', str(path))
+
+
+def reset_painter_layout_directory() -> None:
+    QSettings().setValue('Paths/painter_layouts', str(_get_default_layout_dir()))
+
+
+def _is_valid_directory(path: str | Path) -> bool:
+    return (
+        os.access(path, os.F_OK)
+        and os.access(path, os.R_OK)
+        and os.access(path, os.W_OK)
+    )
+
+
+def _get_default_layout_dir() -> Path:
+    if _is_valid_directory(_user_layout_dir):
+        return _user_layout_dir
+    else:
+        return _default_layout_dir
+
+
+def copy_default_layouts(target_dir: Path) -> None:
+    if not any(target_dir.iterdir()):
+        shutil.copytree(src=_default_layout_dir, dst=target_dir, dirs_exist_ok=True)
+    else:
+        user_layout_filenames = [
+            entry.name for entry in target_dir.iterdir() if entry.is_file()
+        ]
+        missing_layout_files = [
+            entry
+            for entry in _default_layout_dir.iterdir()
+            if entry.is_file() and entry.name not in user_layout_filenames
+        ]
+        for layout_file in missing_layout_files:
+            shutil.copy(src=layout_file, dst=target_dir)

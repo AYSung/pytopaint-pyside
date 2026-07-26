@@ -21,8 +21,8 @@ from PySide6.QtWidgets import (
     QProgressDialog,
 )
 
+from pytopaint.config import get_painter_layout_directory
 from pytopaint.layout import LayoutConfig
-from pytopaint.paths import layout_dir
 from pytopaint.reporting import generate_pdf
 from pytopaint.widgets.dialogs import TubeSelector
 from pytopaint.widgets.painter import Painter
@@ -151,7 +151,7 @@ class IOManager(QObject):
     @Slot()
     def load_layout(self) -> LayoutConfig:
         file_path, _ = QFileDialog.getOpenFileName(
-            None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'
+            None, 'Load Layout', str(get_painter_layout_directory()), 'YAML (*.yml)'
         )
         if not file_path:
             return
@@ -162,7 +162,7 @@ class IOManager(QObject):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save Layout',
-            dir=str(layout_dir),
+            dir=str(get_painter_layout_directory()),
             filter='YAML (*.yml)',
         )
         if not file_path:

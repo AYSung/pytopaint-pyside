@@ -6,14 +6,13 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from dataclasses import dataclass
-from importlib import resources
 from itertools import chain
 from pathlib import Path
 
 import yaml
 
 from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
-from pytopaint.paths import default_layout_dir
+from pytopaint.config import get_painter_layout_directory
 
 
 @dataclass
@@ -51,16 +50,6 @@ class LayoutConfig:
         )
 
 
-def _import_layouts(dir: Path) -> list[LayoutConfig]:
-    return [
-        LayoutConfig.from_yaml(item)
-        for item in dir.iterdir()
-        if item.is_file()
-        and item.name.endswith('.yml')
-        and item.name not in ['example.yml']
-    ]
-
-
 def to_grid(
     layout: list[list[tuple[str, str]]],
 ) -> dict[tuple[int, int], tuple[str, str]]:
@@ -73,7 +62,14 @@ def to_grid(
 
 
 def import_layouts() -> list[LayoutConfig]:
-    return _import_layouts(default_layout_dir)
+    dir = get_painter_layout_directory()
+    return [
+        LayoutConfig.from_yaml(item)
+        for item in dir.iterdir()
+        if item.is_file()
+        and item.name.endswith('.yml')
+        and item.name not in ['example.yml']
+    ]
 
 
 def get_best_layout(channels: list[str]) -> LayoutConfig:
