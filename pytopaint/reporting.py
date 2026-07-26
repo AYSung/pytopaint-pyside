@@ -26,8 +26,8 @@ from pytopaint.widgets.biplot import Biplot
 from pytopaint.widgets.painter import Painter
 
 GRID_SIZE = 300
-X_OFFSET = 37.5
-Y_OFFSET = X_OFFSET * 2
+X_OFFSET = 30
+Y_OFFSET = 75
 GRID_COORDS = [
     (X_OFFSET + (GRID_SIZE * i), Y_OFFSET + (GRID_SIZE * j))
     for j in range(6)
