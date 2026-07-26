@@ -10,7 +10,7 @@ from importlib import resources
 
 from platformdirs import user_config_path
 
-default_layout_dir = resources.files('pytopaint.resources').joinpath('layouts/')
+default_layout_dir = resources.files('pytopaint.resources').joinpath('painter_layouts/')
 
 config_dir = user_config_path(appname='PytoPaint', ensure_exists=True)
 

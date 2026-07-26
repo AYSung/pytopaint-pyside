@@ -13,6 +13,7 @@ from pathlib import Path
 import yaml
 
 from pytopaint.channels import PHYSICAL_PARAMETERS, sort_channels
+from pytopaint.paths import default_layout_dir
 
 
 @dataclass
@@ -50,8 +51,7 @@ class LayoutConfig:
         )
 
 
-def _import_layouts(anchor: str) -> list[LayoutConfig]:
-    dir = resources.files(anchor)
+def _import_layouts(dir: Path) -> list[LayoutConfig]:
     return [
         LayoutConfig.from_yaml(item)
         for item in dir.iterdir()
@@ -73,7 +73,7 @@ def to_grid(
 
 
 def import_layouts() -> list[LayoutConfig]:
-    return _import_layouts('pytopaint.resources.layouts')
+    return _import_layouts(default_layout_dir)
 
 
 def get_best_layout(channels: list[str]) -> LayoutConfig:
