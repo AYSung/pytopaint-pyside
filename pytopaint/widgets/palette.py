@@ -59,8 +59,8 @@ class Palette(QWidget):
             self.colorPaletteChanged.connect(color_label.update_palette)
         self.update_labels(state)
 
-        save_state_label = QLabel('Snapshots:')
-        save_state_label.setContentsMargins(0, 0, 10, 0)
+        save_state_label = SnapshotLabel()
+        save_state_label.menuActionTriggered.connect(self.menuActionTriggered)
         layout.addWidget(save_state_label)
         self.memory_slots = {
             i: MemorySlot(i, memory_states[i] is not None) for i in memory_states
@@ -92,6 +92,10 @@ class Palette(QWidget):
     @Slot(int, object)
     def update_color_memory(self, color: Color, color_state: pd.Series):
         self.color_labels[color].remember_state(color_state)
+
+    @Slot(int, bool)
+    def update_memory_slot(self, slot: int, has_events: bool):
+        self.memory_slots[slot].update_appearance(has_events)
 
 
 class ColorLabel(QWidget):
@@ -387,6 +391,38 @@ def _color_icon(color: Color) -> QIcon:
     return QIcon(pixmap)
 
 
+class SnapshotLabel(QLabel):
+    menuActionTriggered = Signal(int, dict)
+
+    def __init__(self):
+        super().__init__()
+        self.setText('Snapshots:')
+        self.setContentsMargins(0, 0, 10, 0)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.customContextMenuRequested.connect(self.context_menu)
+
+    def context_menu(self, pos):
+        menu = QMenu()
+
+        merge_all = QAction('Merge Snapshots')
+        merge_all.triggered.connect(
+            lambda: self.menuActionTriggered.emit(MenuAction.MERGE_ALL_STATES, {})
+        )
+        menu.addAction(merge_all)
+
+        forget_all = QAction('Forget Snapshots')
+        forget_all.triggered.connect(
+            lambda: self.menuActionTriggered.emit(MenuAction.FORGET_ALL_STATES, {})
+        )
+        menu.addAction(forget_all)
+
+        menu.exec(self.mapToGlobal(pos))
+
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
+
+
 class MemorySlot(QToolButton):
     menuActionTriggered = Signal(int, dict)
 
@@ -395,9 +431,8 @@ class MemorySlot(QToolButton):
         self.mouse_pressed = False
 
         self.id = id
-        self.has_events = has_events
-        self.setText(str(id))
-        self.update_appearance()
+        self.setText(str(id + 1))
+        self.update_appearance(has_events)
 
     def mousePressEvent(self, e: QMouseEvent):
         self.mouse_pressed = True
@@ -427,9 +462,9 @@ class MemorySlot(QToolButton):
         ):
             self.clear_state()
 
-    def update_appearance(self) -> None:
+    def update_appearance(self, has_events: bool) -> None:
         self.setStyleSheet(
-            f'background-color: {"#828282" if self.has_events else "#121212"}'
+            f'background-color: {"#828282" if has_events else "#121212"}'
         )
 
     def replace_state(self):
@@ -439,18 +474,12 @@ class MemorySlot(QToolButton):
         self.menuActionTriggered.emit(MenuAction.MERGE_STATE, {'slot': self.id})
 
     def store_state(self):
-        self.has_events = True
         self.menuActionTriggered.emit(MenuAction.STORE_STATE, {'slot': self.id})
-        self.update_appearance()
 
     def store_state_and_clear(self):
-        self.has_events = True
         self.menuActionTriggered.emit(
             MenuAction.STORE_STATE_AND_CLEAR, {'slot': self.id}
         )
-        self.update_appearance()
 
     def clear_state(self):
-        self.has_events = False
         self.menuActionTriggered.emit(MenuAction.FORGET_STATE, {'slot': self.id})
-        self.update_appearance()

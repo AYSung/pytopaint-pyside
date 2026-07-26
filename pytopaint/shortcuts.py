@@ -115,3 +115,28 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
     hide_grey_shortcut.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.HIDE, {'color': Color.GREY})
     )
+
+    merge_all_states = QShortcut(QKeySequence('`'), widget)
+    merge_all_states.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.MERGE_ALL_STATES, {})
+    )
+
+    def _replace_state_shortcut(slot: int) -> None:
+        replace_state_shortcut = QShortcut(QKeySequence(f'{slot + 1}'), widget)
+        replace_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.REPLACE_STATE, {'slot': slot}
+            )
+        )
+
+    def _store_state_shortcut(slot: int) -> None:
+        store_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
+        store_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.STORE_STATE_AND_CLEAR, {'slot': slot}
+            )
+        )
+
+    for slot in range(5):
+        _replace_state_shortcut(slot)
+        _store_state_shortcut(slot)
