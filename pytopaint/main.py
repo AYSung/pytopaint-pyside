@@ -410,6 +410,7 @@ class MainWindow(QMainWindow):
         help_menu = menu_bar.addMenu('&Help')
 
         shortcut_help_action = QAction('Shortcuts', self)
+        shortcut_help_action.setShortcut(QKeySequence('?'))
         shortcut_help_action.triggered.connect(lambda: shortcut_dialog(self).exec())
         help_menu.addAction(shortcut_help_action)
 

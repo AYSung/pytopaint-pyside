@@ -62,16 +62,16 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         _toggle_highlight_shortcut(key, color)
         _exact_zap_shortcut(key, color)
 
-    exact_zap_current_color = QShortcut(QKeySequence('E'), widget)
+    zap_all = QShortcut(QKeySequence('E'), widget)
+    zap_all.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
+    )
+
+    exact_zap_current_color = QShortcut(QKeySequence('Ctrl+E'), widget)
     exact_zap_current_color.activated.connect(
         lambda: widget.menuActionTriggered.emit(
             MenuAction.EXACT_ZAP, {'color': widget.active_color}
         )
-    )
-
-    zap_all = QShortcut(QKeySequence('Ctrl+E'), widget)
-    zap_all.activated.connect(
-        lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
     )
 
     toggle_all_highlights = QShortcut(QKeySequence('Shift+E'), widget)

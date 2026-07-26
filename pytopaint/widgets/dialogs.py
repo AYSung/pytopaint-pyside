@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
     QFrame,
     QGridLayout,
     QGroupBox,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QLayout,
@@ -64,12 +65,20 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         hline.setFrameShape(QFrame.Shape.HLine)
         return hline
 
+    def _section_header(text: str) -> QLabel:
+        label = QLabel(f'<b>{text}</b<')
+        label.setContentsMargins(0, 20, 0, 0)
+        return label
+
     dialog = QDialog(parent)
     dialog.setWindowTitle('Shortcuts')
 
-    layout = QVBoxLayout()
-    layout.addWidget(QLabel('<b>Mouse Controls (within biplots):</b>'))
-    layout.addWidget(
+    layout = QHBoxLayout()
+    layout.setSpacing(0)
+
+    column_1 = QVBoxLayout()
+    column_1.addWidget(_section_header('Mouse Controls (within biplots):'))
+    column_1.addWidget(
         _shortcut_table([
             ('Paint Events', 'Left-Click'),
             ('Paint Non-Grey Events', 'Shift + Left-Click'),
@@ -77,24 +86,40 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
         ])
     )
-    layout.addWidget(
+    column_1.addWidget(
         _shortcut_table([
             ('Exact Zap from Selection', 'Right-Click'),
             ('Zap from Selection', 'Shift + Right-Click'),
             ('Paint Grey', 'Ctrl + Right-Click'),
         ])
     )
-    layout.addWidget(
+    column_1.addWidget(
         _shortcut_table([
             ('Exact Zap Current Color', 'Middle-Click'),
             ('Zap Current Color', 'Shift + Middle-Click'),
             ('Zap All', 'Ctrl + Middle-Click'),
         ])
     )
-    layout.addWidget(_hline())
+    column_1.addWidget(_hline())
 
-    layout.addWidget(QLabel('<b>Paint Controls:</b>'))
-    layout.addWidget(
+    column_1.addWidget(_section_header('Application Controls:'))
+    column_1.addWidget(
+        _shortcut_table([
+            ('Open File(s)', 'Ctrl + O'),
+            ('Open Directory', 'Ctrl + Shift + O'),
+            ('Close Tabs and Open Directory', 'Ctrl + N'),
+            ('Export PDF Report', 'Ctrl + P'),
+            ('Close Current Tab', 'Ctrl + W'),
+            ('Close All Tabs', 'Ctrl + Shift + W'),
+            ('View Shortcuts', '?'),
+            ('Close Application', 'Ctrl + Q'),
+        ])
+    )
+    column_1.addStretch()
+
+    column_2 = QVBoxLayout()
+    column_2.addWidget(_section_header('Paint Controls:'))
+    column_2.addWidget(
         _shortcut_table([
             ('Undo', 'Ctrl + Z'),
             ('Redo', 'Ctrl + Shift + Z'),
@@ -105,11 +130,11 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Cyan', 'C'),
             ('Paint Yellow', 'X'),
             ('Paint White', 'A'),
+            ('Zap All', 'E'),
             ('Toggle Color Highlight', 'Shift + <Color>'),
             ('Exact Zap Color', 'Ctrl + <Color>'),
-            ('Exact Zap Current Color', 'E'),
             ('Toggle All Highlights', 'Shift + E'),
-            ('Zap All', 'Ctrl + E'),
+            ('Exact Zap Current Color', 'Ctrl + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
             ('Hide Grey Events', 'Shift + Enter'),
@@ -118,17 +143,19 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Toggle Zoom', 'Space'),
         ])
     )
-    layout.addWidget(QLabel('<b>Application Controls:</b>'))
-    layout.addWidget(
+    column_2.addWidget(_hline())
+    column_2.addWidget(_section_header('Snapshot Controls:'))
+    column_2.addWidget(
         _shortcut_table([
-            ('Open File(s)', 'Ctrl + O'),
-            ('Open Directory', 'Ctrl + Shift + O'),
-            ('Close Tabs and Open New Directory', 'Ctrl + N'),
-            ('Close Current Tab', 'Ctrl + W'),
-            ('Close All Tabs', 'Ctrl + Shift + W'),
-            ('Close Application', 'Ctrl + Q'),
+            ('Recall Snapshot', '<1 - 5>'),
+            ('Save Snapshot and Clear', 'Shift + <1 - 5>'),
+            ('Merge Snapshots', '`'),
         ])
     )
+    column_2.addStretch()
+
+    layout.addLayout(column_1)
+    layout.addLayout(column_2)
 
     layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
