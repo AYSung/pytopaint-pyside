@@ -230,7 +230,6 @@ class Painter(QWidget):
 
     def forget_state(self, slot: int):
         self.memory_states[slot] = None
-        print(self.memory_states)
 
     def store_color(self, color: Color):
         self.colorStateReturned.emit(

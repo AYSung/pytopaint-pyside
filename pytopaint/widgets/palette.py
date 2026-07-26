@@ -398,61 +398,39 @@ class MemorySlot(QToolButton):
         self.has_events = has_events
         self.setText(str(id))
         self.update_appearance()
-        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
-        self.customContextMenuRequested.connect(self.context_menu)
 
     def mousePressEvent(self, e: QMouseEvent):
         self.mouse_pressed = True
-        if e.button() == Qt.MouseButton.RightButton:
-            self.customContextMenuRequested.emit(e.pos())
+        super().mousePressEvent(e)
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if not self.has_events or not self.mouse_pressed:
-            self.mouse_pressed = False
-            super().mouseReleaseEvent(e)
-            return
+        if self.mouse_pressed:
+            self.handle_mouse_event(e)
 
+        self.mouse_pressed = False
+        super().mouseReleaseEvent(e)
+
+    def handle_mouse_event(self, e: QMouseEvent) -> None:
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.replace_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.merge_state()
+        elif e.button() == Qt.MouseButton.RightButton:
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.store_state()
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.store_state_and_clear()
         elif (e.button() == Qt.MouseButton.MiddleButton) and (
             modifiers == Qt.KeyboardModifier.NoModifier
         ):
             self.clear_state()
 
-        self.mouse_pressed = False
-        super().mouseReleaseEvent(e)
-
     def update_appearance(self) -> None:
         self.setStyleSheet(
             f'background-color: {"#828282" if self.has_events else "#121212"}'
         )
-
-    def context_menu(self, pos):
-        menu = QMenu()
-        recall_state_action = QAction('Recall', self, enabled=self.has_events)
-        recall_state_action.triggered.connect(self.replace_state)
-        menu.addAction(recall_state_action)
-        combine_state_action = QAction('Recall Non-Grey', self, enabled=self.has_events)
-        combine_state_action.triggered.connect(self.merge_state)
-        menu.addAction(combine_state_action)
-
-        menu.addSeparator()
-
-        store_state_action = QAction('Remember', self)
-        store_state_action.triggered.connect(self.store_state)
-        menu.addAction(store_state_action)
-        store_state_and_clear_action = QAction('Remember && Clear', self)
-        store_state_and_clear_action.triggered.connect(self.store_state_and_clear)
-        menu.addAction(store_state_and_clear_action)
-        clear_state_action = QAction('Forget', self, enabled=self.has_events)
-        clear_state_action.triggered.connect(self.clear_state)
-        menu.addAction(clear_state_action)
-
-        menu.exec(self.mapToGlobal(pos))
 
     def replace_state(self):
         self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, {'slot': self.id})
