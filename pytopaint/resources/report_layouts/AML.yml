@@ -1,0 +1,13 @@
+---
+- [FSC-A, SSC-A]
+- [SSC-A, CD45]
+- [FSC-A, FSC-H]
+- [CD15, CD34]
+- [CD15, CD33]
+- [CD33, CD117]
+- [CD34, CD117]
+- [CD123, CD33]
+- [CD33, HLA-DR]
+- [CD34, HLA-DR]
+- [CD117, HLA-DR]
+- [CD123, HLA-DR]

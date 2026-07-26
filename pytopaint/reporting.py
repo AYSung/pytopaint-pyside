@@ -5,9 +5,12 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+from importlib import resources
 from itertools import chain
+from pathlib import Path
 
 import pandas as pd
+import yaml
 from PySide6.QtCore import QDateTime
 from PySide6.QtGui import (
     QPageSize,
@@ -32,6 +35,8 @@ GRID_COORDS = [
     if (i, j) != (3, 0)
 ]
 PLOT_RESOLUTION = 224
+
+type ReportLayout = list[tuple[str, str]]
 
 
 def generate_pdf(file_path: str, tubes: list[Painter]) -> None:
@@ -143,8 +148,8 @@ def draw_color_legend(state: pd.DataFrame) -> QTextDocument:
     return color_legend
 
 
-def get_report_layout(data_channels: list[str]) -> list[tuple[str, str]]:
-    def _score_layout(layout: list[tuple[str, str]]) -> float:
+def get_report_layout(data_channels: list[str]) -> ReportLayout:
+    def _score_layout(layout: ReportLayout) -> float:
         overlap = len(set(chain(*layout)).intersection(set(data_channels)))
         layout_score = overlap / len(layout)
         channel_score = overlap / len(data_channels)
@@ -162,7 +167,7 @@ def get_report_layout(data_channels: list[str]) -> list[tuple[str, str]]:
         x_channel, y_channel = channels
         return x_channel in data_channels and y_channel in data_channels
 
-    best_layout = max(REPORT_LAYOUTS, key=_score_layout)
+    best_layout = max(import_report_layouts(), key=_score_layout)
 
     layout_channels = set(chain(*best_layout)) | set(PHYSICAL_PARAMETERS + ['Time'])
     unused_layout_channels = sort_channels(
@@ -174,104 +179,16 @@ def get_report_layout(data_channels: list[str]) -> list[tuple[str, str]]:
     return list(filter(_is_in_data, map(_replace_channels, best_layout)))
 
 
-B_CELL_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD5', 'CD19'),
-    ('CD10', 'CD19'),
-    ('CD10', 'CD20'),
-    ('Lambda', 'Kappa'),
-    ('CD34', 'CD38'),
-    ('CD20', 'CD38'),
-    ('CD45', 'CD38'),
-    ('CD34', 'CD20'),
-    ('CD34', 'CD22'),
-]
-T_CELL_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD7', 'CD3'),
-    ('CD7', 'CD2'),
-    ('CD4', 'CD8'),
-    ('CD3', 'CD4'),
-    ('CD56', 'CD45'),
-    ('CD45', 'CD64'),
-    ('CD64', 'CD14'),
-    ('CD14', 'CD45'),
-    ('CD2', 'CD5'),
-    ('CD3', 'CD5'),
-    ('CD7', 'CD5'),
-    ('CD8', 'CD5'),
-]
-MMIC_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD45', 'CD38'),
-    ('CD56', 'CD19'),
-    ('CD56', 'CD45'),
-    ('Lambda', 'Kappa'),
-]
-VS38_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD45', 'VS38c'),
-    ('CD56', 'CD19'),
-    ('CD56', 'CD45'),
-    ('Lambda', 'Kappa'),
-    ('CD45', 'CD38'),
-]
-AML_MDS_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD15', 'CD34'),
-    ('CD15', 'CD33'),
-    ('CD33', 'CD117'),
-    ('CD34', 'CD117'),
-    ('CD123', 'CD33'),
-    ('CD33', 'HLA-DR'),
-    ('CD34', 'HLA-DR'),
-    ('CD117', 'HLA-DR'),
-    ('CD123', 'HLA-DR'),
-]
-BMS_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD11b', 'CD13'),
-    ('CD16', 'CD11b'),
-    ('CD16', 'CD13'),
-    ('CD64', 'CD16'),
-    ('CD34', 'CD38'),
-    ('CD11b', 'CD34'),
-    ('CD13', 'CD34'),
-    ('CD36', 'CD64'),
-    ('CD56', 'CD45'),
-    ('CD7', 'CD13'),
-    ('CD56', 'CD45'),
-]
-MF_REPORT = [
-    ('FSC-A', 'SSC-A'),
-    ('SSC-A', 'CD45'),
-    ('FSC-A', 'FSC-H'),
-    ('CD7', 'CD3'),
-    ('CD8', 'CD4'),
-    ('CD3', 'CD26'),
-    ('CD3', 'TRBC1'),
-    ('CD4', 'TRBC1'),
-    ('CD30, CD7'),
-]
+def _import_report_layout(path: Path) -> ReportLayout:
+    with open(path) as stream:
+        return list(map(tuple, yaml.safe_load(stream)))
 
-REPORT_LAYOUTS = [
-    B_CELL_REPORT,
-    T_CELL_REPORT,
-    MMIC_REPORT,
-    VS38_REPORT,
-    AML_MDS_REPORT,
-    BMS_REPORT,
-    MF_REPORT,
-]
+
+def import_report_layouts() -> list[ReportLayout]:
+    dir = resources.files('pytopaint.resources.report_layouts')
+
+    return [
+        _import_report_layout(item)
+        for item in dir.iterdir()
+        if item.is_file() and item.name.endswith('.yml')
+    ]
