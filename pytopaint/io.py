@@ -54,7 +54,7 @@ class IOManager(QObject):
                 painter = self.file_parsers[file.suffix.lower()](file)
                 self.fileOpened.emit(painter)
             except ValueError:
-                raise ValueError(f'Error opening {file}')
+                print(f'Error opening {file}')
             finally:
                 progress.setValue(i)
                 QApplication.processEvents()
@@ -222,7 +222,7 @@ def _is_valid_filetype(path: Path) -> bool:
 
 
 def _is_valid_file(path: Path) -> bool:
-    return path.is_file() and _is_valid_filetype(path)
+    return path.is_file() and _is_valid_filetype(path) and not path.stem.startswith('.')
 
 
 def filter_valid_files(files: Iterable[Path]) -> list[Path]:
