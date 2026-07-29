@@ -16,5 +16,6 @@ todo.md
 *.build
 
 .DS_Store
+._*
 
 *.prof

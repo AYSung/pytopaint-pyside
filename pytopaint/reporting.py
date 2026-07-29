@@ -190,5 +190,7 @@ def import_report_layouts() -> list[ReportLayout]:
     return [
         _import_report_layout(item)
         for item in dir.iterdir()
-        if item.is_file() and item.name.endswith('.yml')
+        if item.is_file()
+        and item.name.endswith('.yml')
+        and not item.name.startswith('.')
     ]

@@ -68,6 +68,7 @@ def import_layouts() -> list[LayoutConfig]:
         for item in dir.iterdir()
         if item.is_file()
         and item.name.endswith('.yml')
+        and not item.name.startswith('.')
         and item.name not in ['example.yml']
     ]
 
