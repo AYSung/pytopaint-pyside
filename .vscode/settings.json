@@ -4,6 +4,13 @@
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
-    "python.analysis.useLibraryCodeForTypes": false,
-    "python.analysis.diagnosticMode": "openFilesOnly",
+    "python.analysis.diagnosticMode": "workspace",
+    "python.analysis.exclude": [
+        "**/node_modules",
+        "**/__pycache__",
+        "**/.*",
+        "build",
+        "dist",
+        ".venv"
+    ]
 }
