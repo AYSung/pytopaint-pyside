@@ -432,11 +432,47 @@ class MemorySlot(QToolButton):
 
         self.id = id
         self.setText(str(id + 1))
+        self.has_events = has_events
         self.update_appearance(has_events)
 
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.customContextMenuRequested.connect(self.context_menu)
+
+    def context_menu(self, pos):
+        menu = QMenu()
+
+        recall_snapshot = QAction('Recall', enabled=self.has_events)
+        recall_snapshot.triggered.connect(self.replace_state)
+        menu.addAction(recall_snapshot)
+
+        merge_snapshot = QAction('Recall Non-Grey', enabled=self.has_events)
+        merge_snapshot.triggered.connect(self.merge_state)
+        menu.addAction(merge_snapshot)
+
+        menu.addSeparator()
+
+        store_snapshot = QAction('Store')
+        store_snapshot.triggered.connect(self.store_state)
+        menu.addAction(store_snapshot)
+
+        store_snapshot_and_clear = QAction('Store and Clear')
+        store_snapshot_and_clear.triggered.connect(self.store_state_and_clear)
+        menu.addAction(store_snapshot_and_clear)
+
+        menu.addSeparator()
+
+        forget_snapshot = QAction('Forget', enabled=self.has_events)
+        forget_snapshot.triggered.connect(self.clear_state)
+        menu.addAction(forget_snapshot)
+
+        menu.exec(self.mapToGlobal(pos))
+
     def mousePressEvent(self, e: QMouseEvent):
-        self.mouse_pressed = True
-        super().mousePressEvent(e)
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
+        else:
+            self.mouse_pressed = True
+            super().mousePressEvent(e)
 
     def mouseReleaseEvent(self, e: QMouseEvent):
         if self.mouse_pressed:
@@ -452,34 +488,35 @@ class MemorySlot(QToolButton):
                 self.replace_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.merge_state()
-        elif e.button() == Qt.MouseButton.RightButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.store_state()
-            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-                self.store_state_and_clear()
         elif (e.button() == Qt.MouseButton.MiddleButton) and (
             modifiers == Qt.KeyboardModifier.NoModifier
         ):
             self.clear_state()
 
     def update_appearance(self, has_events: bool) -> None:
+        self.has_events = has_events
         self.setStyleSheet(
             f'background-color: {"#828282" if has_events else "#121212"}'
         )
 
+    @Slot()
     def replace_state(self):
         self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, {'slot': self.id})
 
+    @Slot()
     def merge_state(self):
         self.menuActionTriggered.emit(MenuAction.MERGE_STATE, {'slot': self.id})
 
+    @Slot()
     def store_state(self):
         self.menuActionTriggered.emit(MenuAction.STORE_STATE, {'slot': self.id})
 
+    @Slot()
     def store_state_and_clear(self):
         self.menuActionTriggered.emit(
             MenuAction.STORE_STATE_AND_CLEAR, {'slot': self.id}
         )
 
+    @Slot()
     def clear_state(self):
         self.menuActionTriggered.emit(MenuAction.FORGET_STATE, {'slot': self.id})
