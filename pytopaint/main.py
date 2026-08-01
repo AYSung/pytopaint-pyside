@@ -355,14 +355,10 @@ class MainWindow(QMainWindow):
         layout_menu.addAction(change_zoom_action)
         layout_menu.addSeparator()
         add_biplot_row_action = QAction('Add Row(s)', self)
-        add_biplot_row_action.triggered.connect(
-            lambda: self.get_active_painter().add_biplot_row()
-        )
+        add_biplot_row_action.triggered.connect(self.add_row)
         layout_menu.addAction(add_biplot_row_action)
         add_biplot_column_action = QAction('Add Column(s)', self)
-        add_biplot_column_action.triggered.connect(
-            lambda: self.get_active_painter().add_biplot_column()
-        )
+        add_biplot_column_action.triggered.connect(self.add_column)
         layout_menu.addAction(add_biplot_column_action)
         fill_empty_cell_action = QAction('Fill Empty Grid Cells', self)
         fill_empty_cell_action.triggered.connect(
