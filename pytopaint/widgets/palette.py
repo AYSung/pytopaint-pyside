@@ -49,7 +49,7 @@ class Palette(QWidget):
         self.total_events_label.setFixedWidth(150)
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER.keys()}
+        self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER}
         for color_label in self.color_labels.values():
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
@@ -59,11 +59,11 @@ class Palette(QWidget):
             self.colorPaletteChanged.connect(color_label.update_palette)
         self.update_labels(state)
 
-        save_state_label = QLabel('Snapshots:')
-        save_state_label.setContentsMargins(0, 0, 10, 0)
+        save_state_label = SnapshotLabel()
+        save_state_label.menuActionTriggered.connect(self.menuActionTriggered)
         layout.addWidget(save_state_label)
         self.memory_slots = {
-            i: MemorySlot(i, memory_states[i] is not None) for i in memory_states.keys()
+            i: MemorySlot(i, memory_states[i] is not None) for i in memory_states
         }
         for memory_slot in self.memory_slots.values():
             layout.addWidget(
@@ -92,6 +92,10 @@ class Palette(QWidget):
     @Slot(int, object)
     def update_color_memory(self, color: Color, color_state: pd.Series):
         self.color_labels[color].remember_state(color_state)
+
+    @Slot(int, bool)
+    def update_memory_slot(self, slot: int, has_events: bool):
+        self.memory_slots[slot].update_appearance(has_events)
 
 
 class ColorLabel(QWidget):
@@ -157,19 +161,20 @@ class ColorLabel(QWidget):
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.menuActionTriggered.emit(
-                    MenuAction.SET_ACTIVE, dict(color=self.color)
+                    MenuAction.SET_ACTIVE, {'color': self.color}
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.menuActionTriggered.emit(
-                    MenuAction.HIGHLIGHT, dict(color=self.color)
+                    MenuAction.HIGHLIGHT, {'color': self.color}
                 )
-        elif self.has_events and (e.button() == Qt.MouseButton.MiddleButton):
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.menuActionTriggered.emit(
-                    MenuAction.EXACT_ZAP, dict(color=self.color)
-                )
-            # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-            #     self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
+        elif (
+            self.has_events
+            and (e.button() == Qt.MouseButton.MiddleButton)
+            and (modifiers == Qt.KeyboardModifier.NoModifier)
+        ):
+            self.menuActionTriggered.emit(MenuAction.EXACT_ZAP, {'color': self.color})
+        # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+        #     self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
 
     @Slot(list)
     def update_highlight(self, highlighted_colors: list[Color]):
@@ -195,7 +200,7 @@ class ColorLabel(QWidget):
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.MERGE_COLOR,
-                    dict(source_color=self.color, target_color=color),
+                    {'source_color': self.color, 'target_color': color},
                 )
             )
             return action
@@ -216,7 +221,7 @@ class ColorLabel(QWidget):
             set_active_color = QAction('Set Active Color')
             set_active_color.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.SET_ACTIVE, dict(color=self.color)
+                    MenuAction.SET_ACTIVE, {'color': self.color}
                 )
             )
             menu.addAction(set_active_color)
@@ -227,7 +232,7 @@ class ColorLabel(QWidget):
             )
             self.toggle_highlight.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.HIGHLIGHT, dict(color=self.color)
+                    MenuAction.HIGHLIGHT, {'color': self.color}
                 )
             )
             menu.addAction(self.toggle_highlight)
@@ -237,7 +242,7 @@ class ColorLabel(QWidget):
             zap = QAction('Zap', enabled=self.zappable)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.ZAP, dict(color=self.color)
+                    MenuAction.ZAP, {'color': self.color}
                 )
             )
             menu.addAction(zap)
@@ -245,7 +250,7 @@ class ColorLabel(QWidget):
             exact_zap = QAction('Exact Zap', enabled=self.has_events)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.EXACT_ZAP, dict(color=self.color)
+                    MenuAction.EXACT_ZAP, {'color': self.color}
                 )
             )
             menu.addAction(exact_zap)
@@ -255,7 +260,7 @@ class ColorLabel(QWidget):
             )
             zap_all_but.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.ZAP_ALL_BUT, dict(color=self.color)
+                    MenuAction.ZAP_ALL_BUT, {'color': self.color}
                 )
             )
             menu.addAction(zap_all_but)
@@ -264,9 +269,7 @@ class ColorLabel(QWidget):
             merge_menu.setEnabled(self.has_events)
 
             merge_actions = [
-                _merge_action(color)
-                for color in COLOR_ORDER.keys()
-                if color != self.color
+                _merge_action(color) for color in COLOR_ORDER if color != self.color
             ]
 
             for merge_action in merge_actions:
@@ -275,7 +278,7 @@ class ColorLabel(QWidget):
         else:
             zap_all = QAction('Zap All')
             zap_all.triggered.connect(
-                lambda: self.menuActionTriggered.emit(MenuAction.ZAP_ALL, dict())
+                lambda: self.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
             )
             menu.addAction(zap_all)
 
@@ -284,14 +287,14 @@ class ColorLabel(QWidget):
         hide = QAction('Hide Color', enabled=self.has_events)
         hide.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.HIDE, dict(color=self.color)
+                MenuAction.HIDE, {'color': self.color}
             )
         )
         menu.addAction(hide)
         isolate = QAction('Isolate Color', enabled=self.has_events)
         isolate.triggered.connect(
             lambda: self.menuActionTriggered.emit(
-                MenuAction.ISOLATE, dict(color=self.color)
+                MenuAction.ISOLATE, {'color': self.color}
             )
         )
         menu.addAction(isolate)
@@ -300,7 +303,7 @@ class ColorLabel(QWidget):
             menu.addSeparator()
             unhide = QAction('Show All Events')
             unhide.triggered.connect(
-                lambda: self.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, dict())
+                lambda: self.menuActionTriggered.emit(MenuAction.UNHIDE_ALL, {})
             )
             menu.addAction(unhide)
 
@@ -309,7 +312,7 @@ class ColorLabel(QWidget):
             remember = QAction('Remember', self, enabled=self.has_events)
             remember.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.STORE_COLOR, dict(color=self.color)
+                    MenuAction.STORE_COLOR, {'color': self.color}
                 )
             )
             menu.addAction(remember)
@@ -320,7 +323,7 @@ class ColorLabel(QWidget):
             # shortcut?
             remember_and_clear.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.STORE_COLOR_AND_CLEAR, dict(color=self.color)
+                    MenuAction.STORE_COLOR_AND_CLEAR, {'color': self.color}
                 )
             )
             menu.addAction(remember_and_clear)
@@ -328,7 +331,7 @@ class ColorLabel(QWidget):
             recall = QAction('Recall', self, enabled=self.memory is not None)
             recall.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.RECALL_COLOR, dict(color_state=self.memory)
+                    MenuAction.RECALL_COLOR, {'color_state': self.memory}
                 )
             )
             menu.addAction(recall)
@@ -351,7 +354,7 @@ class ColorLabel(QWidget):
             )
             immunophenotyper_action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.IMMUNOPHENOTYPE, dict(color=self.color)
+                    MenuAction.IMMUNOPHENOTYPE, {'color': self.color}
                 )
             )
             menu.addAction(immunophenotyper_action)
@@ -388,6 +391,38 @@ def _color_icon(color: Color) -> QIcon:
     return QIcon(pixmap)
 
 
+class SnapshotLabel(QLabel):
+    menuActionTriggered = Signal(int, dict)
+
+    def __init__(self):
+        super().__init__()
+        self.setText('Snapshots:')
+        self.setContentsMargins(0, 0, 10, 0)
+        self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
+        self.customContextMenuRequested.connect(self.context_menu)
+
+    def context_menu(self, pos):
+        menu = QMenu()
+
+        merge_all = QAction('Merge Snapshots')
+        merge_all.triggered.connect(
+            lambda: self.menuActionTriggered.emit(MenuAction.MERGE_ALL_STATES, {})
+        )
+        menu.addAction(merge_all)
+
+        forget_all = QAction('Forget Snapshots')
+        forget_all.triggered.connect(
+            lambda: self.menuActionTriggered.emit(MenuAction.FORGET_ALL_STATES, {})
+        )
+        menu.addAction(forget_all)
+
+        menu.exec(self.mapToGlobal(pos))
+
+    def mousePressEvent(self, e: QMouseEvent):
+        if e.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(e.pos())
+
+
 class MemorySlot(QToolButton):
     menuActionTriggered = Signal(int, dict)
 
@@ -396,83 +431,92 @@ class MemorySlot(QToolButton):
         self.mouse_pressed = False
 
         self.id = id
+        self.setText(str(id + 1))
         self.has_events = has_events
-        self.setText(str(id))
-        self.update_appearance()
+        self.update_appearance(has_events)
+
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
 
+    def context_menu(self, pos):
+        menu = QMenu()
+
+        recall_snapshot = QAction('Recall', enabled=self.has_events)
+        recall_snapshot.triggered.connect(self.replace_state)
+        menu.addAction(recall_snapshot)
+
+        merge_snapshot = QAction('Recall Non-Grey', enabled=self.has_events)
+        merge_snapshot.triggered.connect(self.merge_state)
+        menu.addAction(merge_snapshot)
+
+        menu.addSeparator()
+
+        store_snapshot = QAction('Store')
+        store_snapshot.triggered.connect(self.store_state)
+        menu.addAction(store_snapshot)
+
+        store_snapshot_and_clear = QAction('Store and Clear')
+        store_snapshot_and_clear.triggered.connect(self.store_state_and_clear)
+        menu.addAction(store_snapshot_and_clear)
+
+        menu.addSeparator()
+
+        forget_snapshot = QAction('Forget', enabled=self.has_events)
+        forget_snapshot.triggered.connect(self.clear_state)
+        menu.addAction(forget_snapshot)
+
+        menu.exec(self.mapToGlobal(pos))
+
     def mousePressEvent(self, e: QMouseEvent):
-        self.mouse_pressed = True
         if e.button() == Qt.MouseButton.RightButton:
             self.customContextMenuRequested.emit(e.pos())
+        else:
+            self.mouse_pressed = True
+            super().mousePressEvent(e)
 
     def mouseReleaseEvent(self, e: QMouseEvent):
-        if not self.has_events or not self.mouse_pressed:
-            self.mouse_pressed = False
-            super().mouseReleaseEvent(e)
-            return
+        if self.mouse_pressed:
+            self.handle_mouse_event(e)
 
+        self.mouse_pressed = False
+        super().mouseReleaseEvent(e)
+
+    def handle_mouse_event(self, e: QMouseEvent) -> None:
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 self.replace_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.merge_state()
-        elif e.button() == Qt.MouseButton.MiddleButton:
-            if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.clear_state()
+        elif (e.button() == Qt.MouseButton.MiddleButton) and (
+            modifiers == Qt.KeyboardModifier.NoModifier
+        ):
+            self.clear_state()
 
-        self.mouse_pressed = False
-        super().mouseReleaseEvent(e)
-
-    def update_appearance(self) -> None:
+    def update_appearance(self, has_events: bool) -> None:
+        self.has_events = has_events
         self.setStyleSheet(
-            f'background-color: {"#828282" if self.has_events else "#121212"}'
+            f'background-color: {"#828282" if has_events else "#121212"}'
         )
 
-    def context_menu(self, pos):
-        menu = QMenu()
-        recall_state_action = QAction('Recall', self, enabled=self.has_events)
-        recall_state_action.triggered.connect(self.replace_state)
-        menu.addAction(recall_state_action)
-        combine_state_action = QAction('Recall Non-Grey', self, enabled=self.has_events)
-        combine_state_action.triggered.connect(self.merge_state)
-        menu.addAction(combine_state_action)
-
-        menu.addSeparator()
-
-        store_state_action = QAction('Remember', self)
-        store_state_action.triggered.connect(self.store_state)
-        menu.addAction(store_state_action)
-        store_state_and_clear_action = QAction('Remember && Clear', self)
-        store_state_and_clear_action.triggered.connect(self.store_state_and_clear)
-        menu.addAction(store_state_and_clear_action)
-        clear_state_action = QAction('Forget', self, enabled=self.has_events)
-        clear_state_action.triggered.connect(self.clear_state)
-        menu.addAction(clear_state_action)
-
-        menu.exec(self.mapToGlobal(pos))
-
+    @Slot()
     def replace_state(self):
-        self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, dict(slot=self.id))
+        self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, {'slot': self.id})
 
+    @Slot()
     def merge_state(self):
-        self.menuActionTriggered.emit(MenuAction.MERGE_STATE, dict(slot=self.id))
+        self.menuActionTriggered.emit(MenuAction.MERGE_STATE, {'slot': self.id})
 
+    @Slot()
     def store_state(self):
-        self.has_events = True
-        self.menuActionTriggered.emit(MenuAction.STORE_STATE, dict(slot=self.id))
-        self.update_appearance()
+        self.menuActionTriggered.emit(MenuAction.STORE_STATE, {'slot': self.id})
 
+    @Slot()
     def store_state_and_clear(self):
-        self.has_events = True
         self.menuActionTriggered.emit(
-            MenuAction.STORE_STATE_AND_CLEAR, dict(slot=self.id)
+            MenuAction.STORE_STATE_AND_CLEAR, {'slot': self.id}
         )
-        self.update_appearance()
 
+    @Slot()
     def clear_state(self):
-        self.has_events = False
-        self.menuActionTriggered.emit(MenuAction.FORGET_STATE, dict(slot=self.id))
-        self.update_appearance()
+        self.menuActionTriggered.emit(MenuAction.FORGET_STATE, {'slot': self.id})

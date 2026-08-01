@@ -16,12 +16,15 @@ import yaml
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
+    QDialog,
     QFileDialog,
     QProgressDialog,
 )
 
+from pytopaint.config import get_painter_layout_directory
 from pytopaint.layout import LayoutConfig
-from pytopaint.paths import layout_dir
+from pytopaint.reporting import generate_pdf
+from pytopaint.widgets.dialogs import TubeSelector
 from pytopaint.widgets.painter import Painter
 
 
@@ -32,6 +35,7 @@ class IOManager(QObject):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.last_open_dir = QDir.homePath()
+        self.last_open_file_dir = QDir.homePath()
         self.last_save_dir = QDir.homePath()
         self.file_parsers = {'.fcs': open_fcs, '.h5ad': open_session}
 
@@ -49,9 +53,8 @@ class IOManager(QObject):
             try:
                 painter = self.file_parsers[file.suffix.lower()](file)
                 self.fileOpened.emit(painter)
-            except ValueError as e:
-                print(f'error opening {file}')
-                raise e
+            except ValueError:
+                print(f'Error opening {file}')
             finally:
                 progress.setValue(i)
                 QApplication.processEvents()
@@ -61,7 +64,10 @@ class IOManager(QObject):
     @Slot()
     def open_files_dialog(self) -> None:
         files, _ = QFileDialog.getOpenFileNames(
-            None, 'Select File(s)', self.last_open_dir, 'FCS (*.fcs);;H5AD (*.h5ad)'
+            None,
+            'Select File(s)',
+            self.last_open_file_dir,
+            'FCS (*.fcs);;H5AD (*.h5ad)',
         )
 
         paths = filter_valid_files(map(Path, files))
@@ -69,7 +75,7 @@ class IOManager(QObject):
             return
 
         self.open_files(paths)
-        self.last_open_dir = str(paths[-1].parent)
+        self.last_open_file_dir = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
@@ -85,11 +91,13 @@ class IOManager(QObject):
             return
 
         self.open_files(files)
+        self.last_open_file_dir = str(dir)
         self.last_open_dir = str(dir.parent)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
-        self.open_files(paths)
+        if paths:
+            self.open_files(paths)
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
@@ -143,7 +151,7 @@ class IOManager(QObject):
     @Slot()
     def load_layout(self) -> LayoutConfig:
         file_path, _ = QFileDialog.getOpenFileName(
-            None, 'Load Layout', str(layout_dir), 'YAML (*.yml)'
+            None, 'Load Layout', str(get_painter_layout_directory()), 'YAML (*.yml)'
         )
         if not file_path:
             return
@@ -154,7 +162,7 @@ class IOManager(QObject):
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Save Layout',
-            dir=str(layout_dir),
+            dir=str(get_painter_layout_directory()),
             filter='YAML (*.yml)',
         )
         if not file_path:
@@ -168,6 +176,31 @@ class IOManager(QObject):
                 sort_keys=False,
                 explicit_start=True,
             )
+
+    def export_to_pdf(self, tubes: list[Painter], parent=None) -> None:
+        if len(tubes) > 1:
+            dialog = TubeSelector(
+                tubes,
+                'Select Tubes',
+                parent,
+            )
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                tubes = dialog.selected_tubes
+            else:
+                return
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Export PDF Report',
+            dir=self.last_open_file_dir,
+            filter='PDF (*.pdf)',
+        )
+
+        if not file_path:
+            return
+
+        generate_pdf(file_path, tubes)
 
 
 def open_fcs(file: Path) -> Painter:
@@ -189,7 +222,7 @@ def _is_valid_filetype(path: Path) -> bool:
 
 
 def _is_valid_file(path: Path) -> bool:
-    return path.is_file() and _is_valid_filetype(path)
+    return path.is_file() and _is_valid_filetype(path) and not path.stem.startswith('.')
 
 
 def filter_valid_files(files: Iterable[Path]) -> list[Path]:

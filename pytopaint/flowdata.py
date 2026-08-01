@@ -16,6 +16,7 @@ import flowutils
 import numpy as np
 import pandas as pd
 
+from pytopaint.channels import clean_marker_name, sort_channels
 from pytopaint.colors import Color
 from pytopaint.config import (
     get_lower_asinh_bound,
@@ -26,7 +27,6 @@ from pytopaint.config import (
 )
 from pytopaint.layout import dict_to_yaml, get_best_layout, to_grid
 
-PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
 UPPER_PHYSICAL_BOUND = 255_000
 
 
@@ -108,6 +108,15 @@ class FlowData:
         return sort_channels(self.adata.var_names)
 
     @property
+    def ip_channels(self) -> list[str]:
+        return (
+            self.adata.var_names[
+                self.adata.var_names.isin(['FSC-A', 'SSC-A'])
+            ].to_list()
+            + self.fluoro_channels
+        )
+
+    @property
     def fluoro_channels(self) -> list[str]:
         return sort_channels(
             self.adata.var_names[self.adata.var['channel_type'] == 'fluoro']
@@ -115,7 +124,9 @@ class FlowData:
 
     @property
     def channel_fluor_map(self) -> dict[str, str]:
-        return _channel_fluor_map(self.adata.var['pnn_label'])
+        return _channel_fluor_map(
+            self.adata.var['pnn_label'].loc[self.adata.var['pns_label'] != '']
+        )
 
     @property
     def scaling_factor(self) -> int:
@@ -198,9 +209,7 @@ class FlowData:
 
         self.adata.obs = _copy_state(state)
 
-        memory_state_keys = [
-            key for key in self.adata.obsm.keys() if key.startswith('mem_')
-        ]
+        memory_state_keys = [key for key in self.adata.obsm if key.startswith('mem_')]
         for i, memory_state in memory_states.items():
             key = f'mem_{i}'
             if memory_state is not None:
@@ -216,16 +225,14 @@ class FlowData:
         )
 
     def load_analyses(self) -> None:
-        if 'umap' in self.adata.obsm.keys():
+        if 'umap' in self.adata.obsm:
             self.load_umap()
 
-        if 'pca' in self.adata.obsm.keys():
+        if 'pca' in self.adata.obsm:
             self.load_pca()
 
     def unload_analyses(self) -> None:
-        analysis_keys = [
-            key for key in self.adata.obsm.keys() if not key.startswith('mem_')
-        ]
+        analysis_keys = [key for key in self.adata.obsm if not key.startswith('mem_')]
         for key in analysis_keys:
             self.adata.obsm.pop(key)
 
@@ -249,13 +256,12 @@ class FlowData:
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
-
     return np.where(
         np.isin(
             np.arange(0, fcs.channel_count), fcs.scatter_indices + [fcs.time_index]
         ),
         fcs.pnn_labels,
-        list(map(_clean_marker_name, fcs.pns_labels)),
+        list(map(clean_marker_name, fcs.pns_labels)),
     )
 
 
@@ -356,7 +362,6 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
         return [(pos, None) for pos in tick_positions]
 
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
-    bins = bins
     scaling_factor = adata.uns['scaling_factor']
 
     SCATTER_TICK_VALUES = np.arange(0, UPPER_PHYSICAL_BOUND, 50_000)
@@ -386,49 +391,8 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
     return scatter_axis_ticks | fluoro_axis_ticks | other_axis_ticks
 
 
-def sort_channels(channels: list[str] | set[str]) -> list[str]:
-    light_scatter_channels = sorted(
-        list(filter(lambda x: x in PHYSICAL_PARAMETERS, channels))
-    )
-    cd_channels = sorted(
-        [channel for channel in channels if channel.startswith('CD')],
-        key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
-    )
-    non_cd_channels = sorted([
-        channel
-        for channel in channels
-        if not channel.startswith('CD')
-        and channel not in PHYSICAL_PARAMETERS + ['Time']
-    ])
-    time_channel = ['Time'] if 'Time' in channels else []
-
-    return light_scatter_channels + cd_channels + non_cd_channels + time_channel
-
-
-def _clean_marker_name(marker: str) -> str:
-    if marker.startswith('CD'):
-        if marker == 'CD45 RA' or marker == 'CD45 RO':
-            return marker
-        else:
-            return re.match(r'(CD\d+\w*(\/CD\d+\w*)?) ?', marker).group(1)
-    else:
-        if 'lambda' in marker.lower():
-            return 'Lambda'
-        elif 'kappa' in marker.lower():
-            return 'Kappa'
-        elif marker.lower() == 'tdt':
-            return 'TdT'
-        elif marker.lower() == 'mpo':
-            return 'MPO'
-        else:
-            return marker
-
-
 def _channel_fluor_map(pnn_labels: pd.Series):
-    return {
-        name: f'{name} ({pnn})' if pnn != name else name
-        for name, pnn in pnn_labels.items()
-    }
+    return {name: f'{name} ({pnn[:-2]})' for name, pnn in pnn_labels.items()}
 
 
 def extract_case_number(filename: str) -> str:
@@ -448,10 +412,10 @@ def get_analysis_dims(
         return list(zip(tick_positions, ['0']))
 
     bounds = {
-        column: dict(
-            lower_bound=np.amin(row) - (0.05 * np.ptp(row)),
-            upper_bound=np.amax(row) + (0.05 * np.ptp(row)),
-        )
+        column: {
+            'lower_bound': np.amin(row) - (0.05 * np.ptp(row)),
+            'upper_bound': np.amax(row) + (0.05 * np.ptp(row)),
+        }
         for column, row in zip(columns, data.T)
     }
     bin_arr = np.array([

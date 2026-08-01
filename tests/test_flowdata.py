@@ -6,35 +6,13 @@ import yaml
 
 from pytopaint.flowdata import (
     _channel_fluor_map,
-    _clean_marker_name,
     extract_case_number,
     get_axis_ticks,
-    sort_channels,
 )
 
 LOWER_ASINH = -1
 UPPER_ASINH = 8
 UPPER_PHYSICAL = 255_000
-
-
-def test_clean_marker_name():
-    assert _clean_marker_name('KAPPA') == 'Kappa'
-    assert _clean_marker_name('m Kappa') == 'Kappa'
-    assert _clean_marker_name('mKAPPA') == 'Kappa'
-    assert _clean_marker_name('LAMBDA') == 'Lambda'
-    assert _clean_marker_name('m Lambda') == 'Lambda'
-    assert _clean_marker_name('mLAMBDA') == 'Lambda'
-    assert _clean_marker_name('TDT') == 'TdT'
-    assert _clean_marker_name('TdT') == 'TdT'
-    assert _clean_marker_name('mpo') == 'MPO'
-
-    assert _clean_marker_name('CD45 AF700') == 'CD45'
-    assert _clean_marker_name('CD45') == 'CD45'
-    assert _clean_marker_name('CD45 RA') == 'CD45 RA'
-    assert _clean_marker_name('CD45 BV480') == 'CD45'
-    assert _clean_marker_name('CD5 BV480') == 'CD5'
-    assert _clean_marker_name('CD11b') == 'CD11b'
-    assert _clean_marker_name('CD41/CD61') == 'CD41/CD61'
 
 
 def load_panel_config() -> list[list[str]]:
@@ -60,38 +38,6 @@ def test_df_1():
         'CD45': [4, 10],
         'Time': [0, 100],
     })
-
-
-def test_sort_channels():
-    test_channels = [
-        'CD12',
-        'CD45',
-        'CD32',
-        'CD123',
-        'FSC-A',
-        'FSC-H',
-        'Time',
-        'Lambda',
-        'Kappa',
-        'HLA-DR',
-        'SSC-H',
-        'SSC-A',
-    ]
-
-    assert sort_channels(test_channels) == [
-        'FSC-A',
-        'FSC-H',
-        'SSC-A',
-        'SSC-H',
-        'CD12',
-        'CD32',
-        'CD45',
-        'CD123',
-        'HLA-DR',
-        'Kappa',
-        'Lambda',
-        'Time',
-    ]
 
 
 @pytest.fixture
@@ -134,7 +80,7 @@ def df_1() -> pd.DataFrame:
 def adata_1() -> ad.AnnData:
     adata = ad.AnnData(np.array([[0, 0, 0], [0, 0, 0]]))
     adata.var_names = ['FSC-A', 'CD45', 'Time']
-    adata.var['channel_type'] = ['scatter', 'fluoro', 'time']
+    adata.var['channel_type'] = ['scatter', 'fluoro', 'other']
     adata.uns['scaling_factor'] = 150
     adata.var['lower_bound'] = [0, LOWER_ASINH, 0]
     adata.var['upper_bound'] = [UPPER_PHYSICAL, UPPER_ASINH, 100]
@@ -183,18 +129,15 @@ def test_extract_case_number():
 @pytest.fixture
 def pnn_labels() -> pd.Series:
     return pd.Series(
-        ['FSC-A', 'SSC-A', 'BV421', 'PE', 'PerCP', 'Time'],
-        index=['FSC-A', 'SSC-A', 'CD10', 'CD5', 'CD19', 'Time'],
+        ['BV421-A', 'PE-A', 'PerCP-A'],
+        index=['CD10', 'CD5', 'CD19'],
         name='pnn_label',
     )
 
 
 def test_channel_name_map(pnn_labels):
     assert _channel_fluor_map(pnn_labels) == {
-        'FSC-A': 'FSC-A',
-        'SSC-A': 'SSC-A',
         'CD10': 'CD10 (BV421)',
         'CD5': 'CD5 (PE)',
         'CD19': 'CD19 (PerCP)',
-        'Time': 'Time',
     }

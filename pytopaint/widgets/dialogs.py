@@ -5,18 +5,23 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-from PySide6.QtCore import Slot
+
+from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QDoubleSpinBox,
     QFormLayout,
     QFrame,
     QGridLayout,
+    QGroupBox,
+    QHBoxLayout,
     QInputDialog,
     QLabel,
     QLayout,
     QMessageBox,
+    QPushButton,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -33,14 +38,14 @@ from pytopaint.config import (
     set_upper_asinh_bound,
 )
 from pytopaint.flowdata import FlowData, sort_channels
-from pytopaint.widgets.reportgenerator import ReportTemplateDialog
+from pytopaint.widgets.painter import Painter
 
 
 def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.3.4 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.4.0 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated July 2026\n\nFor research and educational use only.',
     )
 
 
@@ -60,12 +65,20 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         hline.setFrameShape(QFrame.Shape.HLine)
         return hline
 
+    def _section_header(text: str) -> QLabel:
+        label = QLabel(f'<b>{text}</b<')
+        label.setContentsMargins(0, 20, 0, 0)
+        return label
+
     dialog = QDialog(parent)
     dialog.setWindowTitle('Shortcuts')
 
-    layout = QVBoxLayout()
-    layout.addWidget(QLabel('<b>Mouse Controls (within biplots):</b>'))
-    layout.addWidget(
+    layout = QHBoxLayout()
+    layout.setSpacing(0)
+
+    column_1 = QVBoxLayout()
+    column_1.addWidget(_section_header('Mouse Controls (within biplots):'))
+    column_1.addWidget(
         _shortcut_table([
             ('Paint Events', 'Left-Click'),
             ('Paint Non-Grey Events', 'Shift + Left-Click'),
@@ -73,24 +86,40 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
         ])
     )
-    layout.addWidget(
+    column_1.addWidget(
         _shortcut_table([
             ('Exact Zap from Selection', 'Right-Click'),
             ('Zap from Selection', 'Shift + Right-Click'),
             ('Paint Grey', 'Ctrl + Right-Click'),
         ])
     )
-    layout.addWidget(
+    column_1.addWidget(
         _shortcut_table([
             ('Exact Zap Current Color', 'Middle-Click'),
             ('Zap Current Color', 'Shift + Middle-Click'),
             ('Zap All', 'Ctrl + Middle-Click'),
         ])
     )
-    layout.addWidget(_hline())
+    column_1.addWidget(_hline())
 
-    layout.addWidget(QLabel('<b>Paint Controls:</b>'))
-    layout.addWidget(
+    column_1.addWidget(_section_header('Application Controls:'))
+    column_1.addWidget(
+        _shortcut_table([
+            ('Open File(s)', 'Ctrl + O'),
+            ('Open Directory', 'Ctrl + Shift + O'),
+            ('Close Tabs and Open Directory', 'Ctrl + N'),
+            ('Export PDF Report', 'Ctrl + P'),
+            ('Close Current Tab', 'Ctrl + W'),
+            ('Close All Tabs', 'Ctrl + Shift + W'),
+            ('View Shortcuts', '?'),
+            ('Close Application', 'Ctrl + Q'),
+        ])
+    )
+    column_1.addStretch()
+
+    column_2 = QVBoxLayout()
+    column_2.addWidget(_section_header('Paint Controls:'))
+    column_2.addWidget(
         _shortcut_table([
             ('Undo', 'Ctrl + Z'),
             ('Redo', 'Ctrl + Shift + Z'),
@@ -101,11 +130,11 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Paint Cyan', 'C'),
             ('Paint Yellow', 'X'),
             ('Paint White', 'A'),
+            ('Zap All', 'E'),
             ('Toggle Color Highlight', 'Shift + <Color>'),
             ('Exact Zap Color', 'Ctrl + <Color>'),
-            ('Exact Zap Current Color', 'E'),
             ('Toggle All Highlights', 'Shift + E'),
-            ('Zap All', 'Ctrl + E'),
+            ('Exact Zap Current Color', 'Ctrl + E'),
             ('Hide Current Color', 'Backspace'),
             ('Isolate Current Color', 'Enter'),
             ('Hide Grey Events', 'Shift + Enter'),
@@ -114,17 +143,19 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             ('Toggle Zoom', 'Space'),
         ])
     )
-    layout.addWidget(QLabel('<b>Application Controls:</b>'))
-    layout.addWidget(
+    column_2.addWidget(_hline())
+    column_2.addWidget(_section_header('Snapshot Controls:'))
+    column_2.addWidget(
         _shortcut_table([
-            ('Open File(s)', 'Ctrl + O'),
-            ('Open Directory', 'Ctrl + Shift + O'),
-            ('Close Tabs and Open New Directory', 'Ctrl + N'),
-            ('Close Current Tab', 'Ctrl + W'),
-            ('Close All Tabs', 'Ctrl + Shift + W'),
-            ('Close Application', 'Ctrl + Q'),
+            ('Recall Snapshot', '<1 - 5>'),
+            ('Save Snapshot and Clear', 'Shift + <1 - 5>'),
+            ('Merge Snapshots', '`'),
         ])
     )
+    column_2.addStretch()
+
+    layout.addLayout(column_1)
+    layout.addLayout(column_2)
 
     layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
 
@@ -308,7 +339,32 @@ def add_column_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
-def report_generator_dialog(parent: QWidget, tubes: list[FlowData]) -> int:
-    report_generator = ReportTemplateDialog(tubes, parent)
+class TubeSelector(QDialog):
+    def __init__(self, tubes: list[Painter], button_text: str, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout()
+        self.tubes = tubes
 
-    return report_generator.exec()
+        groupbox = QGroupBox('Tubes to include:')
+        group_layout = QVBoxLayout()
+        self.checkboxes = [QCheckBox(tube.data.id) for tube in tubes]
+        for checkbox in self.checkboxes:
+            checkbox.setChecked(True)
+            group_layout.addWidget(checkbox)
+        groupbox.setLayout(group_layout)
+        layout.addWidget(groupbox)
+
+        ok_button = QPushButton(button_text, self)
+        ok_button.setFixedWidth(200)
+        ok_button.clicked.connect(self.accept)
+        layout.addWidget(ok_button, alignment=Qt.AlignmentFlag.AlignCenter)
+
+        self.setLayout(layout)
+
+    @property
+    def selected_tubes(self) -> list[Painter]:
+        return [
+            tube
+            for checkbox, tube in zip(self.checkboxes, self.tubes)
+            if checkbox.isChecked()
+        ]

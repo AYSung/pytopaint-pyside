@@ -38,10 +38,6 @@ from pytopaint.flowdata import FlowData
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
 from pytopaint.widgets.biplotgrid import BiplotGrid
-from pytopaint.widgets.dialogs import (
-    add_column_dialog,
-    add_row_dialog,
-)
 from pytopaint.widgets.immunophenotyper import Immunophenotyper
 from pytopaint.widgets.palette import Palette
 
@@ -56,6 +52,7 @@ class Painter(QWidget):
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
     menuActionTriggered = Signal(int, dict)
+    memorySlotUpdated = Signal(int, bool)
 
     def __init__(self, data: FlowData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -64,9 +61,9 @@ class Painter(QWidget):
         self.fcs = fcs
 
         self.paint_actions = {
+            MenuAction.SET_ACTIVE: self.change_color,
             MenuAction.ADD_COLOR: self.add_color,
             MenuAction.OVERRIDE_COLOR: self.override_color,
-            MenuAction.SET_ACTIVE: self.change_color,
             MenuAction.ZAP: self.zap_color,
             MenuAction.EXACT_ZAP: self.exact_zap_color,
             MenuAction.ZAP_ALL: self.zap_all,
@@ -81,11 +78,13 @@ class Painter(QWidget):
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.toggle_highlights,
             MenuAction.TOGGLE_ALL_HIGHLIGHTS: self.toggle_all_highlights,
-            MenuAction.STORE_STATE: self.store_state,
-            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
             MenuAction.REPLACE_STATE: self.replace_state,
             MenuAction.MERGE_STATE: self.merge_state,
+            MenuAction.MERGE_ALL_STATES: self.merge_all_states,
+            MenuAction.STORE_STATE: self.store_state,
+            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
             MenuAction.FORGET_STATE: self.forget_state,
+            MenuAction.FORGET_ALL_STATES: self.forget_all_states,
             MenuAction.STORE_COLOR: self.store_color,
             MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
             MenuAction.RECALL_COLOR: self.recall_color,
@@ -112,6 +111,7 @@ class Painter(QWidget):
         self.stateChanged.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
         self.colorPaletteChanged.connect(palette.colorPaletteChanged)
+        self.memorySlotUpdated.connect(palette.update_memory_slot)
 
         self.biplot_grid = BiplotGrid(
             data=self.data,
@@ -217,16 +217,27 @@ class Painter(QWidget):
     def replace_state(self, slot: int):
         self.state.update(self.memory_states[slot])
 
+    def _merge_state(self, slot: int):
+        if self.memory_states[slot] is not None:
+            self.state.update(
+                self.memory_states[slot].loc[
+                    lambda x: self.state['visible'] & (x['color'] != Color.GREY)
+                ]
+            )
+
     @record_action
     def merge_state(self, slot: int):
-        self.state.update(
-            self.memory_states[slot].loc[
-                lambda x: self.state['visible'] & (x['color'] != Color.GREY)
-            ]
-        )
+        self._merge_state(slot)
+
+    @record_action
+    def merge_all_states(self):
+        for slot in self.memory_states:
+            if self.memory_states[slot] is not None:
+                self._merge_state(slot)
 
     def store_state(self, slot: int):
         self.memory_states[slot] = self.state.copy()
+        self.memorySlotUpdated.emit(slot, True)
 
     def store_state_and_clear(self, slot: int):
         self.store_state(slot=slot)
@@ -234,7 +245,11 @@ class Painter(QWidget):
 
     def forget_state(self, slot: int):
         self.memory_states[slot] = None
-        print(self.memory_states)
+        self.memorySlotUpdated.emit(slot, False)
+
+    def forget_all_states(self):
+        for slot in self.memory_states:
+            self.forget_state(slot)
 
     def store_color(self, color: Color):
         self.colorStateReturned.emit(
@@ -372,7 +387,7 @@ class Painter(QWidget):
         if self.highlighted_colors:
             self.highlighted_colors.clear()
         else:
-            self.highlighted_colors = [c for c in COLOR_ORDER.keys() if c != Color.GREY]
+            self.highlighted_colors = [c for c in COLOR_ORDER if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
 
     @Slot()
@@ -397,17 +412,11 @@ class Painter(QWidget):
     def layout_to_yaml(self) -> list[list[list[str, str]]]:
         return self.biplot_grid.to_yaml()
 
-    def add_biplot_row(self) -> None:
-        n_rows, ok = add_row_dialog(self)
+    def add_biplot_row(self, n_rows: int) -> None:
+        self.biplot_grid.add_rows(n_rows)
 
-        if ok:
-            self.biplot_grid.add_rows(n_rows)
-
-    def add_biplot_column(self) -> None:
-        n_cols, ok = add_column_dialog(self)
-
-        if ok:
-            self.biplot_grid.add_columns(n_cols)
+    def add_biplot_column(self, n_cols: int) -> None:
+        self.biplot_grid.add_columns(n_cols)
 
     def fill_empty_cells(self) -> None:
         self.biplot_grid.fill_empty()
@@ -438,5 +447,5 @@ class Painter(QWidget):
         if isinstance(widget, DotPlot):
             parent_widget: Biplot = widget.parentWidget()
             self.zoomTriggered.emit(
-                parent_widget.x_axis.label, parent_widget.y_axis.label
+                parent_widget.x_axis.channel, parent_widget.y_axis.channel
             )

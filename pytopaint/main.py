@@ -8,7 +8,9 @@
 import cProfile
 import pstats
 import sys
+from itertools import chain
 from multiprocessing import freeze_support
+from pathlib import Path
 
 from PySide6.QtCore import QCoreApplication, Qt, Signal, Slot
 from PySide6.QtGui import (
@@ -21,19 +23,25 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QApplication,
     QDialog,
+    QFileDialog,
     QGridLayout,
     QLayout,
     QMainWindow,
     QMenu,
+    QMessageBox,
     QWidget,
 )
 
 from pytopaint.actions import MenuAction
+from pytopaint.channels import sort_channels
 from pytopaint.colors import COLOR_RGB_MAPS
 from pytopaint.config import (
     get_color_palette,
+    get_painter_layout_directory,
     get_window_position,
+    reset_painter_layout_directory,
     set_color_palette,
+    set_painter_layout_directory,
     set_resolution,
     set_window_position,
     set_zoom_resolution,
@@ -41,14 +49,17 @@ from pytopaint.config import (
 from pytopaint.io import IOManager
 from pytopaint.widgets.dialogs import (
     PlotScaleDialog,
+    TubeSelector,
     about_dialog,
+    add_column_dialog,
+    add_row_dialog,
     file_info_dialog,
-    report_generator_dialog,
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
     zoom_plot_dialog,
 )
+from pytopaint.widgets.immunophenotyper import copy_report_template
 from pytopaint.widgets.painter import Painter
 from pytopaint.widgets.paintertabs import PainterTabs
 
@@ -95,6 +106,28 @@ class MainWindow(QMainWindow):
         if layout is not None:
             self.get_active_painter().biplot_grid.update_layout(layout.grid)
 
+    @Slot()
+    def change_layout_directory(self) -> None:
+        dir = QFileDialog.getExistingDirectory(
+            None,
+            'Select Default Layout Directory',
+            str(get_painter_layout_directory()),
+            QFileDialog.Option.ShowDirsOnly,
+        )
+        if not dir:
+            return
+
+        try:
+            set_painter_layout_directory(Path(dir))
+        except PermissionError:
+            QMessageBox.warning(
+                self, 'Error', 'Error accessing directory, please try another directory'
+            )
+
+    @Slot()
+    def reset_layout_directory(self) -> None:
+        reset_painter_layout_directory()
+
     def get_active_painter(self) -> Painter:
         return self.painter_tabs.currentWidget()
 
@@ -104,9 +137,7 @@ class MainWindow(QMainWindow):
             self, total_events=self.get_active_painter().state['visible'].sum()
         )
         if ok:
-            self.get_active_painter().handle_menu_action(
-                MenuAction.SUBSAMPLE, dict(n=n)
-            )
+            self.get_active_painter().handle_menu_action(MenuAction.SUBSAMPLE, {'n': n})
 
     @Slot()
     def resize_plots(self) -> None:
@@ -145,6 +176,37 @@ class MainWindow(QMainWindow):
         urls = event.mimeData().urls()
         self.io_manager.open_files_from_urls(urls)
 
+    @Slot()
+    def copy_ip_template(self):
+        if self.painter_tabs.count() == 1:
+            channels = self.get_active_painter().data.fluoro_channels
+        elif self.painter_tabs.count() > 1:
+            dialog = TubeSelector(self.painter_tabs.painters, 'Copy IP Template', self)
+
+            if dialog.exec() == QDialog.DialogCode.Accepted:
+                selected_channels = (
+                    tube.data.fluoro_channels for tube in dialog.selected_tubes
+                )
+                channels = sort_channels(set(chain(*(selected_channels))))
+            else:
+                return
+
+        copy_report_template(channels)
+
+    @Slot()
+    def add_row(self) -> None:
+        n_rows, ok = add_row_dialog(self)
+
+        if ok:
+            self.get_active_painter().biplot_grid.add_rows(n_rows)
+
+    @Slot()
+    def add_column(self) -> None:
+        n_cols, ok = add_column_dialog(self)
+
+        if ok:
+            self.get_active_painter().biplot_grid.add_columns(n_cols)
+
     def configure_menu_bar(self):
         def _palette_option(palette: str) -> QAction:
             action = QAction(
@@ -161,6 +223,7 @@ class MainWindow(QMainWindow):
 
         menu_bar = self.menuBar()
 
+        # File Menu
         file_menu = menu_bar.addMenu('&File')
 
         open_file_action = QAction('&Open File(s)', self)
@@ -203,12 +266,19 @@ class MainWindow(QMainWindow):
         file_menu.addSeparator()
         color_palette_menu = QMenu('Color Palette')
 
-        palette_options = [
-            _palette_option(palette) for palette in COLOR_RGB_MAPS.keys()
-        ]
+        palette_options = [_palette_option(palette) for palette in COLOR_RGB_MAPS]
         color_palette_menu.addActions(palette_options)
 
         file_menu.addMenu(color_palette_menu)
+
+        change_layout_directory = QAction('Change Default Layout Directory', self)
+        change_layout_directory.triggered.connect(self.change_layout_directory)
+        file_menu.addAction(change_layout_directory)
+
+        reset_layout_directory = QAction('Reset Layout Directory', self)
+        reset_layout_directory.triggered.connect(self.reset_layout_directory)
+        file_menu.addAction(reset_layout_directory)
+
         file_menu.addSeparator()
 
         file_info_action = QAction('File Info', self, enabled=False)
@@ -248,6 +318,7 @@ class MainWindow(QMainWindow):
         exit_action.triggered.connect(self.close)
         file_menu.addAction(exit_action)
 
+        # Paint Menu
         paint_menu = menu_bar.addMenu('&Paint')
         paint_menu.setEnabled(False)
         self.painter_tabs.currentChanged.connect(
@@ -257,15 +328,7 @@ class MainWindow(QMainWindow):
         subsample_action.triggered.connect(self.subsample)
         paint_menu.addAction(subsample_action)
 
-        paint_menu.addSeparator()
-        generate_report = QAction('Copy IP Template', self)
-        generate_report.triggered.connect(
-            lambda: report_generator_dialog(
-                self, [painter.data for painter in self.painter_tabs.painters]
-            )
-        )
-        paint_menu.addAction(generate_report)
-
+        # Layout Menu
         layout_menu = menu_bar.addMenu('&Layout')
         layout_menu.setEnabled(False)
         self.painter_tabs.currentChanged.connect(
@@ -292,14 +355,10 @@ class MainWindow(QMainWindow):
         layout_menu.addAction(change_zoom_action)
         layout_menu.addSeparator()
         add_biplot_row_action = QAction('Add Row(s)', self)
-        add_biplot_row_action.triggered.connect(
-            lambda: self.get_active_painter().add_biplot_row()
-        )
+        add_biplot_row_action.triggered.connect(self.add_row)
         layout_menu.addAction(add_biplot_row_action)
         add_biplot_column_action = QAction('Add Column(s)', self)
-        add_biplot_column_action.triggered.connect(
-            lambda: self.get_active_painter().add_biplot_column()
-        )
+        add_biplot_column_action.triggered.connect(self.add_column)
         layout_menu.addAction(add_biplot_column_action)
         fill_empty_cell_action = QAction('Fill Empty Grid Cells', self)
         fill_empty_cell_action.triggered.connect(
@@ -312,7 +371,12 @@ class MainWindow(QMainWindow):
         )
         layout_menu.addAction(remove_empty_cells_action)
 
+        # Analyze Menu
         analyze_menu = menu_bar.addMenu('&Analyze')
+        analyze_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: analyze_menu.setEnabled(self.painter_tabs.count())
+        )
         pca_action = QAction('PCA', self)
         pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
         analyze_menu.addAction(pca_action)
@@ -320,9 +384,29 @@ class MainWindow(QMainWindow):
         umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
         analyze_menu.addAction(umap_action)
 
+        # Reporting Menu
+        reporting_menu = menu_bar.addMenu('&Reporting')
+        reporting_menu.setEnabled(False)
+        self.painter_tabs.currentChanged.connect(
+            lambda: reporting_menu.setEnabled(self.painter_tabs.count())
+        )
+        generate_ip_template = QAction('Copy IP Template', self)
+        generate_ip_template.triggered.connect(self.copy_ip_template)
+        reporting_menu.addAction(generate_ip_template)
+        export_pdf = QAction('Export Report PDF', self)
+        export_pdf.setShortcut(QKeySequence('Ctrl+P'))
+        export_pdf.triggered.connect(
+            lambda: self.io_manager.export_to_pdf(
+                self.painter_tabs.painters, parent=self
+            )
+        )
+        reporting_menu.addAction(export_pdf)
+
+        # Help Menu
         help_menu = menu_bar.addMenu('&Help')
 
         shortcut_help_action = QAction('Shortcuts', self)
+        shortcut_help_action.setShortcut(QKeySequence('?'))
         shortcut_help_action.triggered.connect(lambda: shortcut_dialog(self).exec())
         help_menu.addAction(shortcut_help_action)
 
