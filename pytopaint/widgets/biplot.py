@@ -159,15 +159,24 @@ class Biplot(QWidget):
 
         color = self.active_color
         if e.button() == Qt.MouseButton.LeftButton:
+            if (
+                modifiers
+                == Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier
+            ):
+                mask = self.state['visible'] & (self.state['color'] != color)
+            else:
+                mask = self.state['visible'] & (
+                    ~self.state['color'].isin(IGNORE_COLORS[color])
+                )
+
             selection = get_selection_index(
                 selection_geometry,
-                df=self.df.loc[
-                    self.state['visible']
-                    & (~self.state['color'].isin(IGNORE_COLORS[color]))
-                ],
+                df=self.df.loc[mask],
                 x_channel=self.x_axis.channel,
                 y_channel=self.y_axis.channel,
             )
+
             if modifiers == Qt.KeyboardModifier.NoModifier:
                 # add to selection
                 action = MenuAction.ADD_COLOR
