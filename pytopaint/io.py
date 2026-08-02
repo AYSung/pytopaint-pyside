@@ -67,7 +67,7 @@ class IOManager(QObject):
             None,
             'Select File(s)',
             self.last_open_file_dir,
-            'FCS (*.fcs);;H5AD (*.h5ad)',
+            'Flow Data (*.fcs *.h5ad)',
         )
 
         paths = filter_valid_files(map(Path, files))
