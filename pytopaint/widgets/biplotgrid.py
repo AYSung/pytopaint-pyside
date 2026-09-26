@@ -84,7 +84,7 @@ class BiplotGrid(QGridLayout):
 
     def new_biplot(
         self,
-        channels: tuple[str, str] = (None, None),
+        channels: tuple[str | None, str | None] = (None, None),
     ) -> Biplot:
         x_channel, y_channel = channels
 
