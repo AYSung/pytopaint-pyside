@@ -45,6 +45,7 @@ from pytopaint.colors import (
     indices_by_color,
     sort_colors,
 )
+from pytopaint.config import get_highlight_size
 from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40
@@ -609,7 +610,7 @@ class DotPlot(QLabel):
     ) -> None:
         pen = QPen()
         pen.setColor(color_map[color])
-        pen.setWidth(2 if color in self.highlighted_colors else 1)
+        pen.setWidth(get_highlight_size() if color in self.highlighted_colors else 1)
         painter.setPen(pen)
 
         index = self.color_indices.get(color, pd.Index([]))

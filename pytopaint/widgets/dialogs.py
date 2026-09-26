@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.config import (
+    get_highlight_size,
     get_lower_asinh_bound,
     get_resolution,
     get_scaling_factor,
@@ -79,78 +80,90 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     column_1 = QVBoxLayout()
     column_1.addWidget(_section_header('Mouse Controls (within biplots):'))
     column_1.addWidget(
-        _shortcut_table([
-            ('Paint Events', 'Left-Click'),
-            ('Paint Non-Grey Events', 'Shift + Left-Click'),
-            ('Paint Grey Events', 'Ctrl + Left-Click'),
-            ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
-        ])
+        _shortcut_table(
+            [
+                ('Paint Events', 'Left-Click'),
+                ('Paint Non-Grey Events', 'Shift + Left-Click'),
+                ('Paint Grey Events', 'Ctrl + Left-Click'),
+                ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
+            ]
+        )
     )
     column_1.addWidget(
-        _shortcut_table([
-            ('Exact Zap from Selection', 'Right-Click'),
-            ('Zap from Selection', 'Shift + Right-Click'),
-            ('Paint Grey', 'Ctrl + Right-Click'),
-        ])
+        _shortcut_table(
+            [
+                ('Exact Zap from Selection', 'Right-Click'),
+                ('Zap from Selection', 'Shift + Right-Click'),
+                ('Paint Grey', 'Ctrl + Right-Click'),
+            ]
+        )
     )
     column_1.addWidget(
-        _shortcut_table([
-            ('Exact Zap Current Color', 'Middle-Click'),
-            ('Zap Current Color', 'Shift + Middle-Click'),
-            ('Zap All', 'Ctrl + Middle-Click'),
-        ])
+        _shortcut_table(
+            [
+                ('Exact Zap Current Color', 'Middle-Click'),
+                ('Zap Current Color', 'Shift + Middle-Click'),
+                ('Zap All', 'Ctrl + Middle-Click'),
+            ]
+        )
     )
     column_1.addWidget(_hline())
 
     column_1.addWidget(_section_header('Application Controls:'))
     column_1.addWidget(
-        _shortcut_table([
-            ('Open File(s)', 'Ctrl + O'),
-            ('Open Directory', 'Ctrl + Shift + O'),
-            ('Close Tabs and Open Directory', 'Ctrl + N'),
-            ('Export PDF Report', 'Ctrl + P'),
-            ('Close Current Tab', 'Ctrl + W'),
-            ('Close All Tabs', 'Ctrl + Shift + W'),
-            ('View Shortcuts', '?'),
-            ('Close Application', 'Ctrl + Q'),
-        ])
+        _shortcut_table(
+            [
+                ('Open File(s)', 'Ctrl + O'),
+                ('Open Directory', 'Ctrl + Shift + O'),
+                ('Close Tabs and Open Directory', 'Ctrl + N'),
+                ('Export PDF Report', 'Ctrl + P'),
+                ('Close Current Tab', 'Ctrl + W'),
+                ('Close All Tabs', 'Ctrl + Shift + W'),
+                ('View Shortcuts', '?'),
+                ('Close Application', 'Ctrl + Q'),
+            ]
+        )
     )
     column_1.addStretch()
 
     column_2 = QVBoxLayout()
     column_2.addWidget(_section_header('Paint Controls:'))
     column_2.addWidget(
-        _shortcut_table([
-            ('Undo', 'Ctrl + Z'),
-            ('Redo', 'Ctrl + Shift + Z'),
-            ('Paint Red', 'F'),
-            ('Paint Green', 'D'),
-            ('Paint Blue', 'S'),
-            ('Paint Magenta', 'V'),
-            ('Paint Cyan', 'C'),
-            ('Paint Yellow', 'X'),
-            ('Paint White', 'A'),
-            ('Zap All', 'E'),
-            ('Toggle Color Highlight', 'Shift + <Color>'),
-            ('Exact Zap Color', 'Ctrl + <Color>'),
-            ('Toggle All Highlights', 'Shift + E'),
-            ('Exact Zap Current Color', 'Ctrl + E'),
-            ('Hide Current Color', 'Backspace'),
-            ('Isolate Current Color', 'Enter'),
-            ('Hide Grey Events', 'Shift + Enter'),
-            ('Unhide Events', 'Ctrl + R'),
-            ('Reset Events', 'Ctrl + Shift + R'),
-            ('Toggle Zoom', 'Space'),
-        ])
+        _shortcut_table(
+            [
+                ('Undo', 'Ctrl + Z'),
+                ('Redo', 'Ctrl + Shift + Z'),
+                ('Paint Red', 'F'),
+                ('Paint Green', 'D'),
+                ('Paint Blue', 'S'),
+                ('Paint Magenta', 'V'),
+                ('Paint Cyan', 'C'),
+                ('Paint Yellow', 'X'),
+                ('Paint White', 'A'),
+                ('Zap All', 'E'),
+                ('Toggle Color Highlight', 'Shift + <Color>'),
+                ('Exact Zap Color', 'Ctrl + <Color>'),
+                ('Toggle All Highlights', 'Shift + E'),
+                ('Exact Zap Current Color', 'Ctrl + E'),
+                ('Hide Current Color', 'Backspace'),
+                ('Isolate Current Color', 'Enter'),
+                ('Hide Grey Events', 'Shift + Enter'),
+                ('Unhide Events', 'Ctrl + R'),
+                ('Reset Events', 'Ctrl + Shift + R'),
+                ('Toggle Zoom', 'Space'),
+            ]
+        )
     )
     column_2.addWidget(_hline())
     column_2.addWidget(_section_header('Snapshot Controls:'))
     column_2.addWidget(
-        _shortcut_table([
-            ('Recall Snapshot', '<1 - 5>'),
-            ('Save Snapshot and Clear', 'Shift + <1 - 5>'),
-            ('Merge Snapshots', '`'),
-        ])
+        _shortcut_table(
+            [
+                ('Recall Snapshot', '<1 - 5>'),
+                ('Save Snapshot and Clear', 'Shift + <1 - 5>'),
+                ('Merge Snapshots', '`'),
+            ]
+        )
     )
     column_2.addStretch()
 
@@ -252,7 +265,7 @@ class PlotScaleDialog(QDialog):
 def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
     return QInputDialog.getInt(
         parent,
-        'Size',
+        'Plot Size',
         'Pixels per dimension (128-512)',
         value=get_resolution(),
         minValue=128,
@@ -261,10 +274,22 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
+def highlight_size_dialog(parent: QWidget) -> tuple[int, bool]:
+    return QInputDialog.getInt(
+        parent,
+        'Highlight Size',
+        'Pixels (2-4)',
+        value=get_highlight_size(),
+        minValue=2,
+        maxValue=4,
+        step=1,
+    )
+
+
 def zoom_plot_dialog(parent: QWidget) -> tuple[int, bool]:
     return QInputDialog.getInt(
         parent,
-        'Size',
+        'Zoomed Plot Size',
         'Pixels per dimension (512-1024)',
         value=get_zoom_resolution(),
         minValue=512,

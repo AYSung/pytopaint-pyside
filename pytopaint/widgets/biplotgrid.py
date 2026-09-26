@@ -23,6 +23,7 @@ class BiplotGrid(QGridLayout):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     highlightsUpdated = Signal(list)
+    highlightSizeChanged = Signal()
     updatePlot = Signal()
     resizeTriggered = Signal(int)
     menuActionTriggered = Signal(int, dict)
@@ -111,6 +112,7 @@ class BiplotGrid(QGridLayout):
         self.activeColorChanged.connect(biplot.activeColorChanged)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
+        self.highlightSizeChanged.connect(biplot.plot.update_plot)
         self.resizeTriggered.connect(biplot.resize)
 
     def add_biplot(

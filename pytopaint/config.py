@@ -71,6 +71,14 @@ def set_lower_asinh_bound(bound: float) -> None:
     QSettings().setValue('Plot/lower_asinh_bound', bound)
 
 
+def get_highlight_size() -> int:
+    return int(QSettings().value('Plot/highlight_size', 2))
+
+
+def set_highlight_size(size: int) -> None:
+    QSettings().setValue('Plot/highlight_size', size)
+
+
 def get_window_position() -> QPoint:
     return QSettings().value('MainWindow/position', QPoint(20, 40))
 

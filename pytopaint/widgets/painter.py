@@ -48,6 +48,7 @@ class Painter(QWidget):
     colorStateReturned = Signal(int, object)
     dataChanged = Signal(object)
     highlightsUpdated = Signal(list)
+    highlightSizeChanged = Signal()
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
@@ -126,6 +127,7 @@ class Painter(QWidget):
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
+        self.highlightSizeChanged.connect(self.biplot_grid.highlightSizeChanged)
         self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
         biplot_grid_container = QWidget()
