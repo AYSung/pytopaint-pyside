@@ -38,11 +38,11 @@ class LayoutConfig:
         return max([y for x, y in self.grid if x == row]) + 1
 
     def biplot_score(self, panel: list[str]) -> float:
-        return len([
-            (x, y) for x, y in self.grid.values() if x in panel and y in panel
-        ]) / len([
-            (x, y) for x, y in self.grid.values() if x is not None and y is not None
-        ])
+        return len(
+            [(x, y) for x, y in self.grid.values() if x in panel and y in panel]
+        ) / len(
+            [(x, y) for x, y in self.grid.values() if x is not None and y is not None]
+        )
 
     def channel_score(self, panel: list[str]) -> float:
         return len([channel for channel in self.channels if channel in panel]) / len(
@@ -63,6 +63,10 @@ def to_grid(
 
 def import_layouts() -> list[LayoutConfig]:
     dir = get_painter_layout_directory()
+    return _import_layouts(dir)
+
+
+def _import_layouts(dir: Path) -> list[LayoutConfig]:
     return [
         LayoutConfig.from_yaml(item)
         for item in dir.iterdir()
@@ -112,9 +116,9 @@ def replace_unused_channels(
     )
     unused_channel_map = dict(zip(unused_layout_channels, unused_data_channels))
 
-    return LayoutConfig({
-        coord: _replace_channel(channels) for coord, channels in layout.grid.items()
-    })
+    return LayoutConfig(
+        {coord: _replace_channel(channels) for coord, channels in layout.grid.items()}
+    )
 
 
 def dict_to_yaml(
