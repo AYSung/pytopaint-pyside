@@ -214,7 +214,13 @@ def open_session(file: Path) -> Painter:
 
 
 def get_child_files(dir: Path) -> list[Path]:
-    return list(filter(_is_valid_file, dir.iterdir()))
+    return list(
+        filter(_is_not_blank_or_viability, filter(_is_valid_file, dir.iterdir()))
+    )
+
+
+def _is_not_blank_or_viability(path: Path) -> bool:
+    return 'blank' not in path.stem.lower() and 'viability' not in path.stem.lower()
 
 
 def _is_valid_filetype(path: Path) -> bool:
