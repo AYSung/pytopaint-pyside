@@ -392,15 +392,15 @@ class MainWindow(QMainWindow):
         # Analyze Menu
         analyze_menu = menu_bar.addMenu('&Analyze')
         analyze_menu.setEnabled(False)
-        self.painter_tabs.currentChanged.connect(
-            lambda: analyze_menu.setEnabled(self.painter_tabs.count())
-        )
-        pca_action = QAction('PCA', self)
-        pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
-        analyze_menu.addAction(pca_action)
-        umap_action = QAction('UMAP', self)
-        umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
-        analyze_menu.addAction(umap_action)
+        # self.painter_tabs.currentChanged.connect(
+        #     lambda: analyze_menu.setEnabled(self.painter_tabs.count())
+        # )
+        # pca_action = QAction('PCA', self)
+        # pca_action.triggered.connect(lambda: self.get_active_painter().start_pca())
+        # analyze_menu.addAction(pca_action)
+        # umap_action = QAction('UMAP', self)
+        # umap_action.triggered.connect(lambda: self.get_active_painter().start_umap())
+        # analyze_menu.addAction(umap_action)
 
         # Reporting Menu
         reporting_menu = menu_bar.addMenu('&Reporting')

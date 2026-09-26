@@ -11,7 +11,7 @@ from functools import wraps
 import anndata as ad
 import flowio
 import pandas as pd
-from PySide6.QtCore import QThreadPool, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtGui import (
     QCursor,
     QKeySequence,
@@ -25,7 +25,8 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.actions import MenuAction
-from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
+
+# from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
 from pytopaint.colors import (
     COLOR_ORDER,
     Color,
@@ -304,44 +305,44 @@ class Painter(QWidget):
         )
         self.state.loc[lambda x: ~x.index.isin(subsample_indices), 'visible'] = False
 
-    def start_umap(self):
-        arr = self.data.adata[
-            :, self.data.adata.var['channel_type'] == 'fluoro'
-        ].layers['xform']
-        worker = umap_worker(arr)
-        worker.signals.analysisFinished.connect(self.umap_finished)
-
-        dialog = AnalysisProgressDialog('Running UMAP analysis...', '', 0, 0, self)
-        worker.signals.analysisFinished.connect(dialog.accept)
-
-        QThreadPool.globalInstance().start(worker)
-        dialog.open()
-
-    @Slot(object)
-    def umap_finished(self, result):
-        self.data.adata.obsm['umap'], _ = result
-        self.data.load_umap()
-        self.data_changed()
-
-    def start_pca(self):
-        arr = self.data.adata[
-            :, self.data.adata.var['channel_type'] == 'fluoro'
-        ].layers['xform']
-        worker = pca_worker(arr)
-        worker.signals.analysisFinished.connect(self.pca_finished)
-
-        dialog = AnalysisProgressDialog('Running PCA decomposition...', '', 0, 0, self)
-        worker.signals.analysisFinished.connect(dialog.accept)
-
-        QThreadPool.globalInstance().start(worker)
-        dialog.open()
-
-    @Slot(object)
-    def pca_finished(self, result):
-        # todo: pca explained variance dialog when finished
-        self.data.adata.obsm['pca'], _ = result
-        self.data.load_pca()
-        self.data_changed()
+    # def start_umap(self):
+    #     arr = self.data.adata[
+    #         :, self.data.adata.var['channel_type'] == 'fluoro'
+    #     ].layers['xform']
+    #     worker = umap_worker(arr)
+    #     worker.signals.analysisFinished.connect(self.umap_finished)
+    #
+    #     dialog = AnalysisProgressDialog('Running UMAP analysis...', '', 0, 0, self)
+    #     worker.signals.analysisFinished.connect(dialog.accept)
+    #
+    #     QThreadPool.globalInstance().start(worker)
+    #     dialog.open()
+    #
+    # @Slot(object)
+    # def umap_finished(self, result):
+    #     self.data.adata.obsm['umap'], _ = result
+    #     self.data.load_umap()
+    #     self.data_changed()
+    #
+    # def start_pca(self):
+    #     arr = self.data.adata[
+    #         :, self.data.adata.var['channel_type'] == 'fluoro'
+    #     ].layers['xform']
+    #     worker = pca_worker(arr)
+    #     worker.signals.analysisFinished.connect(self.pca_finished)
+    #
+    #     dialog = AnalysisProgressDialog('Running PCA decomposition...', '', 0, 0, self)
+    #     worker.signals.analysisFinished.connect(dialog.accept)
+    #
+    #     QThreadPool.globalInstance().start(worker)
+    #     dialog.open()
+    #
+    # @Slot(object)
+    # def pca_finished(self, result):
+    #     # todo: pca explained variance dialog when finished
+    #     self.data.adata.obsm['pca'], _ = result
+    #     self.data.load_pca()
+    #     self.data_changed()
 
     @record_action
     def reset_df(self):
