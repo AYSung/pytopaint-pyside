@@ -32,6 +32,7 @@ from pytopaint.colors import (
     add_color_to_series,
     merge_colors,
     subtract_color_from_series,
+    swap_colors,
 )
 from pytopaint.config import get_resolution, get_zoom_resolution
 from pytopaint.flowdata import FlowData
@@ -70,6 +71,7 @@ class Painter(QWidget):
             MenuAction.ZAP_ALL: self.zap_all,
             MenuAction.ZAP_ALL_BUT: self.zap_all_but,
             MenuAction.MERGE_COLOR: self.merge_color,
+            MenuAction.SWAP_COLOR: self.swap_color,
             MenuAction.UNHIDE_ALL: self.unhide_all,
             MenuAction.HIDE: self.hide_color,
             MenuAction.ISOLATE: self.isolate_color,
@@ -270,6 +272,12 @@ class Painter(QWidget):
     def merge_color(self, source_color: Color, target_color: Color):
         self.state.loc[self.state['visible'], 'color'] = merge_colors(
             self.state.loc[self.state['visible'], 'color'], [source_color], target_color
+        )
+
+    @record_action
+    def swap_color(self, source_color: Color, target_color: Color):
+        self.state.loc[self.state['visible'], 'color'] = swap_colors(
+            self.state.loc[self.state['visible'], 'color'], source_color, target_color
         )
 
     @record_action

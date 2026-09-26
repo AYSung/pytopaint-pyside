@@ -17,6 +17,7 @@ class MenuAction(IntEnum):
     ZAP_ALL = auto()
     ZAP_ALL_BUT = auto()
     MERGE_COLOR = auto()
+    SWAP_COLOR = auto()
     UNHIDE_ALL = auto()
     HIDE = auto()
     ISOLATE = auto()
