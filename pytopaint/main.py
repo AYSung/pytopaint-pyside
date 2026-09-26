@@ -41,6 +41,7 @@ from pytopaint.config import (
     get_window_position,
     reset_painter_layout_directory,
     set_color_palette,
+    set_highlight_size,
     set_painter_layout_directory,
     set_resolution,
     set_window_position,
@@ -54,6 +55,7 @@ from pytopaint.widgets.dialogs import (
     add_column_dialog,
     add_row_dialog,
     file_info_dialog,
+    highlight_size_dialog,
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
@@ -66,6 +68,7 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
+    highlightSizeChanged = Signal()
     resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
     zoomUpdated = Signal()
@@ -81,6 +84,7 @@ class MainWindow(QMainWindow):
         self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
         self.zoomUpdated.connect(self.painter_tabs.zoomUpdated)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
+        self.highlightSizeChanged.connect(self.painter_tabs.highlightSizeChanged)
 
         self.io_manager = IOManager(self)
         self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
@@ -145,6 +149,13 @@ class MainWindow(QMainWindow):
         if ok:
             set_resolution(resolution)
             self.resizeTriggered.emit()
+
+    @Slot()
+    def change_highlight_size(self) -> None:
+        size, ok = highlight_size_dialog(self)
+        if ok:
+            set_highlight_size(size)
+            self.highlightSizeChanged.emit()
 
     @Slot()
     def change_zoom(self) -> None:
@@ -264,23 +275,6 @@ class MainWindow(QMainWindow):
         file_menu.addAction(export_fcs_action)
 
         file_menu.addSeparator()
-        color_palette_menu = QMenu('Color Palette')
-
-        palette_options = [_palette_option(palette) for palette in COLOR_RGB_MAPS]
-        color_palette_menu.addActions(palette_options)
-
-        file_menu.addMenu(color_palette_menu)
-
-        change_layout_directory = QAction('Change Default Layout Directory', self)
-        change_layout_directory.triggered.connect(self.change_layout_directory)
-        file_menu.addAction(change_layout_directory)
-
-        reset_layout_directory = QAction('Reset Layout Directory', self)
-        reset_layout_directory.triggered.connect(self.reset_layout_directory)
-        file_menu.addAction(reset_layout_directory)
-
-        file_menu.addSeparator()
-
         file_info_action = QAction('File Info', self, enabled=False)
         file_info_action.triggered.connect(
             lambda: file_info_dialog(self, self.get_active_painter().data).exec()
@@ -328,6 +322,29 @@ class MainWindow(QMainWindow):
         subsample_action.triggered.connect(self.subsample)
         paint_menu.addAction(subsample_action)
 
+        # Plot Menu
+        plot_menu = menu_bar.addMenu('Plot')
+        color_palette_menu = QMenu('Color Palette')
+        palette_options = [_palette_option(palette) for palette in COLOR_RGB_MAPS]
+        color_palette_menu.addActions(palette_options)
+
+        plot_menu.addMenu(color_palette_menu)
+
+        change_highlight_size = QAction('Adjust Highlight Size', self)
+        change_highlight_size.triggered.connect(self.change_highlight_size)
+        plot_menu.addAction(change_highlight_size)
+
+        plot_menu.addSeparator()
+        resize_action = QAction('Adjust Plot Size', self)
+        resize_action.triggered.connect(self.resize_plots)
+        plot_menu.addAction(resize_action)
+        rescale_action = QAction('Adjust Plot Scaling', self)
+        rescale_action.triggered.connect(self.rescale_plots)
+        plot_menu.addAction(rescale_action)
+        change_zoom_action = QAction('Adjust Plot Zoom', self)
+        change_zoom_action.triggered.connect(self.change_zoom)
+        plot_menu.addAction(change_zoom_action)
+
         # Layout Menu
         layout_menu = menu_bar.addMenu('&Layout')
         layout_menu.setEnabled(False)
@@ -343,16 +360,7 @@ class MainWindow(QMainWindow):
         load_layout_action = QAction('Load Layout', self)
         load_layout_action.triggered.connect(self.load_layout)
         layout_menu.addAction(load_layout_action)
-        layout_menu.addSeparator()
-        resize_action = QAction('Adjust Plot Size', self)
-        resize_action.triggered.connect(self.resize_plots)
-        layout_menu.addAction(resize_action)
-        rescale_action = QAction('Adjust Plot Scaling', self)
-        rescale_action.triggered.connect(self.rescale_plots)
-        layout_menu.addAction(rescale_action)
-        change_zoom_action = QAction('Adjust Plot Zoom', self)
-        change_zoom_action.triggered.connect(self.change_zoom)
-        layout_menu.addAction(change_zoom_action)
+
         layout_menu.addSeparator()
         add_biplot_row_action = QAction('Add Row(s)', self)
         add_biplot_row_action.triggered.connect(self.add_row)
@@ -370,6 +378,16 @@ class MainWindow(QMainWindow):
             lambda: self.get_active_painter().remove_empty_biplots()
         )
         layout_menu.addAction(remove_empty_cells_action)
+
+        layout_menu.addSeparator()
+
+        change_layout_directory = QAction('Change Default Layout Directory', self)
+        change_layout_directory.triggered.connect(self.change_layout_directory)
+        layout_menu.addAction(change_layout_directory)
+
+        reset_layout_directory = QAction('Reset Layout Directory', self)
+        reset_layout_directory.triggered.connect(self.reset_layout_directory)
+        layout_menu.addAction(reset_layout_directory)
 
         # Analyze Menu
         analyze_menu = menu_bar.addMenu('&Analyze')

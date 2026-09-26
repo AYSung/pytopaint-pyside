@@ -10,45 +10,15 @@ from pytopaint.colors import (
     merge_colors,
     ratios_by_color,
     subtract_color_from_series,
+    swap_colors,
 )
 
 
 @pytest.fixture
 def test_df_1() -> pd.DataFrame:
-    return pd.DataFrame({
-        'color': [
-            Color.GREY,
-            Color.RED,
-            Color.BLUE,
-            Color.MAGENTA,
-            Color.GREEN,
-            Color.YELLOW,
-            Color.CYAN,
-            Color.WHITE,
-        ]
-    })
-
-
-@pytest.fixture
-def test_df_2() -> pd.DataFrame:
-    return pd.DataFrame({
-        'color': [
-            Color.GREY,
-            Color.RED,
-            Color.GREEN,
-            Color.YELLOW,
-            Color.CYAN,
-            Color.WHITE,
-            Color.RED,
-            Color.RED,
-        ]
-    })
-
-
-def test_add_color_to_series():
-    pd.testing.assert_series_equal(
-        add_color_to_series(
-            pd.Series([
+    return pd.DataFrame(
+        {
+            'color': [
                 Color.GREY,
                 Color.RED,
                 Color.BLUE,
@@ -57,19 +27,58 @@ def test_add_color_to_series():
                 Color.YELLOW,
                 Color.CYAN,
                 Color.WHITE,
-            ]),
+            ]
+        }
+    )
+
+
+@pytest.fixture
+def test_df_2() -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            'color': [
+                Color.GREY,
+                Color.RED,
+                Color.GREEN,
+                Color.YELLOW,
+                Color.CYAN,
+                Color.WHITE,
+                Color.RED,
+                Color.RED,
+            ]
+        }
+    )
+
+
+def test_add_color_to_series():
+    pd.testing.assert_series_equal(
+        add_color_to_series(
+            pd.Series(
+                [
+                    Color.GREY,
+                    Color.RED,
+                    Color.BLUE,
+                    Color.MAGENTA,
+                    Color.GREEN,
+                    Color.YELLOW,
+                    Color.CYAN,
+                    Color.WHITE,
+                ]
+            ),
             Color.RED,
         ),
-        pd.Series([
-            Color.RED,
-            Color.RED,
-            Color.MAGENTA,
-            Color.MAGENTA,
-            Color.YELLOW,
-            Color.YELLOW,
-            Color.WHITE,
-            Color.WHITE,
-        ]),
+        pd.Series(
+            [
+                Color.RED,
+                Color.RED,
+                Color.MAGENTA,
+                Color.MAGENTA,
+                Color.YELLOW,
+                Color.YELLOW,
+                Color.WHITE,
+                Color.WHITE,
+            ]
+        ),
     )
     pd.testing.assert_series_equal(
         add_color_to_series(
@@ -88,28 +97,32 @@ def test_add_color_to_series():
 def test_subtract_color_from_series():
     pd.testing.assert_series_equal(
         subtract_color_from_series(
-            pd.Series([
-                Color.GREY,
-                Color.RED,
-                Color.BLUE,
-                Color.MAGENTA,
-                Color.GREEN,
-                Color.YELLOW,
-                Color.CYAN,
-                Color.WHITE,
-            ]),
+            pd.Series(
+                [
+                    Color.GREY,
+                    Color.RED,
+                    Color.BLUE,
+                    Color.MAGENTA,
+                    Color.GREEN,
+                    Color.YELLOW,
+                    Color.CYAN,
+                    Color.WHITE,
+                ]
+            ),
             Color.RED,
         ),
-        pd.Series([
-            Color.GREY,
-            Color.GREY,
-            Color.BLUE,
-            Color.BLUE,
-            Color.GREEN,
-            Color.GREEN,
-            Color.CYAN,
-            Color.CYAN,
-        ]),
+        pd.Series(
+            [
+                Color.GREY,
+                Color.GREY,
+                Color.BLUE,
+                Color.BLUE,
+                Color.GREEN,
+                Color.GREEN,
+                Color.CYAN,
+                Color.CYAN,
+            ]
+        ),
     )
     pd.testing.assert_series_equal(
         subtract_color_from_series(
@@ -157,6 +170,42 @@ def test_merge_color(test_df_1, test_df_2):
                 Color.WHITE,
                 Color.RED,
                 Color.RED,
+            ],
+            name='color',
+        ),
+    )
+
+
+def test_swap_colors(test_df_1, test_df_2):
+    pd.testing.assert_series_equal(
+        swap_colors(test_df_1['color'], Color.RED, Color.GREEN),
+        pd.Series(
+            [
+                Color.GREY,
+                Color.GREEN,
+                Color.BLUE,
+                Color.MAGENTA,
+                Color.RED,
+                Color.YELLOW,
+                Color.CYAN,
+                Color.WHITE,
+            ],
+            name='color',
+        ),
+    )
+
+    pd.testing.assert_series_equal(
+        swap_colors(test_df_2['color'], Color.YELLOW, Color.RED),
+        pd.Series(
+            [
+                Color.GREY,
+                Color.YELLOW,
+                Color.GREEN,
+                Color.RED,
+                Color.CYAN,
+                Color.WHITE,
+                Color.YELLOW,
+                Color.YELLOW,
             ],
             name='color',
         ),

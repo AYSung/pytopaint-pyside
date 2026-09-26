@@ -31,6 +31,8 @@ UPPER_PHYSICAL_BOUND = 255_000
 
 
 class FlowData:
+    adata: ad.AnnData
+
     def __init__(self, adata: ad.AnnData) -> None:
         self.adata = adata
 
@@ -51,7 +53,7 @@ class FlowData:
     @classmethod
     def from_fcs(cls, fcs: flowio.FlowData):
         cleaned_channel_names = clean_channel_names(fcs)
-        empty_channel_mask = cleaned_channel_names != ''
+        empty_channel_mask: np.array[bool] = cleaned_channel_names != ''
         adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask].astype(np.float32))
 
         adata.uns['filename'] = fcs.name
@@ -325,9 +327,12 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
 def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
     arr = clip_xform_data(adata)
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
-    return np.array([
-        discretize_array(**bounds[i], bins=bins, arr=row) for i, row in enumerate(arr.T)
-    ]).T.astype(np.uint16)
+    return np.array(
+        [
+            discretize_array(**bounds[i], bins=bins, arr=row)
+            for i, row in enumerate(arr.T)
+        ]
+    ).T.astype(np.uint16)
 
 
 def discretize_array(
@@ -418,10 +423,12 @@ def get_analysis_dims(
         }
         for column, row in zip(columns, data.T)
     }
-    bin_arr = np.array([
-        discretize_array(**bounds[column], bins=bins, arr=row)
-        for column, row in zip(columns, data.T)
-    ]).T.astype(np.uint16)
+    bin_arr = np.array(
+        [
+            discretize_array(**bounds[column], bins=bins, arr=row)
+            for column, row in zip(columns, data.T)
+        ]
+    ).T.astype(np.uint16)
 
     axis_ticks = {column: _umap_axis_ticks(column) for column in columns}
     return bin_arr, axis_ticks

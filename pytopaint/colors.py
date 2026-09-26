@@ -253,8 +253,12 @@ def subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
 
 def merge_colors(
     s: pd.Series, source_colors: Color | list[Color], target_color: Color
-) -> pd.DataFrame:
+) -> pd.Series:
     return s.replace(source_colors, target_color)
+
+
+def swap_colors(s: pd.Series, source_color: Color, target_color: Color) -> pd.Series:
+    return s.replace({source_color: target_color, target_color: source_color})
 
 
 def indices_by_color(s: pd.Series) -> dict[Color, pd.Index]:

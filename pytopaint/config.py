@@ -5,9 +5,9 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-
 import os
 import shutil
+import tomllib
 from importlib import resources
 from pathlib import Path
 
@@ -21,6 +21,13 @@ _default_layout_dir = resources.files('pytopaint.resources').joinpath(
 _config_dir = user_config_path(appname='PytoPaint', ensure_exists=True)
 _user_layout_dir = _config_dir / 'layouts'
 _user_layout_dir.mkdir(parents=True, exist_ok=True)
+
+
+def get_version() -> str:
+    pyproject_path = Path(__file__).parent.parent / 'pyproject.toml'
+    with open(pyproject_path, 'rb') as f:
+        pyproject_data = tomllib.load(f)
+    return pyproject_data['project']['version']
 
 
 def get_color_palette() -> str:
@@ -69,6 +76,14 @@ def get_lower_asinh_bound() -> float:
 
 def set_lower_asinh_bound(bound: float) -> None:
     QSettings().setValue('Plot/lower_asinh_bound', bound)
+
+
+def get_highlight_size() -> int:
+    return int(QSettings().value('Plot/highlight_size', 2))
+
+
+def set_highlight_size(size: int) -> None:
+    QSettings().setValue('Plot/highlight_size', size)
 
 
 def get_window_position() -> QPoint:

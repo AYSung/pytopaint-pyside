@@ -5,11 +5,13 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+from typing import override
 
 import pandas as pd
 from PySide6.QtCore import (
     QBuffer,
     QDir,
+    QEvent,
     QIODevice,
     QMimeData,
     QPoint,
@@ -43,24 +45,33 @@ from pytopaint.colors import (
     indices_by_color,
     sort_colors,
 )
+from pytopaint.config import get_highlight_size
 from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40
 
 
 class Biplot(QWidget):
-    removeTriggered = Signal(object)
-    updateFinished = Signal()
-    menuActionTriggered = Signal(int, dict)
-    activeColorChanged = Signal(int)
+    removeTriggered: Signal = Signal(object)
+    updateFinished: Signal = Signal()
+    menuActionTriggered: Signal = Signal(int, dict)
+    activeColorChanged: Signal = Signal(int)
+
+    df: pd.DataFrame
+    state: pd.DataFrame
+    active_color: Color
+    plot: DotPlot
+    x_axis: XAxis
+    y_axis: YAxis
+    title_label: PlotTitle
 
     def __init__(
         self,
         data: pd.DataFrame,
         axis_ticks: dict[str, list[tuple[int, str]]],
         state: pd.DataFrame,
-        x_channel: str,
-        y_channel: str,
+        x_channel: str | None,
+        y_channel: str | None,
         active_color: Color,
         resolution: int,
         highlighted_colors: list[Color],
@@ -134,11 +145,11 @@ class Biplot(QWidget):
 
         self.setLayout(layout)
 
-    @Slot(int)
+    @Slot(int)  # pyright: ignore[reportArgumentType]
     def set_active_color(self, color: Color) -> None:
         self.active_color = color
 
-    @Slot(object, QMouseEvent)
+    @Slot(object, QMouseEvent)  # pyright: ignore[reportArgumentType]
     def handle_selection(
         self, selection_geometry: list[list[float]], e: QMouseEvent
     ) -> None:
@@ -184,13 +195,13 @@ class Biplot(QWidget):
                 # ignore grey events
                 action = MenuAction.ADD_COLOR
                 selection = selection.intersection(
-                    self.state['color'].loc[lambda s: s != Color.GREY].index
+                    self.state['color'].loc[self.state['color'] != Color.GREY].index
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # ignore painted
                 action = MenuAction.ADD_COLOR
                 selection = selection.intersection(
-                    self.state['color'].loc[lambda s: s == Color.GREY].index
+                    self.state['color'].loc[self.state['color'] == Color.GREY].index
                 )
             elif (
                 modifiers
@@ -216,14 +227,15 @@ class Biplot(QWidget):
                 # exact zap color
                 action = MenuAction.EXACT_ZAP
                 selection = selection.intersection(
-                    self.state['color'].loc[lambda s: s == self.active_color].index
+                    self.state['color']
+                    .loc[self.state['color'] == self.active_color]
+                    .index
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # zap color
                 action = MenuAction.ZAP
                 selection = selection.intersection(
-                    self
-                    .state['color']
+                    self.state['color']
                     .loc[self.state['color'].isin(ZAPPABLE_COLORS[self.active_color])]
                     .index
                 )
@@ -243,12 +255,12 @@ class Biplot(QWidget):
         else:
             self.plot.update_plot()
 
-    @Slot(object, object, object)
+    @Slot(object, object, object)  # pyright: ignore[reportArgumentType]
     def update_data(
         self,
-        df: pd.DataFrame = None,
+        df: pd.DataFrame | None = None,
         axis_ticks: dict[str, list[tuple[int, str]]] | None = None,
-        state: pd.DataFrame = None,
+        state: pd.DataFrame | None = None,
     ):
         updater = BiplotUpdater(self, df, axis_ticks, state)
         QThreadPool.globalInstance().start(updater)
@@ -265,7 +277,7 @@ class Biplot(QWidget):
         self.y_axis.set_axis_ticks(axis_ticks)
 
     @Slot()
-    def update_plot_data(self, state: pd.DataFrame = None):
+    def update_plot_data(self, state: pd.DataFrame | None = None):
         if state is not None:
             self.state = state
 
@@ -275,8 +287,7 @@ class Biplot(QWidget):
             return
 
         df = (
-            self
-            .df[[self.x_axis.channel, self.y_axis.channel]]
+            self.df[[self.x_axis.channel, self.y_axis.channel]]
             .loc[self.state['visible']]
             .join(self.state['color'])
             .drop_duplicates()
@@ -314,6 +325,10 @@ class Biplot(QWidget):
                     Color.WHITE: '#000000',
                 }
                 label_color = '#000000'
+            case _:
+                background_color = '#ffffff'
+                color_map = get_color_map()
+                label_color = '#bababa'
 
         resolution = self.plot.resolution
         image = QImage(
@@ -341,7 +356,7 @@ class Biplot(QWidget):
 
         byte_array = QBuffer()
         byte_array.open(QIODevice.OpenModeFlag.WriteOnly)
-        image.save(byte_array, 'PNG', quality=100)
+        image.save(byte_array, format='PNG', quality=100)  # pyright: ignore[reportArgumentType]
         byte_array.close()
 
         mime_data = QMimeData()
@@ -377,7 +392,8 @@ class Biplot(QWidget):
         self.plot.update_plot()
         self.title_label.update_title(x_channel=x_channel, y_channel=y_channel)
 
-    def paintEvent(self, pe):
+    @override
+    def paintEvent(self, event: QEvent):
         o = QStyleOption()
         o.initFrom(self)
         p = QPainter(self)
@@ -388,10 +404,10 @@ class Biplot(QWidget):
         return self.x_axis.channel, self.y_axis.channel
 
     @Slot(int)
-    def resize(self, resolution: int) -> None:
-        self.plot.resize(pixels=resolution)
-        self.x_axis.resize(pixels=resolution)
-        self.y_axis.resize(pixels=resolution)
+    def handle_resize(self, resolution: int) -> None:
+        self.plot.handle_resize(pixels=resolution)
+        self.x_axis.handle_resize(pixels=resolution)
+        self.y_axis.handle_resize(pixels=resolution)
         self.title_label.setFixedWidth(resolution)
 
     @Slot()
@@ -400,12 +416,15 @@ class Biplot(QWidget):
 
 
 class PlotTitle(QLabel):
-    transposeAxesClicked = Signal()
-    copyPlotClicked = Signal(str)
-    exportPlotClicked = Signal(str)
-    removePlotClicked = Signal()
+    transposeAxesClicked: Signal = Signal()
+    copyPlotClicked: Signal = Signal(str)
+    exportPlotClicked: Signal = Signal(str)
+    removePlotClicked: Signal = Signal()
 
-    def __init__(self, x_channel: str, y_channel: str, resolution: int):
+    x_channel: str | None
+    y_channel: str | None
+
+    def __init__(self, x_channel: str | None, y_channel: str | None, resolution: int):
         super().__init__()
         self.x_channel, self.y_channel = x_channel, y_channel
 
@@ -416,7 +435,7 @@ class PlotTitle(QLabel):
         self.setFixedWidth(resolution)
         self.update_title(x_channel=x_channel, y_channel=y_channel)
 
-    def resize(self, resolution: int) -> None:
+    def handle_resize(self, resolution: int) -> None:
         self.setFixedWidth(resolution)
 
     @Slot(str, str)
@@ -432,7 +451,7 @@ class PlotTitle(QLabel):
 
         self.setText(title)
 
-    def context_menu(self, pos) -> None:
+    def context_menu(self, pos: QPoint) -> None:
         menu = QMenu()
         transpose = QAction(
             'Transpose Axes',
@@ -591,7 +610,7 @@ class DotPlot(QLabel):
     ) -> None:
         pen = QPen()
         pen.setColor(color_map[color])
-        pen.setWidth(2 if color in self.highlighted_colors else 1)
+        pen.setWidth(get_highlight_size() if color in self.highlighted_colors else 1)
         painter.setPen(pen)
 
         index = self.color_indices.get(color, pd.Index([]))
@@ -614,10 +633,10 @@ class DotPlot(QLabel):
     def set_canvas(self) -> None:
         self.setPixmap(self.canvas)
 
-    def resize(self, pixels: int):
+    def handle_resize(self, pixels: int):
         self.resolution = pixels
 
-    def clear(self) -> None:
+    def clear_plot(self) -> None:
         self.set_working_data(x_data=None, y_data=None, color_data=None)
 
 
@@ -626,7 +645,7 @@ class XAxis(QLabel):
 
     def __init__(
         self,
-        channel: str,
+        channel: str | None,
         channels: list[str],
         axis_ticks: dict[str, list[tuple[int, str]]],
         resolution: int,
@@ -655,7 +674,7 @@ class XAxis(QLabel):
             self.channel = None
             self.channelChanged.emit()
 
-    def resize(self, pixels: int) -> None:
+    def handle_resize(self, pixels: int) -> None:
         self.resolution = pixels
         if self.channel not in self.axis_ticks:
             self.channel = None
@@ -735,9 +754,9 @@ class YAxis(QLabel):
 
     def __init__(
         self,
-        channel: str,
+        channel: str | None,
         channels: list[str],
-        axis_ticks: dict[str, tuple[int, str]],
+        axis_ticks: dict[str, list[tuple[int, str]]],
         resolution: int,
         channel_fluor_map: dict[str, str],
     ):
@@ -764,18 +783,19 @@ class YAxis(QLabel):
             self.channel = None
             self.channelChanged.emit()
 
-    def resize(self, pixels: int) -> None:
+    def handle_resize(self, pixels: int) -> None:
         self.resolution = pixels
         if self.channel not in self.axis_ticks:
             self.channel = None
             self.channelChanged.emit()
         self.update_axis()
 
-    def mousePressEvent(self, e: QMouseEvent):
-        if e.button() == Qt.MouseButton.RightButton:
-            self.customContextMenuRequested.emit(e.pos())
+    @override
+    def mousePressEvent(self, ev: QMouseEvent):
+        if ev.button() == Qt.MouseButton.RightButton:
+            self.customContextMenuRequested.emit(ev.pos())
 
-        super().mousePressEvent(e)
+        super().mousePressEvent(ev)
 
     def draw_axis(
         self,
@@ -833,19 +853,24 @@ class YAxis(QLabel):
         canvas = self.draw_axis(label_color='#bababa')
         self.setPixmap(canvas)
 
-    def context_menu(self, pos):
+    def context_menu(self, pos: QPoint):
         menu = QMenu()
         for channel in self.channels:
             menu.addAction(channel)
 
         action = menu.exec(self.mapToGlobal(pos))
-        if action and (action != self.channel):
+        if action and (action.text() != self.channel):
             self.channel = action.text()
             self.update_axis()
             self.channelChanged.emit()
 
 
 class BiplotUpdater(QRunnable):
+    biplot: Biplot
+    data: pd.DataFrame | None
+    state: pd.DataFrame | None
+    axis_ticks: dict[str, list[tuple[int, str]]]
+
     def __init__(
         self,
         biplot: Biplot,
@@ -859,6 +884,7 @@ class BiplotUpdater(QRunnable):
         self.axis_ticks = axis_ticks
         self.state = state
 
+    @override
     def run(self):
         if self.data is None and self.state is None:
             return

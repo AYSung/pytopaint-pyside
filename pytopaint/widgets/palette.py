@@ -205,6 +205,16 @@ class ColorLabel(QWidget):
             )
             return action
 
+        def _swap_action(color: Color) -> QAction:
+            action = QAction(_color_icon(color), color.label_name)
+            action.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.SWAP_COLOR,
+                    {'source_color': self.color, 'target_color': color},
+                )
+            )
+            return action
+
         def _ratio_action(color: Color, label_info: tuple[float, float]) -> QAction:
             action = QAction(
                 _color_icon(color),
@@ -269,12 +279,26 @@ class ColorLabel(QWidget):
             merge_menu.setEnabled(self.has_events)
 
             merge_actions = [
-                _merge_action(color) for color in COLOR_ORDER if color != self.color
+                _merge_action(color)
+                for color in COLOR_ORDER
+                if color not in [self.color, Color.GREY]
             ]
 
             for merge_action in merge_actions:
                 merge_menu.addAction(merge_action)
             menu.addMenu(merge_menu)
+
+            swap_menu = QMenu('Swap with...')
+            swap_menu.setEnabled(self.has_events)
+
+            swap_actions = [
+                _swap_action(color) for color in COLOR_ORDER if color != self.color
+            ]
+
+            for swap_action in swap_actions:
+                swap_menu.addAction(swap_action)
+            menu.addMenu(swap_menu)
+
         else:
             zap_all = QAction('Zap All')
             zap_all.triggered.connect(

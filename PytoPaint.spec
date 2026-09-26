@@ -11,7 +11,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['pytest', 'pyinstaller', 'ipykernel'],
+    excludes=['pytest', 'pyinstaller', 'ipykernel', 'pandas-stubs', 'pyside6-stubs', 'snakeviz'],
     noarchive=False,
     optimize=0,
 )
