@@ -33,7 +33,6 @@ from pytopaint.config import (
     get_resolution,
     get_scaling_factor,
     get_upper_asinh_bound,
-    get_version,
     get_zoom_resolution,
     set_lower_asinh_bound,
     set_scaling_factor,
@@ -47,7 +46,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        f'PytoPaint v{get_version()} (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated September 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.4.1 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated September 2026\n\nFor research and educational use only.',
     )
 
 

@@ -7,7 +7,6 @@
 
 import os
 import shutil
-import tomllib
 from importlib import resources
 from pathlib import Path
 
@@ -21,13 +20,6 @@ _default_layout_dir = resources.files('pytopaint.resources').joinpath(
 _config_dir = user_config_path(appname='PytoPaint', ensure_exists=True)
 _user_layout_dir = _config_dir / 'layouts'
 _user_layout_dir.mkdir(parents=True, exist_ok=True)
-
-
-def get_version() -> str:
-    pyproject_path = Path(__file__).parent.parent / 'pyproject.toml'
-    with open(pyproject_path, 'rb') as f:
-        pyproject_data = tomllib.load(f)
-    return pyproject_data['project']['version']
 
 
 def get_color_palette() -> str:
