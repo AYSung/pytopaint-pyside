@@ -43,10 +43,11 @@ class Palette(QWidget):
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
-        layout.setContentsMargins(20, 0, 20, 0)
+        layout.setContentsMargins(0, 0, 0, 0)
 
         self.total_events_label = QLabel()
         self.total_events_label.setFixedWidth(150)
+        self.total_events_label.setStyleSheet('QLabel { margin: 0px 0px 0px 10px }')
         layout.addWidget(self.total_events_label)
 
         self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER}
@@ -59,7 +60,10 @@ class Palette(QWidget):
             self.colorPaletteChanged.connect(color_label.update_palette)
         self.update_labels(state)
 
+        layout.addStretch()
+
         save_state_label = SnapshotLabel()
+        save_state_label.setStyleSheet('QLabel { margin: 0px 0px 0px 20px }')
         save_state_label.menuActionTriggered.connect(self.menuActionTriggered)
         layout.addWidget(save_state_label)
         self.memory_slots = {
@@ -71,7 +75,7 @@ class Palette(QWidget):
             )
             memory_slot.menuActionTriggered.connect(self.menuActionTriggered)
 
-        layout.addStretch()
+        layout.addSpacing(21)
 
         self.setLayout(layout)
 
@@ -112,7 +116,7 @@ class ColorLabel(QWidget):
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
-        self.setFixedWidth(150)
+        self.setFixedWidth(120)
 
         layout = QHBoxLayout()
 
