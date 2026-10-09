@@ -116,7 +116,7 @@ class ColorLabel(QWidget):
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
-        self.setFixedWidth(120)
+        self.setFixedWidth(125)
 
         layout = QHBoxLayout()
 
