@@ -46,7 +46,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.4.1 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated September 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.4.2 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated September 2026\n\nFor research and educational use only.',
     )
 
 
@@ -85,7 +85,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Paint Events', 'Left-Click'),
                 ('Paint Non-Grey Events', 'Shift + Left-Click'),
                 ('Paint Grey Events', 'Ctrl + Left-Click'),
-                ('Override Paint Colors', 'Ctrl + Shift + Left-Click'),
+                ('Override Painted Color', 'Ctrl + Shift + Left-Click'),
             ]
         )
     )
