@@ -121,8 +121,7 @@ def histogram(data: pd.DataFrame, target_color: Color, resolution: int) -> QLabe
     pen = QPen()
 
     df = (
-        data
-        .groupby('color')
+        data.groupby('color')
         .value_counts()
         .groupby('color')
         .transform(lambda x: x / x.max() * MAX_HEIGHT)
@@ -133,26 +132,28 @@ def histogram(data: pd.DataFrame, target_color: Color, resolution: int) -> QLabe
     painter.translate(0, 10)
     pen.setColor(get_color_map()[target_color])
     painter.setPen(pen)
-    painter.drawLines([
-        QLine(x, -count, x, count)
-        for x, count in df
-        .get_group(target_color)
-        .drop(columns='color')
-        .to_records(index=False)
-    ])
+    painter.drawLines(
+        [
+            QLine(x, -count, x, count)
+            for x, count in df.get_group(target_color)
+            .drop(columns='color')
+            .to_records(index=False)
+        ]
+    )
 
     painter.translate(0, 20)
     other_colors = [color for color in data['color'].unique() if color != target_color]
     for color in other_colors:
         pen.setColor(get_color_map()[color])
         painter.setPen(pen)
-        painter.drawLines([
-            QLine(x, -count, x, count)
-            for x, count in df
-            .get_group(color)
-            .drop(columns='color')
-            .to_records(index=False)
-        ])
+        painter.drawLines(
+            [
+                QLine(x, -count, x, count)
+                for x, count in df.get_group(color)
+                .drop(columns='color')
+                .to_records(index=False)
+            ]
+        )
 
     painter.end()
     histogram.setPixmap(canvas)
@@ -210,7 +211,7 @@ def generate_report_template(ip_channels: list[str]) -> str:
         if channel not in PHYSICAL_PARAMETERS
     ]
 
-    template = f"""{_join_list(immunophenotype_markers)}"""
+    template = f"""{_join_list(immunophenotype_markers)}."""
 
     return template
 
