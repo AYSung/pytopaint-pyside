@@ -170,16 +170,16 @@ class Biplot(QWidget):
 
         color = self.active_color
         if e.button() == Qt.MouseButton.LeftButton:
-            # if (
-            #     modifiers
-            #     == Qt.KeyboardModifier.ControlModifier
-            #     | Qt.KeyboardModifier.ShiftModifier
-            # ):
-            #     mask = self.state['visible'] & (self.state['color'] != color)
-            # else:
-            mask = self.state['visible'] & (
-                ~self.state['color'].isin(IGNORE_COLORS[color])
-            )
+            if (
+                modifiers
+                == Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier
+            ):
+                mask = self.state['visible'] & (self.state['color'] != color)
+            else:
+                mask = self.state['visible'] & (
+                    ~self.state['color'].isin(IGNORE_COLORS[color])
+                )
 
             selection = get_selection_index(
                 selection_geometry,
@@ -245,6 +245,19 @@ class Biplot(QWidget):
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # paint grey
                 action = MenuAction.OVERRIDE_COLOR
+                color = Color.GREY
+            elif (
+                modifiers
+                == Qt.KeyboardModifier.ControlModifier
+                | Qt.KeyboardModifier.ShiftModifier
+            ):
+                # paint not-active colors grey
+                action = MenuAction.OVERRIDE_COLOR
+                selection = selection.intersection(
+                    self.state['color']
+                    .loc[self.state['color'] != self.active_color]
+                    .index
+                )
                 color = Color.GREY
             else:
                 selection = pd.Index([])
