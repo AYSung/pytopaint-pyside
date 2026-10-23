@@ -10,7 +10,7 @@ def test_generate_report_template():
         generate_report_template(
             ip_channels=['FSC-A', 'SSC-A', 'CD5', 'CD10', 'CD19', 'CD20']
         )
-        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), and CD20 ({+/-:40630})'
+        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), and CD20 ({+/-:40630}).'
     )
     assert (
         generate_report_template(
@@ -25,7 +25,7 @@ def test_generate_report_template():
                 'Lambda',
             ],
         )
-        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), CD20 ({+/-:40630}), {surface/IC:46754} kappa light chain ({+/-:40630}), and {surface/IC:46754} lambda light chain ({+/-:40630})'
+        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), CD20 ({+/-:40630}), {surface/IC:46754} kappa light chain ({+/-:40630}), and {surface/IC:46754} lambda light chain ({+/-:40630}).'
     )
     assert (
         generate_report_template(
@@ -40,7 +40,7 @@ def test_generate_report_template():
                 'Lambda',
             ]
         )
-        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), CD20 ({+/-:40630}), {surface/IC:46754} kappa light chain ({+/-:40630}), and {surface/IC:46754} lambda light chain ({+/-:40630})'
+        == 'CD5 ({+/-:40630}), CD10 ({+/-:40630}), CD19 ({+/-:40630}), CD20 ({+/-:40630}), {surface/IC:46754} kappa light chain ({+/-:40630}), and {surface/IC:46754} lambda light chain ({+/-:40630}).'
     )
 
 
