@@ -191,10 +191,15 @@ class IOManager(QObject):
             else:
                 return
 
+        case_numbers = {
+            tube.data.adata.uns['case_id'].partition(' ')[0] for tube in tubes
+        }
+        default_export_name = case_numbers.pop() if len(case_numbers) == 1 else ''
+
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Export PDF Report',
-            dir=self.last_open_file_dir,
+            dir=self.last_open_file_dir + f'/{default_export_name}',
             filter='PDF (*.pdf)',
         )
 

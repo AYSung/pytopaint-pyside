@@ -56,8 +56,7 @@ class FlowData:
 
         adata.uns['filename'] = fcs.name
         adata.uns['tube'] = fcs.text.get('tube name')
-        adata.uns['id'] = (
-            f'{extract_case_number(Path(fcs.name).stem)
+        adata.uns['case_id'] = extract_case_number(Path(fcs.name).stem)
 
         adata.uns['bit_mode'] = extract_bit_mode(fcs)
         adata.uns['scaling_factor'] = 150 if adata.uns['bit_mode'] == 18 else 1_200
@@ -82,7 +81,10 @@ class FlowData:
 
     @property
     def id(self) -> str:
-        return self.adata.uns.get('id')
+        if self.adata.uns['tube']:
+            return f'{self.adata.uns.get("case_id")} {self.adata.uns["tube"]}'
+        else:
+            return self.adata.uns.get('case_id')
 
     @property
     def filename(self) -> str:
