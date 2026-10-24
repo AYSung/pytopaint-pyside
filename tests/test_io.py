@@ -34,29 +34,39 @@ def test_get_child_files():
 
 
 def test_filter_valid_files():
-    assert filter_valid_files(
-        [
-            Path('tests/resources/layouts/test.yml'),
-            Path('tests/resources/normal_01_B.fcs'),
-        ]
-    ) == [Path('tests/resources/normal_01_B.fcs')]
+    assert filter_valid_files([
+        Path('tests/resources/layouts/test.yml'),
+        Path('tests/resources/normal_01_B.fcs'),
+    ]) == [Path('tests/resources/normal_01_B.fcs')]
     assert (
-        filter_valid_files(
-            [
-                Path('tests/resources/layouts/test.yml'),
-                Path('tests/resources/non-existent-file.fcs'),
-            ]
-        )
+        filter_valid_files([
+            Path('tests/resources/layouts/test.yml'),
+            Path('tests/resources/non-existent-file.fcs'),
+        ])
         == []
     )
 
 
 def test_scrub_metadata():
-    assert _scrub_metadata(
-        {
-            'beginanalysis': 'test',
-            'spill': 'test',
-            'mode': 'test',
-            'test': 'test',
-        }
-    ) == {'beginanalysis': 'test', 'spill': 'test', 'mode': 'test'}
+    assert _scrub_metadata({
+        'beginanalysis': 'test',
+        'spill': 'test',
+        'mode': 'test',
+        'test': 'test',
+    }) == {'beginanalysis': 'test', 'spill': 'test', 'mode': 'test'}
+    assert _scrub_metadata({
+        'beginanalysis': 'test',
+        'spill': 'test',
+        'mode': 'test',
+        'test': 'test',
+        'p1r': 'test',
+        'p1n': 'test',
+        'P13R': 'test',
+        'p13s': 'test',
+    }) == {
+        'beginanalysis': 'test',
+        'spill': 'test',
+        'mode': 'test',
+        'p1r': 'test',
+        'P13R': 'test',
+    }

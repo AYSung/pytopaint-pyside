@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import re
 from collections.abc import Iterable
 from io import BytesIO
 from itertools import chain
@@ -250,8 +251,9 @@ def get_files_from_urls(urls: list[QUrl]) -> list[Path]:
 
 def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
     return {
-        k: v
+        k: v.strip()
         for k, v in metadata.items()
         if k
         in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS + ['spill', 'spillover']
+        or (re.search(r'p\d+r', k, re.IGNORECASE))
     }

@@ -1,4 +1,5 @@
 import anndata as ad
+import flowio
 import numpy as np
 import pandas as pd
 import pytest
@@ -6,6 +7,7 @@ import yaml
 
 from pytopaint.flowdata import (
     _channel_fluor_map,
+    extract_bit_mode,
     extract_case_number,
     get_axis_ticks,
 )
@@ -32,14 +34,12 @@ def get_biplot_config(channels: list[str]) -> list[list[str, str]]:
 
 @pytest.fixture
 def test_df_1():
-    return pd.DataFrame(
-        {
-            'FSC-A': [-1, 100],
-            'SSC-A': [-1, 100],
-            'CD45': [4, 10],
-            'Time': [0, 100],
-        }
-    )
+    return pd.DataFrame({
+        'FSC-A': [-1, 100],
+        'SSC-A': [-1, 100],
+        'CD45': [4, 10],
+        'Time': [0, 100],
+    })
 
 
 @pytest.fixture
@@ -66,39 +66,37 @@ def df_1() -> pd.DataFrame:
         4e5,
         5e5,
     ]
-    return pd.DataFrame(
-        {
-            'FSC-A': linear_param_values,
-            'FSC-H': linear_param_values,
-            'SSC-A': linear_param_values,
-            'SSC-H': linear_param_values,
-            'CD5': [-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 4, 3, 4, 5, 6, 7, 5, 5, 6, 5],
-            'CD10': [0, 1, 2, 3, 4, 5, 6, 4, 5, 3, 6, 4, 5, 3, 2, 2, 4, 3, 14, 15],
-            'UMAP1': [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10],
-            'Time': [
-                1,
-                2,
-                3,
-                4,
-                5,
-                6,
-                7,
-                8,
-                9,
-                10,
-                11,
-                12,
-                13,
-                14,
-                15,
-                16,
-                17,
-                18,
-                19,
-                20,
-            ],
-        }
-    )
+    return pd.DataFrame({
+        'FSC-A': linear_param_values,
+        'FSC-H': linear_param_values,
+        'SSC-A': linear_param_values,
+        'SSC-H': linear_param_values,
+        'CD5': [-4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 4, 3, 4, 5, 6, 7, 5, 5, 6, 5],
+        'CD10': [0, 1, 2, 3, 4, 5, 6, 4, 5, 3, 6, 4, 5, 3, 2, 2, 4, 3, 14, 15],
+        'UMAP1': [-1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10],
+        'Time': [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+        ],
+    })
 
 
 @pytest.fixture
@@ -166,3 +164,18 @@ def test_channel_name_map(pnn_labels):
         'CD5': 'CD5 (PE)',
         'CD19': 'CD19 (PerCP)',
     }
+
+
+@pytest.fixture()
+def test_18_bit() -> flowio.FlowData:
+    return flowio.FlowData('tests/resources/normal_01_B.fcs')
+
+
+@pytest.fixture()
+def test_22_bit() -> flowio.FlowData:
+    return flowio.FlowData('tests/resources/cytek_22_bit.fcs')
+
+
+def test_extract_bit_mode(test_18_bit, test_22_bit):
+    assert extract_bit_mode(test_18_bit) == 18
+    assert extract_bit_mode(test_22_bit) == 22
