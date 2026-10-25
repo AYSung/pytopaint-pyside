@@ -5,8 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import cProfile
-import pstats
 import sys
 from itertools import chain
 from multiprocessing import freeze_support
@@ -451,7 +449,8 @@ class MainWindow(QMainWindow):
         self.move(position.x(), position.y())
 
 
-def main():
+def main(args: list[str]):
+    DEV_ARG = '--dev'
     freeze_support()
 
     QCoreApplication.setOrganizationName('AYSung')
@@ -462,19 +461,24 @@ def main():
     window = MainWindow()
     window.show()
 
-    profiler = cProfile.Profile()
-    profiler.enable()
+    if DEV_ARG in args:
+        import cProfile
+        import pstats
+
+        profiler = cProfile.Profile()
+        profiler.enable()
 
     exit_code = app.exec()
     app.clipboard().clear()
 
-    profiler.disable()
-    stats = pstats.Stats(profiler).sort_stats('cumulative')
-    stats.print_stats(30)
-    profiler.dump_stats('app.prof')
+    if DEV_ARG in args:
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats.print_stats(30)
+        profiler.dump_stats('app.prof')
 
     sys.exit(exit_code)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
