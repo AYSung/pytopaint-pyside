@@ -45,7 +45,6 @@ from pytopaint.colors import (
     indices_by_color,
     sort_colors,
 )
-from pytopaint.config import get_highlight_size
 from pytopaint.selection import get_selection_index
 
 AXIS_WIDTH = 40
@@ -75,6 +74,7 @@ class Biplot(QWidget):
         active_color: Color,
         resolution: int,
         highlighted_colors: list[Color],
+        highlight_size: int,
         channel_fluor_map: dict[str, str],
     ):
         super().__init__()
@@ -93,6 +93,7 @@ class Biplot(QWidget):
             active_color=active_color,
             resolution=resolution,
             highlighted_colors=highlighted_colors,
+            highlight_size=highlight_size,
         )
         self.plot.pointsSelected.connect(self.handle_selection)
         self.activeColorChanged.connect(self.plot.set_active_color)
@@ -522,13 +523,18 @@ class DotPlot(QLabel):
     pointsSelected = Signal(object, QMouseEvent)
 
     def __init__(
-        self, active_color: Color, resolution: int, highlighted_colors: list[Color]
+        self,
+        active_color: Color,
+        resolution: int,
+        highlighted_colors: list[Color],
+        highlight_size: int,
     ):
         super().__init__()
         self.setCursor(Qt.CursorShape.CrossCursor)
         self.active_color = active_color
         self.resolution = resolution
         self.highlighted_colors = highlighted_colors
+        self.highlight_size = highlight_size
 
         self.reset_lasso()
         self.set_working_data(x_data=None, y_data=None, color_data=None)
@@ -626,7 +632,7 @@ class DotPlot(QLabel):
     ) -> None:
         pen = QPen()
         pen.setColor(color_map[color])
-        pen.setWidth(get_highlight_size() if color in self.highlighted_colors else 1)
+        pen.setWidth(self.highlight_size if color in self.highlighted_colors else 1)
         painter.setPen(pen)
 
         index = self.color_indices.get(color, pd.Index([]))
@@ -634,6 +640,11 @@ class DotPlot(QLabel):
             self.x_data.loc[index].to_numpy(),
             self.y_data.loc[index].to_numpy(),
         )
+
+    @Slot(int)
+    def update_highlight_size(self, highlight_size: int) -> None:
+        self.highlight_size = highlight_size
+        self.update_plot()
 
     @Slot()
     def update_plot(self) -> None:

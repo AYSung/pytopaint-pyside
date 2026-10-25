@@ -27,6 +27,8 @@ class MenuAction(IntEnum):
     SUBSAMPLE = auto()
     HIGHLIGHT = auto()
     TOGGLE_ALL_HIGHLIGHTS = auto()
+    INCREASE_HIGHLIGHT_SIZE = auto()
+    DECREASE_HIGHLIGHT_SIZE = auto()
     REPLACE_STATE = auto()
     MERGE_STATE = auto()
     MERGE_ALL_STATES = auto()

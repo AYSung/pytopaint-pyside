@@ -34,7 +34,11 @@ from pytopaint.colors import (
     subtract_color_from_series,
     swap_colors,
 )
-from pytopaint.config import get_resolution, get_zoom_resolution
+from pytopaint.config import (
+    get_default_highlight_size,
+    get_resolution,
+    get_zoom_resolution,
+)
 from pytopaint.flowdata import FlowData
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
@@ -49,7 +53,7 @@ class Painter(QWidget):
     colorStateReturned = Signal(int, object)
     dataChanged = Signal(object)
     highlightsUpdated = Signal(list)
-    highlightSizeChanged = Signal()
+    highlightSizeChanged = Signal(int)
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
@@ -81,6 +85,8 @@ class Painter(QWidget):
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.toggle_highlights,
             MenuAction.TOGGLE_ALL_HIGHLIGHTS: self.toggle_all_highlights,
+            MenuAction.INCREASE_HIGHLIGHT_SIZE: self.increase_highlight_size,
+            MenuAction.DECREASE_HIGHLIGHT_SIZE: self.decrease_highlight_size,
             MenuAction.REPLACE_STATE: self.replace_state,
             MenuAction.MERGE_STATE: self.merge_state,
             MenuAction.MERGE_ALL_STATES: self.merge_all_states,
@@ -103,6 +109,7 @@ class Painter(QWidget):
         self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = self.data.highlighted_colors
+        self.highlight_size = get_default_highlight_size()
         self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.data.memory_states
@@ -121,6 +128,7 @@ class Painter(QWidget):
             state=self.state,
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
+            highlight_size=self.highlight_size,
         )
         self.biplot_grid.menuActionTriggered.connect(self.menuActionTriggered)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
@@ -129,7 +137,7 @@ class Painter(QWidget):
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
-        self.highlightSizeChanged.connect(self.biplot_grid.highlightSizeChanged)
+        self.highlightSizeChanged.connect(self.biplot_grid.update_highlight_size)
         self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
         biplot_grid_container = QWidget()
@@ -399,6 +407,20 @@ class Painter(QWidget):
         else:
             self.highlighted_colors = [c for c in COLOR_ORDER if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
+
+    def increase_highlight_size(self):
+        if self.highlight_size >= 4:
+            return
+
+        self.highlight_size += 1
+        self.highlightSizeChanged.emit(self.highlight_size)
+
+    def decrease_highlight_size(self):
+        if self.highlight_size <= 2:
+            return
+
+        self.highlight_size -= 1
+        self.highlightSizeChanged.emit(self.highlight_size)
 
     @Slot()
     def handle_resize(self) -> None:

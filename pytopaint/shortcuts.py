@@ -7,7 +7,7 @@
 
 from typing import Protocol
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import (
     QKeySequence,
     QShortcut,
@@ -77,6 +77,16 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
     toggle_all_highlights = QShortcut(QKeySequence('Shift+E'), widget)
     toggle_all_highlights.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.TOGGLE_ALL_HIGHLIGHTS, {})
+    )
+
+    increase_highlight_size = QShortcut(QKeySequence(Qt.Key.Key_Up), widget)
+    increase_highlight_size.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.INCREASE_HIGHLIGHT_SIZE, {})
+    )
+
+    decrease_highlight_size = QShortcut(QKeySequence(Qt.Key.Key_Down), widget)
+    decrease_highlight_size.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.DECREASE_HIGHLIGHT_SIZE, {})
     )
 
     undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, widget)

@@ -28,7 +28,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.config import (
-    get_highlight_size,
+    get_default_highlight_size,
     get_lower_asinh_bound,
     get_resolution,
     get_scaling_factor,
@@ -145,6 +145,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Toggle Color Highlight', 'Shift + <Color>'),
                 ('Exact Zap Color', 'Ctrl + <Color>'),
                 ('Toggle All Highlights', 'Shift + E'),
+                ('Increase/Decrease Highlight Size', 'Up/Down Arrow'),
                 ('Exact Zap Current Color', 'Ctrl + E'),
                 ('Hide Current Color', 'Backspace'),
                 ('Isolate Current Color', 'Enter'),
@@ -193,10 +194,10 @@ class PlotScaleDialog(QDialog):
         layout = QFormLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.scaling_factor_input = QSpinBox(singleStep=10)
-        self.scaling_factor_input.setRange(20, 1200)
+        self.scaling_factor_input.setRange(20, 2400)
         self.scaling_factor_input.setValue(scaling_factor)
         self.scaling_factor_input.setFixedWidth(field_width)
-        self.scaling_factor_input.setToolTip('between 20 and 1200')
+        self.scaling_factor_input.setToolTip('between 20 and 2400')
         self.upper_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
         self.upper_asinh_bound_input.setRange(5, 15)
         self.upper_asinh_bound_input.setValue(upper_asinh_bound)
@@ -275,12 +276,12 @@ def resize_plot_dialog(parent: QWidget) -> tuple[int, bool]:
     )
 
 
-def highlight_size_dialog(parent: QWidget) -> tuple[int, bool]:
+def default_highlight_size_dialog(parent: QWidget) -> tuple[int, bool]:
     return QInputDialog.getInt(
         parent,
-        'Highlight Size',
+        'Default Highlight Size',
         'Pixels (2-4)',
-        value=get_highlight_size(),
+        value=get_default_highlight_size(),
         minValue=2,
         maxValue=4,
         step=1,
