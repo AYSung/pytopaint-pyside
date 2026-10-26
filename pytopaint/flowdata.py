@@ -84,9 +84,13 @@ class FlowData:
     @property
     def id(self) -> str:
         if self.adata.uns['tube']:
-            return f'{self.adata.uns.get("case_id")} {self.adata.uns["tube"]}'
+            return f'{self.case_id} {self.adata.uns["tube"]}'
         else:
-            return self.adata.uns.get('case_id')
+            return self.case_id
+
+    @property
+    def case_id(self) -> str:
+        return self.adata.uns.get('case_id', Path(self.filename).stem)
 
     @property
     def bit_mode(self) -> int:

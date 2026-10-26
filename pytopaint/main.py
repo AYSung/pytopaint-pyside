@@ -161,11 +161,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def rescale_plots(self) -> None:
-        data = self.get_active_painter().data
         dialog = PlotScaleDialog(
-            scaling_factor=data.scaling_factor,
-            lower_asinh_bound=data.lower_asinh_bound,
-            upper_asinh_bound=data.upper_asinh_bound,
+            data=self.get_active_painter().data,
             parent=self,
         )
 
