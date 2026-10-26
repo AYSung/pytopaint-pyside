@@ -31,11 +31,10 @@ from pytopaint.config import (
     get_default_highlight_size,
     get_lower_asinh_bound,
     get_resolution,
-    get_scaling_factor,
     get_upper_asinh_bound,
     get_zoom_resolution,
+    set_default_scaling_factor,
     set_lower_asinh_bound,
-    set_scaling_factor,
     set_upper_asinh_bound,
 )
 from pytopaint.flowdata import FlowData, sort_channels
@@ -46,7 +45,7 @@ def about_dialog(parent: QWidget) -> None:
     return QMessageBox.about(
         parent,
         'About PytoPaint',
-        'PytoPaint v0.4.2 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated September 2026\n\nFor research and educational use only.',
+        'PytoPaint v0.4.2 (pre-release)\n\n\nCreated by Andrew Y. Sung\n\nLast updated October 2026\n\nFor research and educational use only.',
     )
 
 
@@ -162,8 +161,8 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         _shortcut_table(
             [
                 ('Recall Snapshot', '<1 - 5>'),
-                ('Save Snapshot and Clear', 'Shift + <1 - 5>'),
-                ('Merge Snapshots', '`'),
+                ('Add Colors to Snapshot and Clear', 'Shift + <1 - 5>'),
+                ('Save Colors as Snapshot and Clear', 'Ctrl + Shift <1 - 5>')
             ]
         )
     )
@@ -182,31 +181,31 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
 class PlotScaleDialog(QDialog):
     def __init__(
         self,
-        scaling_factor: float,
-        lower_asinh_bound: float,
-        upper_asinh_bound: float,
+        data: FlowData,
         parent=None,
     ):
         super().__init__(parent)
         self.setWindowTitle('Plot Scale')
-        field_width = 60
+        FIELD_WIDTH = 60
+
+        self.data = data
 
         layout = QFormLayout()
         layout.setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
         self.scaling_factor_input = QSpinBox(singleStep=10)
         self.scaling_factor_input.setRange(20, 2400)
-        self.scaling_factor_input.setValue(scaling_factor)
-        self.scaling_factor_input.setFixedWidth(field_width)
+        self.scaling_factor_input.setValue(data.scaling_factor)
+        self.scaling_factor_input.setFixedWidth(FIELD_WIDTH)
         self.scaling_factor_input.setToolTip('between 20 and 2400')
         self.upper_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
         self.upper_asinh_bound_input.setRange(5, 15)
-        self.upper_asinh_bound_input.setValue(upper_asinh_bound)
-        self.upper_asinh_bound_input.setFixedWidth(field_width)
+        self.upper_asinh_bound_input.setValue(data.upper_asinh_bound)
+        self.upper_asinh_bound_input.setFixedWidth(FIELD_WIDTH)
         self.upper_asinh_bound_input.setToolTip('between 5 and 15')
         self.lower_asinh_bound_input = QDoubleSpinBox(singleStep=0.5)
         self.lower_asinh_bound_input.setRange(-5, 4)
-        self.lower_asinh_bound_input.setValue(lower_asinh_bound)
-        self.lower_asinh_bound_input.setFixedWidth(field_width)
+        self.lower_asinh_bound_input.setValue(data.lower_asinh_bound)
+        self.lower_asinh_bound_input.setFixedWidth(FIELD_WIDTH)
         self.lower_asinh_bound_input.setToolTip('between -5 and 4')
         layout.addRow('Scaling Factor:', self.scaling_factor_input)
         layout.addRow('Upper Bound:', self.upper_asinh_bound_input)
@@ -233,15 +232,17 @@ class PlotScaleDialog(QDialog):
 
     @Slot()
     def reset_to_defaults(self) -> None:
-        self.scaling_factor_input.setValue(get_scaling_factor())
+        self.scaling_factor_input.setValue(
+            get_default_scaling_factor(self.data.bit_mode)
+        )
         self.upper_asinh_bound_input.setValue(get_upper_asinh_bound())
         self.lower_asinh_bound_input.setValue(get_lower_asinh_bound())
 
     @Slot()
     def save_defaults(self) -> None:
-        set_scaling_factor(self.scaling_factor)
-        set_lower_asinh_bound(self.lower_asinh_bound)
-        set_upper_asinh_bound(self.upper_asinh_bound)
+        set_default_scaling_factor(self.data.scaling_factor, self.data.bit_mode)
+        set_lower_asinh_bound(self.data.lower_asinh_bound)
+        set_upper_asinh_bound(self.data.upper_asinh_bound)
 
     @property
     def scaling_factor(self) -> int:

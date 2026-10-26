@@ -89,6 +89,7 @@ def generate_pdf(file_path: str, tubes: list[Painter]) -> None:
             active_color=Color.BLUE,
             resolution=PLOT_RESOLUTION,
             highlighted_colors=tube.highlighted_colors,
+            highlight_size=tube.highlight_size,
             channel_fluor_map=tube.data.channel_fluor_map,
         )
 
