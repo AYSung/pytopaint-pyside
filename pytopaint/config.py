@@ -46,12 +46,24 @@ def set_zoom_resolution(pixels: int) -> None:
     QSettings().setValue('Plot/zoom_resolution', pixels)
 
 
-def get_scaling_factor() -> float:
-    return float(QSettings().value('Plot/scaling_factor', 150))
+def get_default_scaling_factor(bit_mode: int) -> float:
+    match bit_mode:
+        case 18:
+            return float(QSettings().value('Plot/scaling_factor/18_bit', 150))
+        case 22:
+            return float(QSettings().value('Plot/scaling_factor/22_bit', 1_200))
+        case _:
+            raise ValueError('Only 18 and 22 bit modes are supported')
 
 
-def set_scaling_factor(scaling_factor: float) -> None:
-    QSettings().setValue('Plot/scaling_factor', scaling_factor)
+def set_default_scaling_factor(scaling_factor: float, bit_mode: int) -> None:
+    match bit_mode:
+        case 18:
+            QSettings().setValue('Plot/scaling_factor/18_bit', scaling_factor)
+        case 22:
+            QSettings().setValue('Plot/scaling_factor/22_bit', scaling_factor)
+        case _:
+            raise ValueError('Only 18 and 22 bit modes are supported')
 
 
 def get_upper_asinh_bound() -> float:

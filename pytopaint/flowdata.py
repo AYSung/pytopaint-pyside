@@ -19,9 +19,9 @@ import pandas as pd
 from pytopaint.channels import clean_marker_name, sort_channels
 from pytopaint.colors import Color
 from pytopaint.config import (
+    get_default_scaling_factor,
     get_lower_asinh_bound,
     get_resolution,
-    get_scaling_factor,
     get_upper_asinh_bound,
     get_zoom_resolution,
 )
@@ -35,7 +35,9 @@ class FlowData:
         self.adata = adata
 
         self.set_scale(
-            scaling_factor=adata.uns.get('scaling_factor', get_scaling_factor()),
+            scaling_factor=adata.uns.get(
+                'scaling_factor', get_default_scaling_factor(self.bit_mode)
+            ),
             lower_asinh_bound=adata.uns.get(
                 'lower_asinh_bound', get_lower_asinh_bound()
             ),
@@ -58,9 +60,9 @@ class FlowData:
         adata.uns['tube'] = fcs.text.get('tube name')
         adata.uns['case_id'] = extract_case_number(Path(fcs.name).stem)
 
-        adata.uns['bit_mode'] = extract_bit_mode(fcs)
-        adata.uns['scaling_factor'] = 150 if adata.uns['bit_mode'] == 18 else 1_200
-        # TODO: save as QSetting
+        bit_mode = extract_bit_mode(fcs)
+        adata.uns['bit_mode'] = bit_mode
+        adata.uns['scaling_factor'] = get_default_scaling_factor(bit_mode)
 
         adata.var_names = cleaned_channel_names[empty_channel_mask]
         adata.var['channel_type'] = np.select(
@@ -85,6 +87,10 @@ class FlowData:
             return f'{self.adata.uns.get("case_id")} {self.adata.uns["tube"]}'
         else:
             return self.adata.uns.get('case_id')
+
+    @property
+    def bit_mode(self) -> int:
+        return self.adata.uns.get('bit_mode', 18)
 
     @property
     def filename(self) -> str:
@@ -133,7 +139,9 @@ class FlowData:
 
     @property
     def scaling_factor(self) -> int:
-        return self.adata.uns.get('scaling_factor', get_scaling_factor())
+        return self.adata.uns.get(
+            'scaling_factor', get_default_scaling_factor(self.bit_mode)
+        )
 
     @property
     def lower_asinh_bound(self) -> float:
@@ -148,7 +156,7 @@ class FlowData:
         return self.adata.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
 
     @property
-    def memory_states(self) -> dict[int, pd.DataFrame]:
+    def memory_states(self) -> dict[int, pd.DataFrame | None]:
         def _get_memory_state(index: int) -> pd.DataFrame | None:
             memory_state = self.adata.obsm.get(f'mem_{index}')
             return (
@@ -258,10 +266,10 @@ class FlowData:
         self._load_analysis(data, [f'PC {i + 1}' for i in range(data.shape[1])])
 
 
-def extract_bit_mode(fcs: flowio.FlowData) -> str:
+def extract_bit_mode(fcs: flowio.FlowData) -> int:
     scatter_index = fcs.scatter_indices[0] + 1
     pnr = fcs.channels[scatter_index].get('pnr', 2**18)
-    return math.log2(pnr)
+    return int(math.log2(pnr))
 
 
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
@@ -339,9 +347,12 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
 def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
     arr = clip_xform_data(adata)
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
-    return np.array([
-        discretize_array(**bounds[i], bins=bins, arr=row) for i, row in enumerate(arr.T)
-    ]).T.astype(np.uint16)
+    return np.array(
+        [
+            discretize_array(**bounds[i], bins=bins, arr=row)
+            for i, row in enumerate(arr.T)
+        ]
+    ).T.astype(np.uint16)
 
 
 def discretize_array(
@@ -436,10 +447,12 @@ def get_analysis_dims(
         }
         for column, row in zip(columns, data.T)
     }
-    bin_arr = np.array([
-        discretize_array(**bounds[column], bins=bins, arr=row)
-        for column, row in zip(columns, data.T)
-    ]).T.astype(np.uint16)
+    bin_arr = np.array(
+        [
+            discretize_array(**bounds[column], bins=bins, arr=row)
+            for column, row in zip(columns, data.T)
+        ]
+    ).T.astype(np.uint16)
 
     axis_ticks = {column: _umap_axis_ticks(column) for column in columns}
     return bin_arr, axis_ticks
