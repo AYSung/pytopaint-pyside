@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from pytopaint.actions import MenuAction
 from pytopaint.colors import (
-    COLOR_ORDER,
+    COLOR_INFO,
     Color,
     events_by_color,
     get_color_map,
@@ -50,7 +50,7 @@ class Palette(QWidget):
         self.total_events_label.setStyleSheet('QLabel { margin: 0px 0px 0px 10px }')
         layout.addWidget(self.total_events_label)
 
-        self.color_labels = {c: ColorLabel(c) for c in COLOR_ORDER}
+        self.color_labels = {c: ColorLabel(c) for c in COLOR_INFO}
         for color_label in self.color_labels.values():
             layout.addWidget(color_label)
             color_label.menuActionTriggered.connect(self.menuActionTriggered)
@@ -200,7 +200,7 @@ class ColorLabel(QWidget):
 
     def context_menu(self, pos):
         def _merge_action(color: Color) -> QAction:
-            action = QAction(_color_icon(color), color.label_name)
+            action = QAction(_color_icon(color), COLOR_INFO[color].label)
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.MERGE_COLOR,
@@ -210,7 +210,7 @@ class ColorLabel(QWidget):
             return action
 
         def _swap_action(color: Color) -> QAction:
-            action = QAction(_color_icon(color), color.label_name)
+            action = QAction(_color_icon(color), COLOR_INFO[color].label)
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.SWAP_COLOR,
@@ -284,7 +284,7 @@ class ColorLabel(QWidget):
 
             merge_actions = [
                 _merge_action(color)
-                for color in COLOR_ORDER
+                for color in COLOR_INFO
                 if color not in [self.color, Color.GREY]
             ]
 
@@ -296,7 +296,7 @@ class ColorLabel(QWidget):
             swap_menu.setEnabled(self.has_events)
 
             swap_actions = [
-                _swap_action(color) for color in COLOR_ORDER if color != self.color
+                _swap_action(color) for color in COLOR_INFO if color != self.color
             ]
 
             for swap_action in swap_actions:

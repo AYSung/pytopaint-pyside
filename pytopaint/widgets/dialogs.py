@@ -161,8 +161,8 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         _shortcut_table(
             [
                 ('Recall Snapshot', '<1 - 5>'),
-                ('Add Colors to Snapshot and Clear', 'Shift + <1 - 5>'),
-                ('Save Colors as Snapshot and Clear', 'Ctrl + Shift <1 - 5>')
+                ('Add Current Colors to Snapshot and Clear', 'Shift + <1 - 5>'),
+                ('Save Current Colors to Snapshot and Clear', 'Ctrl + Shift + <1 - 5>'),
             ]
         )
     )

@@ -27,7 +27,7 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
 from pytopaint.colors import (
-    COLOR_ORDER,
+    COLOR_INFO,
     Color,
     add_color_to_series,
     merge_colors,
@@ -405,7 +405,7 @@ class Painter(QWidget):
         if self.highlighted_colors:
             self.highlighted_colors.clear()
         else:
-            self.highlighted_colors = [c for c in COLOR_ORDER if c != Color.GREY]
+            self.highlighted_colors = [c for c in COLOR_INFO if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
 
     def increase_highlight_size(self):

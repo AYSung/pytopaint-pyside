@@ -38,8 +38,7 @@ from pytopaint.actions import MenuAction
 from pytopaint.channels import sort_channels
 from pytopaint.colors import (
     BACKGROUND,
-    IGNORE_COLORS,
-    ZAPPABLE_COLORS,
+    COLOR_INFO,
     Color,
     get_color_map,
     indices_by_color,
@@ -179,7 +178,7 @@ class Biplot(QWidget):
                 mask = self.state['visible'] & (self.state['color'] != color)
             else:
                 mask = self.state['visible'] & (
-                    ~self.state['color'].isin(IGNORE_COLORS[color])
+                    ~self.state['color'].isin(COLOR_INFO[color].related_colors)
                 )
 
             selection = get_selection_index(
@@ -240,7 +239,11 @@ class Biplot(QWidget):
                 action = MenuAction.ZAP
                 selection = selection.intersection(
                     self.state['color']
-                    .loc[self.state['color'].isin(ZAPPABLE_COLORS[self.active_color])]
+                    .loc[
+                        self.state['color'].isin(
+                            COLOR_INFO[self.active_color].related_colors
+                        )
+                    ]
                     .index
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:

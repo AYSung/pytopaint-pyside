@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from enum import IntEnum
+from typing import NamedTuple
 
 import pandas as pd
 
@@ -24,25 +25,62 @@ class Color(IntEnum):
     YELLOW = 6
     WHITE = 7
 
-    @property
-    def label_name(self) -> str:
-        return self.name.title()
+
+class ColorInfo(NamedTuple):
+    label: str
+    order: int
+    related_colors: set[Color]
+
+    def is_zapped_by(self, color: Color) -> bool:
+        return color in self.related_colors
 
 
-COLOR_ORDER = {
-    Color.GREY: 0,
-    Color.BLUE: 1,
-    Color.GREEN: 2,
-    Color.RED: 3,
-    Color.YELLOW: 4,
-    Color.CYAN: 5,
-    Color.MAGENTA: 6,
-    Color.WHITE: 7,
+COLOR_INFO = {
+    Color.GREY: ColorInfo(
+        label='Grey',
+        order=0,
+        related_colors={Color.GREY},
+    ),
+    Color.BLUE: ColorInfo(
+        label='Blue',
+        order=1,
+        related_colors={Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE},
+    ),
+    Color.GREEN: ColorInfo(
+        label='Green',
+        order=2,
+        related_colors={Color.GREEN, Color.CYAN, Color.YELLOW, Color.WHITE},
+    ),
+    Color.RED: ColorInfo(
+        label='Red',
+        order=3,
+        related_colors={Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE},
+    ),
+    Color.YELLOW: ColorInfo(
+        label='Yellow',
+        order=4,
+        related_colors={Color.YELLOW, Color.WHITE},
+    ),
+    Color.CYAN: ColorInfo(
+        label='Cyan',
+        order=5,
+        related_colors={Color.CYAN, Color.WHITE},
+    ),
+    Color.MAGENTA: ColorInfo(
+        label='Magenta',
+        order=6,
+        related_colors={Color.MAGENTA, Color.WHITE},
+    ),
+    Color.WHITE: ColorInfo(
+        label='White',
+        order=7,
+        related_colors={Color.WHITE},
+    ),
 }
 
 
 def sort_colors(colors: list[Color]) -> list[Color]:
-    return sorted(colors, key=lambda c: COLOR_ORDER[c])
+    return sorted(colors, key=lambda c: COLOR_INFO[c].order)
 
 
 COLOR_RGB_MAPS = {
@@ -73,182 +111,14 @@ def get_color_map() -> dict[Color, str]:
     return COLOR_RGB_MAPS[get_color_palette()]
 
 
-ZAPPABLE_COLORS = {
-    Color.GREY: [],
-    Color.RED: [Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE],
-    Color.BLUE: [Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE],
-    Color.GREEN: [Color.GREEN, Color.CYAN, Color.YELLOW, Color.WHITE],
-    Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
-    Color.CYAN: [Color.CYAN, Color.WHITE],
-    Color.YELLOW: [Color.YELLOW, Color.WHITE],
-    Color.WHITE: [Color.WHITE],
-}
-
-IGNORE_COLORS = {
-    Color.GREY: [Color.GREY],
-    Color.RED: [Color.RED, Color.YELLOW, Color.MAGENTA, Color.WHITE],
-    Color.BLUE: [Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE],
-    Color.GREEN: [Color.GREEN, Color.YELLOW, Color.CYAN, Color.WHITE],
-    Color.MAGENTA: [Color.MAGENTA, Color.WHITE],
-    Color.CYAN: [Color.CYAN, Color.WHITE],
-    Color.YELLOW: [Color.YELLOW, Color.WHITE],
-    Color.WHITE: [Color.WHITE],
-}
-
-
-ADDITION_COLOR_MAPS = {
-    Color.RED: {
-        Color.GREY: Color.RED,
-        Color.BLUE: Color.MAGENTA,
-        Color.GREEN: Color.YELLOW,
-        Color.RED: Color.RED,
-        Color.YELLOW: Color.YELLOW,
-        Color.MAGENTA: Color.MAGENTA,
-        Color.CYAN: Color.WHITE,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.GREEN: {
-        Color.GREY: Color.GREEN,
-        Color.BLUE: Color.CYAN,
-        Color.GREEN: Color.GREEN,
-        Color.RED: Color.YELLOW,
-        Color.YELLOW: Color.YELLOW,
-        Color.MAGENTA: Color.WHITE,
-        Color.CYAN: Color.CYAN,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.BLUE: {
-        Color.GREY: Color.BLUE,
-        Color.GREEN: Color.CYAN,
-        Color.BLUE: Color.BLUE,
-        Color.RED: Color.MAGENTA,
-        Color.YELLOW: Color.WHITE,
-        Color.MAGENTA: Color.MAGENTA,
-        Color.CYAN: Color.CYAN,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.CYAN: {
-        Color.GREY: Color.CYAN,
-        Color.GREEN: Color.CYAN,
-        Color.BLUE: Color.CYAN,
-        Color.RED: Color.WHITE,
-        Color.YELLOW: Color.WHITE,
-        Color.MAGENTA: Color.WHITE,
-        Color.CYAN: Color.CYAN,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.MAGENTA: {
-        Color.GREY: Color.MAGENTA,
-        Color.GREEN: Color.WHITE,
-        Color.BLUE: Color.MAGENTA,
-        Color.RED: Color.MAGENTA,
-        Color.YELLOW: Color.WHITE,
-        Color.MAGENTA: Color.MAGENTA,
-        Color.CYAN: Color.WHITE,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.YELLOW: {
-        Color.GREY: Color.YELLOW,
-        Color.GREEN: Color.YELLOW,
-        Color.BLUE: Color.WHITE,
-        Color.RED: Color.YELLOW,
-        Color.YELLOW: Color.YELLOW,
-        Color.MAGENTA: Color.WHITE,
-        Color.CYAN: Color.WHITE,
-        Color.WHITE: Color.WHITE,
-    },
-    Color.WHITE: {
-        Color.GREY: Color.WHITE,
-        Color.GREEN: Color.WHITE,
-        Color.BLUE: Color.WHITE,
-        Color.RED: Color.WHITE,
-        Color.YELLOW: Color.WHITE,
-        Color.MAGENTA: Color.WHITE,
-        Color.CYAN: Color.WHITE,
-        Color.WHITE: Color.WHITE,
-    },
-}
-
-SUBTRACTION_COLOR_MAPS = {
-    Color.RED: {
-        Color.GREY: Color.GREY,
-        Color.BLUE: Color.BLUE,
-        Color.GREEN: Color.GREEN,
-        Color.RED: Color.GREY,
-        Color.YELLOW: Color.GREEN,
-        Color.MAGENTA: Color.BLUE,
-        Color.CYAN: Color.CYAN,
-        Color.WHITE: Color.CYAN,
-    },
-    Color.BLUE: {
-        Color.GREY: Color.GREY,
-        Color.RED: Color.RED,
-        Color.BLUE: Color.GREY,
-        Color.MAGENTA: Color.RED,
-        Color.GREEN: Color.GREEN,
-        Color.YELLOW: Color.YELLOW,
-        Color.CYAN: Color.GREEN,
-        Color.WHITE: Color.YELLOW,
-    },
-    Color.GREEN: {
-        Color.GREY: Color.GREY,
-        Color.GREEN: Color.GREY,
-        Color.BLUE: Color.BLUE,
-        Color.RED: Color.RED,
-        Color.YELLOW: Color.RED,
-        Color.MAGENTA: Color.MAGENTA,
-        Color.CYAN: Color.BLUE,
-        Color.WHITE: Color.MAGENTA,
-    },
-    Color.CYAN: {
-        Color.GREY: Color.GREY,
-        Color.GREEN: Color.GREY,
-        Color.BLUE: Color.GREY,
-        Color.RED: Color.RED,
-        Color.YELLOW: Color.RED,
-        Color.MAGENTA: Color.RED,
-        Color.CYAN: Color.GREY,
-        Color.WHITE: Color.RED,
-    },
-    Color.MAGENTA: {
-        Color.GREY: Color.GREY,
-        Color.GREEN: Color.GREEN,
-        Color.BLUE: Color.GREY,
-        Color.RED: Color.GREY,
-        Color.YELLOW: Color.GREEN,
-        Color.MAGENTA: Color.GREY,
-        Color.CYAN: Color.GREEN,
-        Color.WHITE: Color.GREEN,
-    },
-    Color.YELLOW: {
-        Color.GREY: Color.GREY,
-        Color.GREEN: Color.GREY,
-        Color.BLUE: Color.BLUE,
-        Color.RED: Color.GREY,
-        Color.YELLOW: Color.GREY,
-        Color.MAGENTA: Color.BLUE,
-        Color.CYAN: Color.BLUE,
-        Color.WHITE: Color.BLUE,
-    },
-    Color.WHITE: {
-        Color.GREY: Color.GREY,
-        Color.GREEN: Color.GREY,
-        Color.BLUE: Color.GREY,
-        Color.RED: Color.GREY,
-        Color.YELLOW: Color.GREY,
-        Color.MAGENTA: Color.GREY,
-        Color.CYAN: Color.GREY,
-        Color.WHITE: Color.GREY,
-    },
-}
-
-
 def add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
-    return s.map(ADDITION_COLOR_MAPS[color])
+    s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] += color
+    return s
 
 
 def subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
-    return s.map(SUBTRACTION_COLOR_MAPS[color])
+    s.loc[lambda s: s.isin(COLOR_INFO[color].related_colors)] -= color
+    return s
 
 
 def merge_colors(
@@ -290,4 +160,4 @@ def ratios_by_color(
 
 
 def is_zappable(color: Color, events: dict[Color, int]) -> bool:
-    return any(c in ZAPPABLE_COLORS[color] for c in events)
+    return any(c in COLOR_INFO[color].related_colors for c in events)
