@@ -370,22 +370,6 @@ class ColorLabel(QWidget):
             send_to_snapshot_menu.addActions(send_to_snapshot_actions)
             menu.addMenu(send_to_snapshot_menu)
 
-                )
-            )
-            menu.addAction(remember_and_clear)
-
-            recall = QAction('Recall', self, enabled=self.memory is not None)
-            recall.triggered.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.RECALL_COLOR, {'color_state': self.memory}
-                )
-            )
-            menu.addAction(recall)
-
-            clear_memory = QAction('Forget', self, enabled=self.memory is not None)
-            clear_memory.triggered.connect(self.clear_memory)
-            menu.addAction(clear_memory)
-
             menu.addSection('Ratios')
 
             ratio_labels = [
