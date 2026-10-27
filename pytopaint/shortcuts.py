@@ -149,6 +149,17 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
             )
         )
 
+    def _append_color_to_state(slot: int) -> None:
+        append_color_to_state_shortcut = QShortcut(
+            QKeySequence(f'Ctrl + {slot + 1}'), widget
+        )
+        append_color_to_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.APPEND_STATE_AND_CLEAR,
+                {'slot': slot, 'color': widget.active_color},
+            )
+        )
+
     def _append_state_shortcut(slot: int) -> None:
         append_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
         append_state_shortcut.activated.connect(
@@ -160,4 +171,5 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
     for slot in range(5):
         _recall_state_shortcut(slot)
         _append_state_shortcut(slot)
+        _append_color_to_state(slot)
         _store_state_shortcut(slot)
