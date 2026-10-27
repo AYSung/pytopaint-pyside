@@ -112,7 +112,10 @@ def get_color_map() -> dict[Color, str]:
 
 
 def add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
-    s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] += color
+    if color == Color.WHITE:
+        s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] = color
+    else:
+        s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] += color
     return s
 
 
