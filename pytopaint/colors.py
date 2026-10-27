@@ -112,11 +112,8 @@ def get_color_map() -> dict[Color, str]:
 
 
 def add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
-    if color == Color.WHITE:
-        s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] = color
-    else:
-        s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] += color
-    return s
+    s.loc[lambda s: ~s.isin(COLOR_INFO[color].related_colors)] += color
+    return s.clip(upper=Color.WHITE)
 
 
 def subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
