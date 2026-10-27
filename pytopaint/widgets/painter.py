@@ -293,6 +293,15 @@ class Painter(QWidget):
         self.store_color(color=color)
         self.exact_zap_color(color=color)
 
+    def clear_color_from_state(self, slot: int, color: Color):
+        raise NotImplementedError
+
+    def recall_color_from_state(self, slot: int, color: Color):
+        raise NotImplementedError
+
+    def pop_color_from_state(self, slot: int, color: Color):
+        raise NotImplementedError
+
     @record_action
     def recall_color(self, color_state: pd.Series):
         self.state['color'].update(color_state)
