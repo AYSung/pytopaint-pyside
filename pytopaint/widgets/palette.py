@@ -229,6 +229,16 @@ class ColorLabel(QWidget):
             )
             return action
 
+        def _send_to_snapshot_action(slot: int) -> QAction:
+            action = QAction(f'{slot + 1}')
+            action.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.APPEND_STATE_AND_CLEAR,
+                    {'slot': slot, 'color': self.color},
+                )
+            )
+            return action
+
         menu = QMenu()
         # set active color
         if self.color != Color.GREY:
@@ -288,8 +298,7 @@ class ColorLabel(QWidget):
                 if color not in [self.color, Color.GREY]
             ]
 
-            for merge_action in merge_actions:
-                merge_menu.addAction(merge_action)
+            merge_menu.addActions(merge_actions)
             menu.addMenu(merge_menu)
 
             swap_menu = QMenu('Swap with...')
@@ -298,9 +307,7 @@ class ColorLabel(QWidget):
             swap_actions = [
                 _swap_action(color) for color in COLOR_INFO if color != self.color
             ]
-
-            for swap_action in swap_actions:
-                swap_menu.addAction(swap_action)
+            swap_menu.addActions(swap_actions)
             menu.addMenu(swap_menu)
 
         else:
@@ -352,6 +359,17 @@ class ColorLabel(QWidget):
             remember_and_clear.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.STORE_COLOR_AND_CLEAR, {'color': self.color}
+                )
+            )
+            menu.addAction(remember_and_clear)
+
+            send_to_snapshot_menu = QMenu(
+                'Send to Snapshot...', enabled=self.has_events
+            )
+            send_to_snapshot_actions = [_send_to_snapshot_action(i) for i in range(5)]
+            send_to_snapshot_menu.addActions(send_to_snapshot_actions)
+            menu.addMenu(send_to_snapshot_menu)
+
                 )
             )
             menu.addAction(remember_and_clear)
@@ -470,7 +488,7 @@ class MemorySlot(QToolButton):
         menu = QMenu()
 
         recall_snapshot = QAction('Recall', enabled=self.has_events)
-        recall_snapshot.triggered.connect(self.replace_state)
+        recall_snapshot.triggered.connect(self.recall_state)
         menu.addAction(recall_snapshot)
 
         merge_snapshot = QAction('Recall Non-Grey', enabled=self.has_events)
@@ -513,7 +531,7 @@ class MemorySlot(QToolButton):
         modifiers = e.modifiers()
         if e.button() == Qt.MouseButton.LeftButton:
             if modifiers == Qt.KeyboardModifier.NoModifier:
-                self.replace_state()
+                self.recall_state()
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.merge_state()
         elif (e.button() == Qt.MouseButton.MiddleButton) and (
@@ -528,8 +546,8 @@ class MemorySlot(QToolButton):
         )
 
     @Slot()
-    def replace_state(self):
-        self.menuActionTriggered.emit(MenuAction.REPLACE_STATE, {'slot': self.id})
+    def recall_state(self):
+        self.menuActionTriggered.emit(MenuAction.RECALL_STATE, {'slot': self.id})
 
     @Slot()
     def merge_state(self):

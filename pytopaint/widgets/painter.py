@@ -87,16 +87,18 @@ class Painter(QWidget):
             MenuAction.TOGGLE_ALL_HIGHLIGHTS: self.toggle_all_highlights,
             MenuAction.INCREASE_HIGHLIGHT_SIZE: self.increase_highlight_size,
             MenuAction.DECREASE_HIGHLIGHT_SIZE: self.decrease_highlight_size,
-            MenuAction.REPLACE_STATE: self.replace_state,
+            MenuAction.RECALL_STATE: self.recall_state,
             MenuAction.MERGE_STATE: self.merge_state,
             MenuAction.MERGE_ALL_STATES: self.merge_all_states,
-            MenuAction.STORE_STATE: self.store_state,
-            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
+            MenuAction.STORE_STATE: self.overwrite_state,
+            MenuAction.STORE_STATE_AND_CLEAR: self.overwrite_state_and_clear,
             MenuAction.FORGET_STATE: self.forget_state,
             MenuAction.FORGET_ALL_STATES: self.forget_all_states,
-            MenuAction.STORE_COLOR: self.store_color,
-            MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
-            MenuAction.RECALL_COLOR: self.recall_color,
+            MenuAction.APPEND_STATE: self.append_state,
+            MenuAction.APPEND_STATE_AND_CLEAR: self.append_state_and_clear,
+            MenuAction.CLEAR_COLOR_FROM_STATE: self.clear_color_from_state,
+            MenuAction.RECALL_COLOR_FROM_STATE: self.recall_color_from_state,
+            MenuAction.POP_COLOR_FROM_STATE: self.pop_color_from_state,
             MenuAction.IMMUNOPHENOTYPE: self.open_immunophenotyper_dialog,
         }
 
@@ -226,7 +228,7 @@ class Painter(QWidget):
         self.state.loc[self.state['color'] != color, 'color'] = Color.GREY
 
     @record_action
-    def replace_state(self, slot: int):
+    def recall_state(self, slot: int):
         self.state.update(self.memory_states[slot])
 
     def _merge_state(self, slot: int):
@@ -247,13 +249,32 @@ class Painter(QWidget):
             if self.memory_states[slot] is not None:
                 self._merge_state(slot)
 
-    def store_state(self, slot: int):
+    def overwrite_state(self, slot: int):
         self.memory_states[slot] = self.state.copy()
         self.memorySlotUpdated.emit(slot, True)
 
-    def store_state_and_clear(self, slot: int):
-        self.store_state(slot=slot)
+    def overwrite_state_and_clear(self, slot: int):
+        self.overwrite_state(slot=slot)
         self.zap_all()
+
+    def append_state(self, slot: int, color: Color = None):
+        if color is None:
+            state = self.state.loc[lambda x: x['visible'] & (x['color'] != Color.GREY)]
+        else:
+            state = self.state.loc[lambda x: x['visible'] & (x['color'] == color)]
+
+        if self.memory_states[slot] is None:
+            self.memory_states[slot] = self.state.assign(color=Color.GREY)
+
+        self.memory_states[slot].update(state)
+        self.memorySlotUpdated.emit(slot, True)
+
+    def append_state_and_clear(self, slot: int, color: Color = None):
+        self.append_state(slot, color)
+        if color is None:
+            self.zap_all()
+        else:
+            self.exact_zap_color(color)
 
     def forget_state(self, slot: int):
         self.memory_states[slot] = None

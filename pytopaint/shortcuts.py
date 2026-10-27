@@ -131,22 +131,33 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         lambda: widget.menuActionTriggered.emit(MenuAction.MERGE_ALL_STATES, {})
     )
 
-    def _replace_state_shortcut(slot: int) -> None:
-        replace_state_shortcut = QShortcut(QKeySequence(f'{slot + 1}'), widget)
-        replace_state_shortcut.activated.connect(
+    def _recall_state_shortcut(slot: int) -> None:
+        recall_state_shortcut = QShortcut(QKeySequence(f'{slot + 1}'), widget)
+        recall_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.REPLACE_STATE, {'slot': slot}
+                MenuAction.RECALL_STATE, {'slot': slot}
             )
         )
 
     def _store_state_shortcut(slot: int) -> None:
-        store_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
+        store_state_shortcut = QShortcut(
+            QKeySequence(f'Ctrl + Shift + {slot + 1}'), widget
+        )
         store_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
                 MenuAction.STORE_STATE_AND_CLEAR, {'slot': slot}
             )
         )
 
+    def _append_state_shortcut(slot: int) -> None:
+        append_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
+        append_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.APPEND_STATE_AND_CLEAR, {'slot': slot}
+            )
+        )
+
     for slot in range(5):
-        _replace_state_shortcut(slot)
+        _recall_state_shortcut(slot)
+        _append_state_shortcut(slot)
         _store_state_shortcut(slot)
