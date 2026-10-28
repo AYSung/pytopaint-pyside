@@ -94,7 +94,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Exact Zap from Selection', 'Right-Click'),
                 ('Zap from Selection', 'Shift + Right-Click'),
                 ('Paint Grey', 'Ctrl + Right-Click'),
-                ('Paint Non-Active Colors Grey', 'Ctrl + Shift + Right-Click'),
+                ('Paint Non-Active Color Grey', 'Ctrl + Shift + Right-Click'),
             ]
         )
     )
