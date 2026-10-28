@@ -93,10 +93,6 @@ class Palette(QWidget):
         p = QPainter(self)
         self.style().drawPrimitive(QStyle.PrimitiveElement.PE_Widget, o, p, self)
 
-    @Slot(int, object)
-    def update_color_memory(self, color: Color, color_state: pd.Series):
-        self.color_labels[color].remember_state(color_state)
-
     @Slot(int, bool)
     def update_memory_slot(self, slot: int, has_events: bool):
         self.memory_slots[slot].update_appearance(has_events)

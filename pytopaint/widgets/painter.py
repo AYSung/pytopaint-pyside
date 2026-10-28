@@ -50,7 +50,6 @@ from pytopaint.widgets.palette import Palette
 class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
-    colorStateReturned = Signal(int, object)
     dataChanged = Signal(object)
     highlightsUpdated = Signal(list)
     highlightSizeChanged = Signal(int)
@@ -116,7 +115,6 @@ class Painter(QWidget):
 
         palette = Palette(state=self.state, memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.menuActionTriggered)
-        self.colorStateReturned.connect(palette.update_color_memory)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.stateChanged.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
