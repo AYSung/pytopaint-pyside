@@ -144,6 +144,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Zap All', 'E'),
                 ('Toggle Color Highlight', 'Shift + <Color>'),
                 ('Exact Zap Color', 'Ctrl + <Color>'),
+                ('Zap All But', 'Ctrl + Shift + <Color>'),
                 ('Toggle All Highlights', 'Shift + E'),
                 ('Increase/Decrease Highlight Size', 'Up/Down Arrow'),
                 ('Exact Zap Current Color', 'Ctrl + E'),

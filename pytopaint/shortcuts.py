@@ -48,6 +48,14 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
             )
         )
 
+    def _zap_all_but_shortcut(key: str, color: Color) -> None:
+        shortcut = QShortcut(QKeySequence(f'Ctrl+Shift+{key}'), widget)
+        shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.ZAP_ALL_BUT, {'color': color}
+            )
+        )
+
     COLOR_SHORTCUTS = [
         ('F', Color.RED),
         ('D', Color.GREEN),
@@ -61,17 +69,11 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         _color_shortcut(key, color)
         _toggle_highlight_shortcut(key, color)
         _exact_zap_shortcut(key, color)
+        _zap_all_but_shortcut(key, color)
 
     zap_all = QShortcut(QKeySequence('E'), widget)
     zap_all.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
-    )
-
-    exact_zap_current_color = QShortcut(QKeySequence('Ctrl+E'), widget)
-    exact_zap_current_color.activated.connect(
-        lambda: widget.menuActionTriggered.emit(
-            MenuAction.EXACT_ZAP, {'color': widget.active_color}
-        )
     )
 
     toggle_all_highlights = QShortcut(QKeySequence('Shift+E'), widget)
