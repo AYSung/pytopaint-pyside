@@ -103,6 +103,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             [
                 ('Exact Zap Current Color', 'Middle-Click'),
                 ('Zap Current Color', 'Shift + Middle-Click'),
+                ('Zap All But Current Color', 'Ctrl + Shift + Middle-Click'),
                 ('Zap All', 'Ctrl + Middle-Click'),
             ]
         )
