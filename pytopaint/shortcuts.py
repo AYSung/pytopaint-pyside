@@ -145,7 +145,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         )
         store_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.STORE_STATE_AND_CLEAR, {'slot': slot}
+                MenuAction.STORE_STATE, {'slot': slot, 'clear': True}
             )
         )
 
@@ -155,8 +155,8 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         )
         append_color_to_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.APPEND_STATE_AND_CLEAR,
-                {'slot': slot, 'color': widget.active_color},
+                MenuAction.APPEND_STATE,
+                {'slot': slot, 'color': widget.active_color, 'clear': True},
             )
         )
 
@@ -164,7 +164,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         append_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
         append_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.APPEND_STATE_AND_CLEAR, {'slot': slot}
+                MenuAction.APPEND_STATE, {'slot': slot, 'clear': True}
             )
         )
 

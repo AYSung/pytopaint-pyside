@@ -112,7 +112,6 @@ class ColorLabel(QWidget):
         self.event_count = 0
         self.zappable = False
         self.others_zappable = False
-        self.memory = None
 
         self.setContextMenuPolicy(Qt.ContextMenuPolicy.NoContextMenu)
         self.customContextMenuRequested.connect(self.context_menu)
@@ -177,8 +176,6 @@ class ColorLabel(QWidget):
             and (modifiers == Qt.KeyboardModifier.NoModifier)
         ):
             self.menuActionTriggered.emit(MenuAction.EXACT_ZAP, {'color': self.color})
-        # elif modifiers == Qt.KeyboardModifier.ShiftModifier:
-        #     self.menuActionTriggered.emit(MenuAction.ZAP, dict(color=self.color))
 
     @Slot(list)
     def update_highlight(self, highlighted_colors: list[Color]):
@@ -233,11 +230,19 @@ class ColorLabel(QWidget):
             action = QAction(f'{slot + 1}')
             action.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
-                    MenuAction.APPEND_STATE_AND_CLEAR,
-                    {'slot': slot, 'color': self.color},
+                    MenuAction.APPEND_STATE,
+                    {'slot': slot, 'color': self.color, 'clear': True},
                 )
             )
             return action
+
+        def _recall_from_snapshot(slot: int) -> QAction:
+            action = QAction(f'{slot + 1}')
+            action.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.RECALL_STATE, {'slot': slot, 'color': self.color}
+                )
+            )
 
         menu = QMenu()
         # set active color
@@ -344,24 +349,6 @@ class ColorLabel(QWidget):
 
         if self.color != Color.GREY:
             menu.addSeparator()
-            remember = QAction('Remember', self, enabled=self.has_events)
-            remember.triggered.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.STORE_COLOR, {'color': self.color}
-                )
-            )
-            menu.addAction(remember)
-
-            remember_and_clear = QAction(
-                'Remember && Clear', self, enabled=self.has_events
-            )
-            # shortcut?
-            remember_and_clear.triggered.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.STORE_COLOR_AND_CLEAR, {'color': self.color}
-                )
-            )
-            menu.addAction(remember_and_clear)
 
             send_to_snapshot_menu = QMenu(
                 'Send to Snapshot...', enabled=self.has_events
@@ -390,12 +377,6 @@ class ColorLabel(QWidget):
             menu.addAction(immunophenotyper_action)
 
         menu.exec(self.mapToGlobal(pos))
-
-    def remember_state(self, color_state: pd.Series):
-        self.memory = color_state
-
-    def clear_memory(self):
-        self.memory = None
 
 
 def copy_ratio_to_clipboard(ratio: float):
@@ -544,7 +525,7 @@ class MemorySlot(QToolButton):
     @Slot()
     def store_state_and_clear(self):
         self.menuActionTriggered.emit(
-            MenuAction.STORE_STATE_AND_CLEAR, {'slot': self.id}
+            MenuAction.STORE_STATE, {'slot': self.id, 'clear': True}
         )
 
     @Slot()
