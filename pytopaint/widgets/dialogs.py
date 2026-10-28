@@ -102,8 +102,7 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
         _shortcut_table(
             [
                 ('Exact Zap Current Color', 'Middle-Click'),
-                ('Zap Current Color', 'Shift + Middle-Click'),
-                ('Zap All But Current Color', 'Ctrl + Shift + Middle-Click'),
+                ('Zap All But Current Color', 'Shift + Middle-Click'),
                 ('Zap All', 'Ctrl + Middle-Click'),
             ]
         )
@@ -147,7 +146,6 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Zap All But', 'Ctrl + Shift + <Color>'),
                 ('Toggle All Highlights', 'Shift + E'),
                 ('Increase/Decrease Highlight Size', 'Up/Down Arrow'),
-                ('Exact Zap Current Color', 'Ctrl + E'),
                 ('Hide Current Color', 'Backspace'),
                 ('Isolate Current Color', 'Enter'),
                 ('Hide Grey Events', 'Shift + Enter'),

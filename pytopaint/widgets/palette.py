@@ -166,12 +166,17 @@ class ColorLabel(QWidget):
                 self.menuActionTriggered.emit(
                     MenuAction.HIGHLIGHT, {'color': self.color}
                 )
-        elif (
-            self.has_events
-            and (e.button() == Qt.MouseButton.MiddleButton)
-            and (modifiers == Qt.KeyboardModifier.NoModifier)
-        ):
-            self.menuActionTriggered.emit(MenuAction.EXACT_ZAP, {'color': self.color})
+        elif e.button() == Qt.MouseButton.MiddleButton:
+            if not self.has_events:
+                return
+            if modifiers == Qt.KeyboardModifier.NoModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.EXACT_ZAP, {'color': self.color}
+                )
+            elif modifiers == Qt.KeyboardModifier.ShiftModifier:
+                self.menuActionTriggered.emit(
+                    MenuAction.ZAP_ALL_BUT, {'color': self.color}
+                )
 
     @Slot(list)
     def update_highlight(self, highlighted_colors: list[Color]):
@@ -264,14 +269,6 @@ class ColorLabel(QWidget):
 
             menu.addSeparator()
 
-            zap = QAction('Zap', enabled=self.zappable)
-            zap.triggered.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.ZAP, {'color': self.color}
-                )
-            )
-            menu.addAction(zap)
-
             exact_zap = QAction('Exact Zap', enabled=self.has_events)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
@@ -279,6 +276,14 @@ class ColorLabel(QWidget):
                 )
             )
             menu.addAction(exact_zap)
+
+            zap = QAction('Zap', enabled=self.zappable)
+            zap.triggered.connect(
+                lambda: self.menuActionTriggered.emit(
+                    MenuAction.ZAP, {'color': self.color}
+                )
+            )
+            menu.addAction(zap)
 
             zap_all_but = QAction(
                 'Zap Others', enabled=self.others_zappable and self.zappable

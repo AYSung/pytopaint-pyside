@@ -118,7 +118,7 @@ def add_color_to_series(s: pd.Series, color: Color) -> pd.Series:
 
 def subtract_color_from_series(s: pd.Series, color: Color) -> pd.Series:
     s.loc[lambda s: s.isin(COLOR_INFO[color].related_colors)] -= color
-    return s
+    return s.clip(lower=Color.GREY)
 
 
 def merge_colors(

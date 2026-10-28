@@ -201,12 +201,20 @@ class Painter(QWidget):
 
     @record_action
     def zap_color(self, color: Color, selection: pd.Index = None):
+        zappable_colors = self.state.loc[
+            lambda x: x['color'].isin(COLOR_INFO[color].related_colors)
+        ]
+
         if selection is None:
-            self.state['color'] = subtract_color_from_series(self.state['color'], color)
-        else:
-            self.state.loc[selection, 'color'] = subtract_color_from_series(
-                self.state.loc[selection, 'color'], color
+            selection = (
+                zappable_colors.index
+                if selection is None
+                else selection.intersection(zappable_colors.index)
             )
+
+        self.state.loc[selection, 'color'] = subtract_color_from_series(
+            self.state.loc[selection, 'color'], color
+        )
 
     @record_action
     def exact_zap_color(self, color: Color, selection: pd.Index = None):

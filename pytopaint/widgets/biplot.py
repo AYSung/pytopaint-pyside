@@ -162,18 +162,10 @@ class Biplot(QWidget):
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 self.menuActionTriggered.emit(
-                    MenuAction.ZAP, {'color': self.active_color}
+                    MenuAction.ZAP_ALL_BUT, {'color': self.active_color}
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 self.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
-            elif (
-                modifiers
-                == Qt.KeyboardModifier.ControlModifier
-                | Qt.KeyboardModifier.ShiftModifier
-            ):
-                self.menuActionTriggered.emit(
-                    MenuAction.ZAP_ALL_BUT, {'color': self.active_color}
-                )
             return
 
         color = self.active_color
