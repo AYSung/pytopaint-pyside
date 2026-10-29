@@ -37,6 +37,5 @@ class MenuAction(IntEnum):
     FORGET_ALL_STATES = auto()
     APPEND_STATE = auto()
     CLEAR_COLOR_FROM_STATE = auto()
-    RECALL_COLOR_FROM_STATE = auto()
     POP_COLOR_FROM_STATE = auto()
     IMMUNOPHENOTYPE = auto()

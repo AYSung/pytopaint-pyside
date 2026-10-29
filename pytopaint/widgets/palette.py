@@ -244,6 +244,8 @@ class ColorLabel(QWidget):
                     MenuAction.RECALL_STATE, {'slot': slot, 'color': self.color}
                 )
             )
+            # TODO: set enabled if color in memory slot
+            return action
 
         menu = QMenu()
         # set active color
@@ -357,6 +359,11 @@ class ColorLabel(QWidget):
             send_to_snapshot_actions = [_send_to_snapshot_action(i) for i in range(5)]
             send_to_snapshot_menu.addActions(send_to_snapshot_actions)
             menu.addMenu(send_to_snapshot_menu)
+
+            recall_from_snapshot_menu = QMenu('Recall from Snapshot...')
+            recall_from_snapshot_actions = [_recall_from_snapshot(i) for i in range(5)]
+            recall_from_snapshot_menu.addActions(recall_from_snapshot_actions)
+            menu.addMenu(recall_from_snapshot_menu)
 
             menu.addSection('Ratios')
 

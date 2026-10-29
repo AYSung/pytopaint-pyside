@@ -94,7 +94,6 @@ class Painter(QWidget):
             MenuAction.FORGET_ALL_STATES: self.forget_all_states,
             MenuAction.APPEND_STATE: self.append_state,
             MenuAction.CLEAR_COLOR_FROM_STATE: self.clear_color_from_state,
-            MenuAction.RECALL_COLOR_FROM_STATE: self.recall_color_from_state,
             MenuAction.POP_COLOR_FROM_STATE: self.pop_color_from_state,
             MenuAction.IMMUNOPHENOTYPE: self.open_immunophenotyper_dialog,
         }
@@ -233,10 +232,13 @@ class Painter(QWidget):
 
     @record_action
     def recall_state(self, slot: int, color: Color = None):
+        if memory_state := self.memory_states[slot] is None:
+            return
+
         if color is None:
-            self.state.update(self.memory_states[slot])
+            self.state.update(memory_state)
         else:
-            self.state.update(self.memory_states.loc[lambda x: x['color'] == color])
+            self.state.update(memory_state.loc[lambda x: x['color'] == color])
 
     def _merge_state(self, slot: int):
         if self.memory_states[slot] is not None:
@@ -289,9 +291,6 @@ class Painter(QWidget):
             self.forget_state(slot)
 
     def clear_color_from_state(self, slot: int, color: Color):
-        raise NotImplementedError
-
-    def recall_color_from_state(self, slot: int, color: Color):
         raise NotImplementedError
 
     def pop_color_from_state(self, slot: int, color: Color):
