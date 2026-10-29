@@ -232,7 +232,7 @@ class Painter(QWidget):
 
     @record_action
     def recall_state(self, slot: int, color: Color = None):
-        if memory_state := self.memory_states[slot] is None:
+        if (memory_state := self.memory_states[slot]) is None:
             return
 
         if color is None:
