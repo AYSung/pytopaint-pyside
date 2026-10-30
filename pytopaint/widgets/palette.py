@@ -271,7 +271,7 @@ class ColorLabel(QWidget):
 
             menu.addSeparator()
 
-            exact_zap = QAction('Exact Zap', enabled=self.has_events)
+            exact_zap = QAction('Clear', enabled=self.has_events)
             exact_zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.EXACT_ZAP, {'color': self.color}
@@ -279,7 +279,7 @@ class ColorLabel(QWidget):
             )
             menu.addAction(exact_zap)
 
-            zap = QAction('Zap', enabled=self.zappable)
+            zap = QAction('Subtract From All', enabled=self.zappable)
             zap.triggered.connect(
                 lambda: self.menuActionTriggered.emit(
                     MenuAction.ZAP, {'color': self.color}
@@ -288,7 +288,7 @@ class ColorLabel(QWidget):
             menu.addAction(zap)
 
             zap_all_but = QAction(
-                'Zap Others', enabled=self.others_zappable and self.zappable
+                'Clear Others', enabled=self.others_zappable and self.zappable
             )
             zap_all_but.triggered.connect(
                 lambda: self.menuActionTriggered.emit(

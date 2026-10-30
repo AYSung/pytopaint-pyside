@@ -81,29 +81,29 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     column_1.addWidget(
         _shortcut_table(
             [
-                ('Paint Events', 'Left-Click'),
-                ('Paint Non-Grey Events', 'Shift + Left-Click'),
-                ('Paint Grey Events', 'Ctrl + Left-Click'),
-                ('Override Painted Color', 'Ctrl + Shift + Left-Click'),
+                ('Paint Events', 'Left-Click Lasso'),
+                ('Paint Non-Grey Events', '+ Shift'),
+                ('Paint Grey Events', '+ Ctrl'),
+                ('Change Painted Color', '+ Ctrl + Shift'),
             ]
         )
     )
     column_1.addWidget(
         _shortcut_table(
             [
-                ('Exact Zap from Selection', 'Right-Click'),
-                ('Zap from Selection', 'Shift + Right-Click'),
-                ('Paint Grey', 'Ctrl + Right-Click'),
-                ('Paint Non-Active Color Grey', 'Ctrl + Shift + Right-Click'),
+                ('Clear Color from Selection', 'Right-Click Lasso'),
+                ('Subtract Color from Selection', '+ Shift'),
+                ('Paint Grey', '+ Ctrl'),
+                ('Clear Other Colors from Selection', '+ Ctrl + Shift'),
             ]
         )
     )
     column_1.addWidget(
         _shortcut_table(
             [
-                ('Exact Zap Current Color', 'Middle-Click'),
-                ('Zap All But Current Color', 'Shift + Middle-Click'),
-                ('Zap All', 'Ctrl + Middle-Click'),
+                ('Clear Current Color', 'Middle-Click'),
+                ('Clear Other Colors', '+ Shift'),
+                ('Clear All', '+ Ctrl'),
             ]
         )
     )
@@ -140,10 +140,10 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
                 ('Paint Cyan', 'C'),
                 ('Paint Yellow', 'X'),
                 ('Paint White', 'A'),
-                ('Zap All', 'E'),
+                ('Clear All', 'E'),
                 ('Toggle Color Highlight', 'Shift + <Color>'),
-                ('Exact Zap Color', 'Ctrl + <Color>'),
-                ('Zap All But', 'Ctrl + Shift + <Color>'),
+                ('Clear Color', 'Ctrl + <Color>'),
+                ('Clear Other Colors', 'Ctrl + Shift + <Color>'),
                 ('Toggle All Highlights', 'Shift + E'),
                 ('Increase/Decrease Highlight Size', 'Up/Down Arrow'),
                 ('Hide Current Color', 'Backspace'),
