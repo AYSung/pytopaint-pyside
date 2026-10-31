@@ -291,10 +291,14 @@ class Painter(QWidget):
             self.forget_state(slot)
 
     def clear_color_from_state(self, slot: int, color: Color):
-        raise NotImplementedError
+        if (memory_state := self.memory_states[slot]) is None:
+            return
+
+        memory_state.loc[lambda x: x['color'] == color, 'color'] = Color.GREY
 
     def pop_color_from_state(self, slot: int, color: Color):
-        raise NotImplementedError
+        self.recall_state(slot, color)
+        self.clear_color_from_state(slot, color)
 
     @record_action
     def recall_color(self, color_state: pd.Series):
