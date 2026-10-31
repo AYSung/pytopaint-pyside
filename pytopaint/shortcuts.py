@@ -147,7 +147,7 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         )
         store_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.STORE_STATE, {'slot': slot, 'clear': True}
+                MenuAction.STORE_STATE, {'slot': slot}
             )
         )
 
