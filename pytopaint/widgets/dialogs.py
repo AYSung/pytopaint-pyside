@@ -93,8 +93,8 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
             [
                 ('Clear Color from Selection', 'Right-Click Lasso'),
                 ('Subtract Color from Selection', '+ Shift'),
-                ('Paint Grey', '+ Ctrl'),
                 ('Clear Other Colors from Selection', '+ Ctrl + Shift'),
+                ('Paint Grey', '+ Ctrl'),
             ]
         )
     )
