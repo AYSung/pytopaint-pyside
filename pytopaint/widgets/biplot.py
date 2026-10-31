@@ -195,13 +195,13 @@ class Biplot(QWidget):
                 # ignore grey events
                 action = MenuAction.ADD_COLOR
                 selection = selection.intersection(
-                    self.state['color'].loc[self.state['color'] != Color.GREY].index
+                    self.state.loc[self.state['color'] != Color.GREY].index
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # ignore painted
                 action = MenuAction.ADD_COLOR
                 selection = selection.intersection(
-                    self.state['color'].loc[self.state['color'] == Color.GREY].index
+                    self.state.loc[self.state['color'] == Color.GREY].index
                 )
             elif (
                 modifiers
@@ -210,7 +210,7 @@ class Biplot(QWidget):
             ):
                 # override colors
                 selection = selection.intersection(
-                    self.state['color'].loc[self.state['color'] != Color.GREY].index
+                    self.state.loc[self.state['color'] != Color.GREY].index
                 )
                 action = MenuAction.OVERRIDE_COLOR
             else:
@@ -230,21 +230,17 @@ class Biplot(QWidget):
                 # exact zap color
                 action = MenuAction.EXACT_ZAP
                 selection = selection.intersection(
-                    self.state['color']
-                    .loc[self.state['color'] == self.active_color]
-                    .index
+                    self.state.loc[self.state['color'] == self.active_color].index
                 )
             elif modifiers == Qt.KeyboardModifier.ShiftModifier:
                 # zap color
                 action = MenuAction.ZAP
                 selection = selection.intersection(
-                    self.state['color']
-                    .loc[
+                    self.state.loc[
                         self.state['color'].isin(
                             COLOR_INFO[self.active_color].related_colors
                         )
-                    ]
-                    .index
+                    ].index
                 )
             elif modifiers == Qt.KeyboardModifier.ControlModifier:
                 # paint grey
@@ -258,9 +254,7 @@ class Biplot(QWidget):
                 # paint not-active colors grey
                 action = MenuAction.OVERRIDE_COLOR
                 selection = selection.intersection(
-                    self.state['color']
-                    .loc[self.state['color'] != self.active_color]
-                    .index
+                    self.state.loc[self.state['color'] != self.active_color].index
                 )
                 color = Color.GREY
             else:
