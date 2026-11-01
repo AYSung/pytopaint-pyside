@@ -57,7 +57,7 @@ class Painter(QWidget):
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
     menuActionTriggered = Signal(int, dict)
-    memorySlotUpdated = Signal(int, bool)
+    memorySlotUpdated = Signal(int, object)
 
     def __init__(self, data: FlowData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -260,7 +260,7 @@ class Painter(QWidget):
 
     def overwrite_state(self, slot: int, clear: bool = False):
         self.memory_states[slot] = self.state.copy()
-        self.memorySlotUpdated.emit(slot, True)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
         if clear:
             self.zap_all()
 
@@ -274,7 +274,7 @@ class Painter(QWidget):
             self.memory_states[slot] = self.state.assign(color=Color.GREY)
 
         self.memory_states[slot].update(state)
-        self.memorySlotUpdated.emit(slot, True)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
 
         if clear:
             if color is None:
@@ -284,7 +284,7 @@ class Painter(QWidget):
 
     def forget_state(self, slot: int):
         self.memory_states[slot] = None
-        self.memorySlotUpdated.emit(slot, False)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
 
     def forget_all_states(self):
         for slot in self.memory_states:
@@ -295,6 +295,7 @@ class Painter(QWidget):
             return
 
         memory_state.loc[lambda x: x['color'] == color, 'color'] = Color.GREY
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
 
     def pop_color_from_state(self, slot: int, color: Color):
         self.recall_state(slot, color)
