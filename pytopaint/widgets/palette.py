@@ -245,17 +245,6 @@ class ColorLabel(QWidget):
             # TODO: set enabled if color in memory slot
             return action
 
-        def _clear_from_snapshot(slot: int) -> QAction:
-            action = QAction(f'{slot + 1}')
-            action.triggered.connect(
-                lambda: self.menuActionTriggered.emit(
-                    MenuAction.CLEAR_COLOR_FROM_STATE,
-                    {'slot': slot, 'color': self.color},
-                )
-            )
-            # TODO: set enabled if color in memory slot
-            return action
-
         def _pop_from_snapshot(slot: int) -> QAction:
             action = QAction(f'{slot + 1}')
             action.triggered.connect(
@@ -389,11 +378,6 @@ class ColorLabel(QWidget):
             pop_from_snapshot_menu.addActions(pop_from_snapshot_actions)
             menu.addMenu(pop_from_snapshot_menu)
 
-            clear_from_snapshot_menu = QMenu('Clear from Snapshot...')
-            clear_from_snapshot_actions = [_clear_from_snapshot(i) for i in range(5)]
-            clear_from_snapshot_menu.addActions(clear_from_snapshot_actions)
-            menu.addMenu(clear_from_snapshot_menu)
-
             menu.addSection('Ratios')
 
             ratio_labels = [
@@ -513,7 +497,9 @@ class MemorySlot(QToolButton):
         merge_snapshot.triggered.connect(self.merge_state)
         menu.addAction(merge_snapshot)
 
-        recall_color_menu = QMenu('Recall Color...', enabled=self.has_events)
+        recall_color_menu = QMenu(
+            'Recall Color...', enabled=len(self.color_percents) > 0
+        )
         recall_color_actions = [
             _color_action(color, percent, MenuAction.RECALL_STATE)
             for color, percent in self.color_percents.items()
@@ -521,7 +507,7 @@ class MemorySlot(QToolButton):
         recall_color_menu.addActions(recall_color_actions)
         menu.addMenu(recall_color_menu)
 
-        pop_color_menu = QMenu('Pop Color...', enabled=self.has_events)
+        pop_color_menu = QMenu('Pop Color...', enabled=len(self.color_percents) > 0)
         pop_color_actions = [
             _color_action(color, percent, MenuAction.POP_COLOR_FROM_STATE)
             for color, percent in self.color_percents.items()
@@ -545,7 +531,9 @@ class MemorySlot(QToolButton):
         forget_snapshot.triggered.connect(self.clear_state)
         menu.addAction(forget_snapshot)
 
-        forget_color_menu = QMenu('Forget Color...', enabled=self.has_events)
+        forget_color_menu = QMenu(
+            'Forget Color...', enabled=len(self.color_percents) > 0
+        )
         forget_color_actions = [
             _color_action(color, percent, MenuAction.CLEAR_COLOR_FROM_STATE)
             for color, percent in self.color_percents.items()
