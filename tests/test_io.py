@@ -28,7 +28,8 @@ def test_is_not_blank_or_viability():
 
 def test_get_child_files():
     assert get_child_files(Path('tests/resources/')) == [
-        Path('tests/resources/normal_01_B.fcs')
+        Path('tests/resources/cytek_22_bit.fcs'),
+        Path('tests/resources/normal_01_B.fcs'),
     ]
     assert get_child_files(Path('tests/resources/layouts')) == []
 
@@ -60,3 +61,21 @@ def test_scrub_metadata():
             'test': 'test',
         }
     ) == {'beginanalysis': 'test', 'spill': 'test', 'mode': 'test'}
+    assert _scrub_metadata(
+        {
+            'beginanalysis': 'test',
+            'spill': 'test',
+            'mode': 'test',
+            'test': 'test',
+            'p1r': 'test',
+            'p1n': 'test',
+            'P13R': 'test',
+            'p13s': 'test',
+        }
+    ) == {
+        'beginanalysis': 'test',
+        'spill': 'test',
+        'mode': 'test',
+        'p1r': 'test',
+        'P13R': 'test',
+    }

@@ -19,15 +19,13 @@ import pandas as pd
 from pytopaint.channels import clean_marker_name, sort_channels
 from pytopaint.colors import Color
 from pytopaint.config import (
+    get_default_scaling_factor,
     get_lower_asinh_bound,
     get_resolution,
-    get_scaling_factor,
     get_upper_asinh_bound,
     get_zoom_resolution,
 )
 from pytopaint.layout import dict_to_yaml, get_best_layout, to_grid
-
-UPPER_PHYSICAL_BOUND = 255_000
 
 
 class FlowData:
@@ -37,7 +35,9 @@ class FlowData:
         self.adata = adata
 
         self.set_scale(
-            scaling_factor=adata.uns.get('scaling_factor', get_scaling_factor()),
+            scaling_factor=adata.uns.get(
+                'scaling_factor', get_default_scaling_factor(self.bit_mode)
+            ),
             lower_asinh_bound=adata.uns.get(
                 'lower_asinh_bound', get_lower_asinh_bound()
             ),
@@ -58,11 +58,11 @@ class FlowData:
 
         adata.uns['filename'] = fcs.name
         adata.uns['tube'] = fcs.text.get('tube name')
-        adata.uns['id'] = (
-            f'{extract_case_number(Path(fcs.name).stem)} {adata.uns["tube"]}'
-            if adata.uns['tube']
-            else f'{extract_case_number(Path(fcs.name).stem)}'
-        )
+        adata.uns['case_id'] = extract_case_number(Path(fcs.name).stem)
+
+        bit_mode = extract_bit_mode(fcs)
+        adata.uns['bit_mode'] = bit_mode
+        adata.uns['scaling_factor'] = get_default_scaling_factor(bit_mode)
 
         adata.var_names = cleaned_channel_names[empty_channel_mask]
         adata.var['channel_type'] = np.select(
@@ -83,7 +83,18 @@ class FlowData:
 
     @property
     def id(self) -> str:
-        return self.adata.uns.get('id')
+        if self.adata.uns['tube']:
+            return f'{self.case_id} {self.adata.uns["tube"]}'
+        else:
+            return self.case_id
+
+    @property
+    def case_id(self) -> str:
+        return self.adata.uns.get('case_id', Path(self.filename).stem)
+
+    @property
+    def bit_mode(self) -> int:
+        return self.adata.uns.get('bit_mode', 18)
 
     @property
     def filename(self) -> str:
@@ -132,7 +143,9 @@ class FlowData:
 
     @property
     def scaling_factor(self) -> int:
-        return self.adata.uns.get('scaling_factor', get_scaling_factor())
+        return self.adata.uns.get(
+            'scaling_factor', get_default_scaling_factor(self.bit_mode)
+        )
 
     @property
     def lower_asinh_bound(self) -> float:
@@ -147,7 +160,7 @@ class FlowData:
         return self.adata.obs.reset_index(drop=True).astype({'color': 'uint8'}).copy()
 
     @property
-    def memory_states(self) -> dict[int, pd.DataFrame]:
+    def memory_states(self) -> dict[int, pd.DataFrame | None]:
         def _get_memory_state(index: int) -> pd.DataFrame | None:
             memory_state = self.adata.obsm.get(f'mem_{index}')
             return (
@@ -257,6 +270,12 @@ class FlowData:
         self._load_analysis(data, [f'PC {i + 1}' for i in range(data.shape[1])])
 
 
+def extract_bit_mode(fcs: flowio.FlowData) -> int:
+    scatter_index = fcs.scatter_indices[0] + 1
+    pnr = fcs.channels[scatter_index].get('pnr', 2**18)
+    return int(math.log2(pnr))
+
+
 def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
     return np.where(
         np.isin(
@@ -283,7 +302,7 @@ def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:
         channel_indices=np.arange(0, adata.n_vars)[
             adata.var['channel_type'] == 'fluoro'
         ],
-        t=scaling_factor / math.sinh(1),
+        t=scaling_factor * math.sinh(1),
         m=1 / math.log(10),
         a=0,
     ).astype(np.float32)
@@ -291,12 +310,16 @@ def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:
 
 def lower_clip_limits(adata: ad.AnnData, lower_bound: float) -> np.ndarray:
     return np.where(
-        adata.var['channel_type'] == 'fluoro',
-        np.minimum(
-            lower_bound,
-            np.quantile(adata.layers['xform'], q=0.05, axis=0) - 0.5,
+        adata.var['channel_type'] != 'other',
+        np.where(
+            adata.var['channel_type'] == 'fluoro',
+            np.minimum(
+                lower_bound,
+                np.quantile(adata.layers['xform'], q=0.05, axis=0) - 0.5,
+            ),
+            0,
         ),
-        0,
+        np.min(adata.X, axis=0),
     )
 
 
@@ -310,7 +333,8 @@ def upper_clip_limits(adata: ad.AnnData, upper_bound: float) -> np.ndarray:
                 np.quantile(adata.layers['xform'], q=0.95, axis=0) + 0.5,
             ),
             np.maximum(
-                UPPER_PHYSICAL_BOUND, np.quantile(adata.layers['xform'], q=0.95, axis=0)
+                2 ** adata.uns.get('bit_mode', 18),
+                np.quantile(adata.layers['xform'], q=0.95, axis=0),
             ),
         ),
         np.max(adata.X, axis=0),
@@ -369,8 +393,12 @@ def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, st
     bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='index')
     scaling_factor = adata.uns['scaling_factor']
 
-    SCATTER_TICK_VALUES = np.arange(0, UPPER_PHYSICAL_BOUND, 50_000)
-    SCATTER_TICK_LABELS = ['0', None, '1e5', None, '2e5', None, '3e5']
+    if adata.uns.get('bit_mode') == 22:
+        SCATTER_TICK_VALUES = np.arange(0, 2**22, 500_000)
+        SCATTER_TICK_LABELS = ['0', None, '1e6', None, '2e6', None, '3e6', None, '4e6']
+    else:
+        SCATTER_TICK_VALUES = np.arange(0, 2**18, 50_000)
+        SCATTER_TICK_LABELS = ['0', None, '1e5', None, '2e5', None, '3e5']
 
     scatter_axis_ticks = {
         channel: _scatter_axis_ticks(channel)

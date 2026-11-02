@@ -5,8 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import cProfile
-import pstats
 import sys
 from itertools import chain
 from multiprocessing import freeze_support
@@ -41,7 +39,7 @@ from pytopaint.config import (
     get_window_position,
     reset_painter_layout_directory,
     set_color_palette,
-    set_highlight_size,
+    set_default_highlight_size,
     set_painter_layout_directory,
     set_resolution,
     set_window_position,
@@ -54,8 +52,8 @@ from pytopaint.widgets.dialogs import (
     about_dialog,
     add_column_dialog,
     add_row_dialog,
+    default_highlight_size_dialog,
     file_info_dialog,
-    highlight_size_dialog,
     resize_plot_dialog,
     shortcut_dialog,
     subsample_dialog,
@@ -68,7 +66,6 @@ from pytopaint.widgets.paintertabs import PainterTabs
 
 class MainWindow(QMainWindow):
     colorPaletteChanged = Signal()
-    highlightSizeChanged = Signal()
     resizeTriggered = Signal()
     rescaleTriggered = Signal(object)
     zoomUpdated = Signal()
@@ -84,7 +81,6 @@ class MainWindow(QMainWindow):
         self.rescaleTriggered.connect(self.painter_tabs.handle_rescale)
         self.zoomUpdated.connect(self.painter_tabs.zoomUpdated)
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
-        self.highlightSizeChanged.connect(self.painter_tabs.highlightSizeChanged)
 
         self.io_manager = IOManager(self)
         self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
@@ -151,11 +147,10 @@ class MainWindow(QMainWindow):
             self.resizeTriggered.emit()
 
     @Slot()
-    def change_highlight_size(self) -> None:
-        size, ok = highlight_size_dialog(self)
+    def change_default_highlight_size(self) -> None:
+        size, ok = default_highlight_size_dialog(self)
         if ok:
-            set_highlight_size(size)
-            self.highlightSizeChanged.emit()
+            set_default_highlight_size(size)
 
     @Slot()
     def change_zoom(self) -> None:
@@ -166,11 +161,8 @@ class MainWindow(QMainWindow):
 
     @Slot()
     def rescale_plots(self) -> None:
-        data = self.get_active_painter().data
         dialog = PlotScaleDialog(
-            scaling_factor=data.scaling_factor,
-            lower_asinh_bound=data.lower_asinh_bound,
-            upper_asinh_bound=data.upper_asinh_bound,
+            data=self.get_active_painter().data,
             parent=self,
         )
 
@@ -330,9 +322,11 @@ class MainWindow(QMainWindow):
 
         plot_menu.addMenu(color_palette_menu)
 
-        change_highlight_size = QAction('Adjust Highlight Size', self)
-        change_highlight_size.triggered.connect(self.change_highlight_size)
-        plot_menu.addAction(change_highlight_size)
+        change_default_highlight_size = QAction('Adjust Default Highlight Size', self)
+        change_default_highlight_size.triggered.connect(
+            self.change_default_highlight_size
+        )
+        plot_menu.addAction(change_default_highlight_size)
 
         plot_menu.addSeparator()
         resize_action = QAction('Adjust Plot Size', self)
@@ -452,7 +446,8 @@ class MainWindow(QMainWindow):
         self.move(position.x(), position.y())
 
 
-def main():
+def main(args: list[str]):
+    DEV_ARG = '--dev'
     freeze_support()
 
     QCoreApplication.setOrganizationName('AYSung')
@@ -463,19 +458,24 @@ def main():
     window = MainWindow()
     window.show()
 
-    profiler = cProfile.Profile()
-    profiler.enable()
+    if DEV_ARG in args:
+        import cProfile
+        import pstats
+
+        profiler = cProfile.Profile()
+        profiler.enable()
 
     exit_code = app.exec()
     app.clipboard().clear()
 
-    profiler.disable()
-    stats = pstats.Stats(profiler).sort_stats('cumulative')
-    stats.print_stats(30)
-    profiler.dump_stats('app.prof')
+    if DEV_ARG in args:
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumulative')
+        stats.print_stats(30)
+        profiler.dump_stats('app.prof')
 
     sys.exit(exit_code)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

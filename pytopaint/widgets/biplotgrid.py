@@ -23,7 +23,7 @@ class BiplotGrid(QGridLayout):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
     highlightsUpdated = Signal(list)
-    highlightSizeChanged = Signal()
+    highlightSizeChanged = Signal(int)
     updatePlot = Signal()
     resizeTriggered = Signal(int)
     menuActionTriggered = Signal(int, dict)
@@ -34,6 +34,7 @@ class BiplotGrid(QGridLayout):
         state: pd.Series,
         active_color: Color,
         highlighted_colors: list[Color],
+        highlight_size: int,
     ) -> None:
         super().__init__()
         self.setSpacing(5)
@@ -43,6 +44,7 @@ class BiplotGrid(QGridLayout):
         self.state = state
         self.active_color = active_color
         self.highlighted_colors = highlighted_colors
+        self.highlight_size = highlight_size
 
         self.zoom_plot = None
         self.zoom_dialog = None
@@ -51,6 +53,11 @@ class BiplotGrid(QGridLayout):
 
         self.activeColorChanged.connect(self.update_active_color)
         self.highlightsUpdated.connect(self.update_highlighted_colors)
+
+    @Slot(int)
+    def update_highlight_size(self, highlight_size: int) -> None:
+        self.highlight_size = highlight_size
+        self.highlightSizeChanged.emit(self.highlight_size)
 
     @Slot(int)
     def update_active_color(self, color: Color) -> None:
@@ -98,6 +105,7 @@ class BiplotGrid(QGridLayout):
             y_channel=y_channel,
             resolution=get_resolution(),
             highlighted_colors=self.highlighted_colors,
+            highlight_size=self.highlight_size,
             channel_fluor_map=self.data.channel_fluor_map,
         )
         self.connect_biplot_signals(biplot)
@@ -112,7 +120,7 @@ class BiplotGrid(QGridLayout):
         self.activeColorChanged.connect(biplot.activeColorChanged)
         biplot.removeTriggered.connect(self.remove_biplot)
         self.colorPaletteChanged.connect(biplot.plot.update_plot)
-        self.highlightSizeChanged.connect(biplot.plot.update_plot)
+        self.highlightSizeChanged.connect(biplot.plot.update_highlight_size)
         self.resizeTriggered.connect(biplot.handle_resize)
 
     def add_biplot(
@@ -247,6 +255,7 @@ class BiplotGrid(QGridLayout):
             y_channel=y_channel,
             resolution=get_zoom_resolution(),
             highlighted_colors=self.highlighted_colors,
+            highlight_size=self.highlight_size,
             channel_fluor_map=self.data.channel_fluor_map,
         )
         self.connect_biplot_signals(biplot)

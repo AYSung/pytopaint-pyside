@@ -27,14 +27,18 @@ from PySide6.QtWidgets import (
 from pytopaint.actions import MenuAction
 from pytopaint.analysis import AnalysisProgressDialog, pca_worker, umap_worker
 from pytopaint.colors import (
-    COLOR_ORDER,
+    COLOR_INFO,
     Color,
     add_color_to_series,
     merge_colors,
     subtract_color_from_series,
     swap_colors,
 )
-from pytopaint.config import get_resolution, get_zoom_resolution
+from pytopaint.config import (
+    get_default_highlight_size,
+    get_resolution,
+    get_zoom_resolution,
+)
 from pytopaint.flowdata import FlowData
 from pytopaint.shortcuts import configure_paint_shortcuts
 from pytopaint.widgets.biplot import Biplot, DotPlot
@@ -46,15 +50,14 @@ from pytopaint.widgets.palette import Palette
 class Painter(QWidget):
     activeColorChanged = Signal(int)
     colorPaletteChanged = Signal()
-    colorStateReturned = Signal(int, object)
     dataChanged = Signal(object)
     highlightsUpdated = Signal(list)
-    highlightSizeChanged = Signal()
+    highlightSizeChanged = Signal(int)
     stateChanged = Signal(object)
     resizeTriggered = Signal(int)
     zoomTriggered = Signal(str, str)
     menuActionTriggered = Signal(int, dict)
-    memorySlotUpdated = Signal(int, bool)
+    memorySlotUpdated = Signal(int, object)
 
     def __init__(self, data: FlowData, fcs: flowio.FlowData = None):
         super().__init__()
@@ -81,16 +84,17 @@ class Painter(QWidget):
             MenuAction.SUBSAMPLE: self.subsample_df,
             MenuAction.HIGHLIGHT: self.toggle_highlights,
             MenuAction.TOGGLE_ALL_HIGHLIGHTS: self.toggle_all_highlights,
-            MenuAction.REPLACE_STATE: self.replace_state,
+            MenuAction.INCREASE_HIGHLIGHT_SIZE: self.increase_highlight_size,
+            MenuAction.DECREASE_HIGHLIGHT_SIZE: self.decrease_highlight_size,
+            MenuAction.RECALL_STATE: self.recall_state,
             MenuAction.MERGE_STATE: self.merge_state,
             MenuAction.MERGE_ALL_STATES: self.merge_all_states,
-            MenuAction.STORE_STATE: self.store_state,
-            MenuAction.STORE_STATE_AND_CLEAR: self.store_state_and_clear,
+            MenuAction.STORE_STATE: self.overwrite_state,
             MenuAction.FORGET_STATE: self.forget_state,
             MenuAction.FORGET_ALL_STATES: self.forget_all_states,
-            MenuAction.STORE_COLOR: self.store_color,
-            MenuAction.STORE_COLOR_AND_CLEAR: self.store_color_and_clear,
-            MenuAction.RECALL_COLOR: self.recall_color,
+            MenuAction.APPEND_STATE: self.append_state,
+            MenuAction.CLEAR_COLOR_FROM_STATE: self.clear_color_from_state,
+            MenuAction.POP_COLOR_FROM_STATE: self.pop_color_from_state,
             MenuAction.IMMUNOPHENOTYPE: self.open_immunophenotyper_dialog,
         }
 
@@ -103,13 +107,13 @@ class Painter(QWidget):
         self.redo_history = deque()
         self.active_color = Color.BLUE
         self.highlighted_colors = self.data.highlighted_colors
+        self.highlight_size = get_default_highlight_size()
         self.menuActionTriggered.connect(self.handle_menu_action)
 
         self.memory_states = self.data.memory_states
 
         palette = Palette(state=self.state, memory_states=self.memory_states)
         palette.menuActionTriggered.connect(self.menuActionTriggered)
-        self.colorStateReturned.connect(palette.update_color_memory)
         self.activeColorChanged.connect(palette.activeColorChanged)
         self.stateChanged.connect(palette.update_labels)
         self.highlightsUpdated.connect(palette.highlightsUpdated)
@@ -121,6 +125,7 @@ class Painter(QWidget):
             state=self.state,
             active_color=self.active_color,
             highlighted_colors=self.highlighted_colors,
+            highlight_size=self.highlight_size,
         )
         self.biplot_grid.menuActionTriggered.connect(self.menuActionTriggered)
         self.highlightsUpdated.connect(self.biplot_grid.highlightsUpdated)
@@ -129,7 +134,7 @@ class Painter(QWidget):
         self.resizeTriggered.connect(self.biplot_grid.resizeTriggered)
         self.activeColorChanged.connect(self.biplot_grid.activeColorChanged)
         self.colorPaletteChanged.connect(self.biplot_grid.colorPaletteChanged)
-        self.highlightSizeChanged.connect(self.biplot_grid.highlightSizeChanged)
+        self.highlightSizeChanged.connect(self.biplot_grid.update_highlight_size)
         self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
         biplot_grid_container = QWidget()
@@ -195,12 +200,20 @@ class Painter(QWidget):
 
     @record_action
     def zap_color(self, color: Color, selection: pd.Index = None):
+        zappable_colors = self.state.loc[
+            lambda x: x['color'].isin(COLOR_INFO[color].related_colors)
+        ]
+
         if selection is None:
-            self.state['color'] = subtract_color_from_series(self.state['color'], color)
-        else:
-            self.state.loc[selection, 'color'] = subtract_color_from_series(
-                self.state.loc[selection, 'color'], color
+            selection = (
+                zappable_colors.index
+                if selection is None
+                else selection.intersection(zappable_colors.index)
             )
+
+        self.state.loc[selection, 'color'] = subtract_color_from_series(
+            self.state.loc[selection, 'color'], color
+        )
 
     @record_action
     def exact_zap_color(self, color: Color, selection: pd.Index = None):
@@ -218,8 +231,14 @@ class Painter(QWidget):
         self.state.loc[self.state['color'] != color, 'color'] = Color.GREY
 
     @record_action
-    def replace_state(self, slot: int):
-        self.state.update(self.memory_states[slot])
+    def recall_state(self, slot: int, color: Color = None):
+        if (memory_state := self.memory_states[slot]) is None:
+            return
+
+        if color is None:
+            self.state.update(memory_state)
+        else:
+            self.state.update(memory_state.loc[lambda x: x['color'] == color])
 
     def _merge_state(self, slot: int):
         if self.memory_states[slot] is not None:
@@ -239,30 +258,48 @@ class Painter(QWidget):
             if self.memory_states[slot] is not None:
                 self._merge_state(slot)
 
-    def store_state(self, slot: int):
+    def overwrite_state(self, slot: int, clear: bool = False):
         self.memory_states[slot] = self.state.copy()
-        self.memorySlotUpdated.emit(slot, True)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
+        if clear:
+            self.zap_all()
 
-    def store_state_and_clear(self, slot: int):
-        self.store_state(slot=slot)
-        self.zap_all()
+    def append_state(self, slot: int, color: Color = None, clear: bool = False):
+        if color is None:
+            state = self.state.loc[lambda x: x['visible'] & (x['color'] != Color.GREY)]
+        else:
+            state = self.state.loc[lambda x: x['visible'] & (x['color'] == color)]
+
+        if self.memory_states[slot] is None:
+            self.memory_states[slot] = self.state.assign(color=Color.GREY)
+
+        self.memory_states[slot].update(state)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
+
+        if clear:
+            if color is None:
+                self.zap_all()
+            else:
+                self.exact_zap_color(color)
 
     def forget_state(self, slot: int):
         self.memory_states[slot] = None
-        self.memorySlotUpdated.emit(slot, False)
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
 
     def forget_all_states(self):
         for slot in self.memory_states:
             self.forget_state(slot)
 
-    def store_color(self, color: Color):
-        self.colorStateReturned.emit(
-            color, self.state.loc[lambda x: x['color'] == color, 'color'].copy()
-        )
+    def clear_color_from_state(self, slot: int, color: Color):
+        if (memory_state := self.memory_states[slot]) is None:
+            return
 
-    def store_color_and_clear(self, color: Color):
-        self.store_color(color=color)
-        self.exact_zap_color(color=color)
+        memory_state.loc[lambda x: x['color'] == color, 'color'] = Color.GREY
+        self.memorySlotUpdated.emit(slot, self.memory_states[slot])
+
+    def pop_color_from_state(self, slot: int, color: Color):
+        self.recall_state(slot, color)
+        self.clear_color_from_state(slot, color)
 
     @record_action
     def recall_color(self, color_state: pd.Series):
@@ -397,8 +434,22 @@ class Painter(QWidget):
         if self.highlighted_colors:
             self.highlighted_colors.clear()
         else:
-            self.highlighted_colors = [c for c in COLOR_ORDER if c != Color.GREY]
+            self.highlighted_colors = [c for c in COLOR_INFO if c != Color.GREY]
         self.highlightsUpdated.emit(self.highlighted_colors)
+
+    def increase_highlight_size(self):
+        if self.highlight_size >= 4:
+            return
+
+        self.highlight_size += 1
+        self.highlightSizeChanged.emit(self.highlight_size)
+
+    def decrease_highlight_size(self):
+        if self.highlight_size <= 2:
+            return
+
+        self.highlight_size -= 1
+        self.highlightSizeChanged.emit(self.highlight_size)
 
     @Slot()
     def handle_resize(self) -> None:

@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+import re
 from collections.abc import Iterable
 from io import BytesIO
 from itertools import chain
@@ -190,10 +191,13 @@ class IOManager(QObject):
             else:
                 return
 
+        case_numbers = {tube.data.case_id for tube in tubes}
+        default_export_name = case_numbers.pop() if len(case_numbers) == 1 else ''
+
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Export PDF Report',
-            dir=self.last_open_file_dir,
+            dir=self.last_open_file_dir + f'/{default_export_name}',
             filter='PDF (*.pdf)',
         )
 
@@ -250,8 +254,9 @@ def get_files_from_urls(urls: list[QUrl]) -> list[Path]:
 
 def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
     return {
-        k: v
+        k: v.strip()
         for k, v in metadata.items()
         if k
         in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS + ['spill', 'spillover']
+        or (re.search(r'p\d+r', k, re.IGNORECASE))
     }

@@ -7,7 +7,7 @@
 
 from typing import Protocol
 
-from PySide6.QtCore import Signal
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import (
     QKeySequence,
     QShortcut,
@@ -48,6 +48,14 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
             )
         )
 
+    def _zap_all_but_shortcut(key: str, color: Color) -> None:
+        shortcut = QShortcut(QKeySequence(f'Ctrl+Shift+{key}'), widget)
+        shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.ZAP_ALL_BUT, {'color': color}
+            )
+        )
+
     COLOR_SHORTCUTS = [
         ('F', Color.RED),
         ('D', Color.GREEN),
@@ -61,22 +69,26 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         _color_shortcut(key, color)
         _toggle_highlight_shortcut(key, color)
         _exact_zap_shortcut(key, color)
+        _zap_all_but_shortcut(key, color)
 
     zap_all = QShortcut(QKeySequence('E'), widget)
     zap_all.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.ZAP_ALL, {})
     )
 
-    exact_zap_current_color = QShortcut(QKeySequence('Ctrl+E'), widget)
-    exact_zap_current_color.activated.connect(
-        lambda: widget.menuActionTriggered.emit(
-            MenuAction.EXACT_ZAP, {'color': widget.active_color}
-        )
-    )
-
     toggle_all_highlights = QShortcut(QKeySequence('Shift+E'), widget)
     toggle_all_highlights.activated.connect(
         lambda: widget.menuActionTriggered.emit(MenuAction.TOGGLE_ALL_HIGHLIGHTS, {})
+    )
+
+    increase_highlight_size = QShortcut(QKeySequence(Qt.Key.Key_Up), widget)
+    increase_highlight_size.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.INCREASE_HIGHLIGHT_SIZE, {})
+    )
+
+    decrease_highlight_size = QShortcut(QKeySequence(Qt.Key.Key_Down), widget)
+    decrease_highlight_size.activated.connect(
+        lambda: widget.menuActionTriggered.emit(MenuAction.DECREASE_HIGHLIGHT_SIZE, {})
     )
 
     undo_shortcut = QShortcut(QKeySequence.StandardKey.Undo, widget)
@@ -121,22 +133,45 @@ def configure_paint_shortcuts(widget: PaintWidget) -> None:
         lambda: widget.menuActionTriggered.emit(MenuAction.MERGE_ALL_STATES, {})
     )
 
-    def _replace_state_shortcut(slot: int) -> None:
-        replace_state_shortcut = QShortcut(QKeySequence(f'{slot + 1}'), widget)
-        replace_state_shortcut.activated.connect(
+    def _recall_state_shortcut(slot: int) -> None:
+        recall_state_shortcut = QShortcut(QKeySequence(f'{slot + 1}'), widget)
+        recall_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.REPLACE_STATE, {'slot': slot}
+                MenuAction.RECALL_STATE, {'slot': slot}
             )
         )
 
     def _store_state_shortcut(slot: int) -> None:
-        store_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
+        store_state_shortcut = QShortcut(
+            QKeySequence(f'Ctrl + Shift + {slot + 1}'), widget
+        )
         store_state_shortcut.activated.connect(
             lambda: widget.menuActionTriggered.emit(
-                MenuAction.STORE_STATE_AND_CLEAR, {'slot': slot}
+                MenuAction.STORE_STATE, {'slot': slot}
+            )
+        )
+
+    def _append_color_to_state(slot: int) -> None:
+        append_color_to_state_shortcut = QShortcut(
+            QKeySequence(f'Ctrl + {slot + 1}'), widget
+        )
+        append_color_to_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.APPEND_STATE,
+                {'slot': slot, 'color': widget.active_color, 'clear': True},
+            )
+        )
+
+    def _append_state_shortcut(slot: int) -> None:
+        append_state_shortcut = QShortcut(QKeySequence(f'Shift + {slot + 1}'), widget)
+        append_state_shortcut.activated.connect(
+            lambda: widget.menuActionTriggered.emit(
+                MenuAction.APPEND_STATE, {'slot': slot, 'clear': True}
             )
         )
 
     for slot in range(5):
-        _replace_state_shortcut(slot)
+        _recall_state_shortcut(slot)
+        _append_state_shortcut(slot)
+        _append_color_to_state(slot)
         _store_state_shortcut(slot)
