@@ -224,7 +224,11 @@ def get_child_files(dir: Path) -> list[Path]:
 
 
 def _is_not_blank_or_viability(path: Path) -> bool:
-    return 'blank' not in path.stem.lower() and 'viability' not in path.stem.lower()
+    return (
+        'blank' not in path.stem.lower()
+        and 'viability' not in path.stem.lower()
+        and 'cell count' not in path.stem.lower()
+    )
 
 
 def _is_valid_filetype(path: Path) -> bool:
