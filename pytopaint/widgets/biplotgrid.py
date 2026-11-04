@@ -176,6 +176,10 @@ class BiplotGrid(QGridLayout):
         self,
         grid: dict[tuple[int, int], tuple[str, str]],
     ) -> None:
+        current_biplot_coords = [
+            self._get_biplot_coords(i) for i in range(self.count())
+        ]
+
         for coords, channels in grid.items():
             layout_item = self.itemAtPosition(*coords)
             if layout_item is not None:
@@ -191,6 +195,9 @@ class BiplotGrid(QGridLayout):
                 biplot.set_axes(x_channel, y_channel)
             else:
                 self.add_biplot(self.new_biplot(channels), coords)
+
+        for coords in filter(lambda x: x not in grid, current_biplot_coords):
+            self.remove_biplot(self.itemAtPosition(*coords).widget())
 
     @property
     def rows(self) -> int:
