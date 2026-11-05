@@ -57,6 +57,9 @@ def generate_pdf(file_path: str, tubes: list[Painter]) -> None:
             if memory_state is not None
         ]
 
+        if not snapshots:
+            snapshots = [tube.state]
+
         for j, memory_state in enumerate(snapshots):
             if j > 0:
                 writer.newPage()
