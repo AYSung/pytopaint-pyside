@@ -51,55 +51,69 @@ def generate_pdf(file_path: str, tubes: list[Painter]) -> None:
         if i > 0:
             writer.newPage()
 
-        # report header
-        header_coords = (X_OFFSET, X_OFFSET)
-        datetime = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm')
-        font = painter.font()
-        font.setPointSize(8)
-        painter.setFont(font)
-        painter.drawText(
-            *header_coords,
-            f'File: {tube.data.adata.uns.get("filename", tube.data.id)}; analyzed {datetime}',
-        )
+        snapshots = [
+            memory_state
+            for memory_state in tube.memory_states.values()
+            if memory_state is not None
+        ]
 
-        biplot_channels = get_report_layout(tube.data.channels)
+        for j, memory_state in enumerate(snapshots):
+            if j > 0:
+                writer.newPage()
 
-        painter.save()
+            # report header
+            header_coords = (X_OFFSET, X_OFFSET)
+            datetime = QDateTime.currentDateTime().toString('yyyy-MM-dd HH:mm')
+            font = painter.font()
+            font.setPointSize(8)
+            painter.setFont(font)
+            painter.drawText(
+                *header_coords,
+                f'File: {tube.data.adata.uns.get("filename", tube.data.id)}; analyzed {datetime}',
+            )
 
-        color_legend_coords = (X_OFFSET + (GRID_SIZE * 3) + 35, Y_OFFSET - 10)
-        color_legend = draw_color_legend(tube.state)
-        painter.translate(*color_legend_coords)
-        painter.scale(1.5, 1.5)
-        color_legend.drawContents(painter)
+            biplot_channels = get_report_layout(tube.data.channels)
 
-        painter.restore()
+            painter.save()
 
-        binned_df = pd.DataFrame(
-            discretize_data(tube.data.adata, bins=PLOT_RESOLUTION),
-            columns=tube.data.adata.var_names,
-        )
-        axis_ticks = get_axis_ticks(tube.data.adata, bins=PLOT_RESOLUTION)
+            color_legend_coords = (X_OFFSET + (GRID_SIZE * 3) + 35, Y_OFFSET - 10)
+            color_legend = draw_color_legend(memory_state)
+            painter.translate(*color_legend_coords)
+            painter.scale(1.5, 1.5)
+            color_legend.drawContents(painter)
 
-        biplot = Biplot(
-            data=binned_df,
-            axis_ticks=axis_ticks,
-            state=tube.state,
-            x_channel=None,
-            y_channel=None,
-            active_color=Color.BLUE,
-            resolution=PLOT_RESOLUTION,
-            highlighted_colors=tube.highlighted_colors,
-            highlight_size=tube.highlight_size,
-            channel_fluor_map=tube.data.channel_fluor_map,
-        )
+            painter.restore()
 
-        # limited to 19 plots per page
-        for coords, channels in zip(GRID_COORDS, biplot_channels):
-            x_channel, y_channel = channels
-            biplot.set_axes(x_channel, y_channel)
-            biplot.x_axis.label = tube.data.channel_fluor_map.get(x_channel, x_channel)
-            biplot.y_axis.label = tube.data.channel_fluor_map.get(y_channel, y_channel)
-            painter.drawImage(*coords, biplot._draw_plot('report'))
+            binned_df = pd.DataFrame(
+                discretize_data(tube.data.adata, bins=PLOT_RESOLUTION),
+                columns=tube.data.adata.var_names,
+            )
+            axis_ticks = get_axis_ticks(tube.data.adata, bins=PLOT_RESOLUTION)
+
+            biplot = Biplot(
+                data=binned_df,
+                axis_ticks=axis_ticks,
+                state=memory_state,
+                x_channel=None,
+                y_channel=None,
+                active_color=Color.BLUE,
+                resolution=PLOT_RESOLUTION,
+                highlighted_colors=tube.highlighted_colors,
+                highlight_size=tube.highlight_size,
+                channel_fluor_map=tube.data.channel_fluor_map,
+            )
+
+            # limited to 19 plots per page
+            for coords, channels in zip(GRID_COORDS, biplot_channels):
+                x_channel, y_channel = channels
+                biplot.set_axes(x_channel, y_channel)
+                biplot.x_axis.label = tube.data.channel_fluor_map.get(
+                    x_channel, x_channel
+                )
+                biplot.y_axis.label = tube.data.channel_fluor_map.get(
+                    y_channel, y_channel
+                )
+                painter.drawImage(*coords, biplot._draw_plot('report'))
 
     painter.end()
 
