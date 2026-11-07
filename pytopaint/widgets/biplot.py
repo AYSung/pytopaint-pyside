@@ -296,7 +296,7 @@ class Biplot(QWidget):
             self.state = state
 
         if self.x_axis.channel is None or self.y_axis.channel is None:
-            self.plot.clear()
+            self.plot.clear_plot()
             self.plot.update_plot()
             return
 
@@ -397,7 +397,7 @@ class Biplot(QWidget):
     def transpose_axes(self):
         self.set_axes(x_channel=self.y_axis.channel, y_channel=self.x_axis.channel)
 
-    def set_axes(self, x_channel: str, y_channel: str) -> None:
+    def set_axes(self, x_channel: str | None, y_channel: str | None) -> None:
         self.x_axis.channel = x_channel
         self.y_axis.channel = y_channel
         self.x_axis.update_axis()

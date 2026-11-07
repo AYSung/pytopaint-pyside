@@ -8,23 +8,23 @@
 import re
 from collections.abc import Iterable
 
-PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H']
+PHYSICAL_PARAMETERS = ['FSC-A', 'FSC-H', 'SSC-A', 'SSC-H', 'SSC-B-A', 'SSC-B-H']
 
 
 def sort_channels(channels: Iterable[str]) -> list[str]:
-    light_scatter_channels = sorted(
-        filter(lambda x: x in PHYSICAL_PARAMETERS, channels)
-    )
+    light_scatter_channels = list(filter(lambda x: x in channels, PHYSICAL_PARAMETERS))
     cd_channels = sorted(
         [channel for channel in channels if channel.startswith('CD')],
         key=lambda s: int(re.match(r'CD(\d+) ?', s).group(1)),
     )
-    non_cd_channels = sorted([
-        channel
-        for channel in channels
-        if not channel.startswith('CD')
-        and channel not in PHYSICAL_PARAMETERS + ['Time']
-    ])
+    non_cd_channels = sorted(
+        [
+            channel
+            for channel in channels
+            if not channel.startswith('CD')
+            and channel not in PHYSICAL_PARAMETERS + ['Time']
+        ]
+    )
     time_channel = ['Time'] if 'Time' in channels else []
 
     return light_scatter_channels + cd_channels + non_cd_channels + time_channel
