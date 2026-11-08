@@ -65,7 +65,7 @@ class FlowData:
         ]
         fluoro_indices = [i for i, label in enumerate(fcs.all_longnames) if label]
 
-        file_prefix = fcs.src if fcs.src is not None else Path(fcs.fil).stem
+        file_prefix = Path(fcs.fil).stem
         case_id = extract_case_number(file_prefix)
 
         data = fcs.data.to_numpy()

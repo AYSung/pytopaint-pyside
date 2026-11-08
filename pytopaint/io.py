@@ -11,6 +11,7 @@ from itertools import chain
 from pathlib import Path
 
 import anndata as ad
+import polars as pl
 
 # import flowio
 import yaml
@@ -106,34 +107,23 @@ class IOManager(QObject):
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
-        raise NotImplementedError
-        # file_path, _ = QFileDialog.getSaveFileName(
-        #     parent=None,
-        #     caption='Export Deidentified FCS',
-        #     dir=self.last_save_dir,
-        #     filter='FCS (*.fcs)',
-        # )
-        # if not file_path:
-        #     return
-        #
-        # sample: flowio.FlowData = painter.fcs
-        # event_mask = painter.state['visible']
-        # event_matrix = sample.as_array()[event_mask]
-        #
-        # stream = BytesIO()
-        # flowio.create_fcs(
-        #     stream,
-        #     event_matrix.flatten(),
-        #     sample.pnn_labels,
-        #     opt_channel_names=sample.pns_labels,
-        #     metadata_dict=_scrub_metadata(sample.text),
-        # )
-        # stream.seek(0)
-        #
-        # with open(file_path, 'wb') as f:
-        #     f.write(stream.getbuffer())
-        #
-        # self.last_save_dir = str(Path(file_path).parent)
+        file_path, _ = QFileDialog.getSaveFileName(
+            parent=None,
+            caption='Export Deidentified FCS',
+            dir=self.last_save_dir,
+            filter='FCS (*.fcs)',
+        )
+        if not file_path:
+            return
+
+        fcs = painter.data.fcs
+        event_mask = painter.state['visible']
+        fcs.data = fcs.data.filter(pl.Series(painter.state['visible']))
+        # TODO: switch to color == -2
+
+        export_fcs(fcs, file_path)
+
+        self.last_save_dir = str(Path(file_path).parent)
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
@@ -295,6 +285,8 @@ def read_fcs(filepath: Path) -> FlowData:
             dataset = _read_fcs_3_0(filepath)
         case 'FCS3.1':
             dataset = _read_fcs_3_1(filepath)
+        case 'FCS3.2':
+            dataset = _read_fcs_3_1(filepath)
         case _:
             raise NotImplementedError
             # dataset = fcs_read_std_dataset(filepath)
@@ -340,10 +332,10 @@ def export_fcs(dataset: AnyCoreDataset, filepath: Path) -> None:
         dataset.nonstandard_keywords = {
             k: v
             for k, v in dataset.nonstandard_keywords.items()
-            if k.lower() in ['spill', 'tube name']
+            if k.lower() in ['spill']
         }
 
-    elif dataset.version == 'FCS3.1':
+    elif dataset.version in ['FCS3.1', 'FCS3.2']:
         dataset.creator = 'DEIDENTIFIED'
         dataset.begindatetime = None
         dataset.enddatetime = None
