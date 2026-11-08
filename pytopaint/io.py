@@ -293,13 +293,13 @@ def read_fcs(filepath: Path) -> FlowData:
     match fcs_version:
         case 'FCS3.0':
             dataset = _read_fcs_3_0(filepath)
-            return FlowData.from_fcs_3_0(dataset)
         case 'FCS3.1':
             dataset = _read_fcs_3_1(filepath)
-            return FlowData.from_fcs_3_1(dataset)
         case _:
             raise NotImplementedError
-            # return fcs_read_std_dataset(filepath)
+            # dataset = fcs_read_std_dataset(filepath)
+
+    return FlowData.from_fcs(dataset)
 
 
 def _read_fcs_3_0(filepath: Path) -> CoreDataset3_0:
