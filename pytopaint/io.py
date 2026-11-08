@@ -313,7 +313,6 @@ def export_fcs(dataset: AnyCoreDataset, filepath: Path) -> None:
         }
 
     elif dataset.version in ['FCS3.1', 'FCS3.2']:
-        dataset.creator = 'DEIDENTIFIED'
         dataset.begindatetime = None
         dataset.enddatetime = None
         dataset.carriertype = 'DEIDENTIFIED'

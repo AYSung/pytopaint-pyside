@@ -1,12 +1,10 @@
 from pathlib import Path
 
-from pyreflow.api import fcs_read_header
-
 from pytopaint.io import (
     _is_not_blank_or_viability,
     _is_valid_filetype,
     _read_fcs_3_0,
-    _scrub_metadata,
+    _read_fcs_3_1,
     filter_valid_files,
     get_child_files,
     get_fcs_version,
@@ -57,39 +55,14 @@ def test_filter_valid_files():
     )
 
 
-def test_scrub_metadata():
-    assert _scrub_metadata(
-        {
-            'beginanalysis': 'test',
-            'spill': 'test',
-            'mode': 'test',
-            'test': 'test',
-        }
-    ) == {'beginanalysis': 'test', 'spill': 'test', 'mode': 'test'}
-    assert _scrub_metadata(
-        {
-            'beginanalysis': 'test',
-            'spill': 'test',
-            'mode': 'test',
-            'test': 'test',
-            'p1r': 'test',
-            'p1n': 'test',
-            'P13R': 'test',
-            'p13s': 'test',
-        }
-    ) == {
-        'beginanalysis': 'test',
-        'spill': 'test',
-        'mode': 'test',
-        'p1r': 'test',
-        'P13R': 'test',
-    }
-
-
 def test_get_fcs_version():
     assert get_fcs_version(Path('tests/resources/normal_01_B.fcs')) == 'FCS3.0'
-    assert fcs_read_header(Path('tests/resources/cytek_22_bit.fcs')) == 'FCS3.1'
+    assert get_fcs_version(Path('tests/resources/cytek_22_bit.fcs')) == 'FCS3.2'
 
 
 def test_read_fcs_3_0():
     assert _read_fcs_3_0(Path('tests/resources/normal_01_B.fcs')).version == 'FCS3.0'
+
+
+def test_read_fcs_3_1():
+    assert _read_fcs_3_1(Path('tests/resources/cytek_22_bit.fcs')).version == 'FCS3.2'

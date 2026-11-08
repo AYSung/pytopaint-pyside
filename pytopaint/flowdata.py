@@ -386,7 +386,6 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
 
 def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
     arr = clip_xform_data(adata)
-    # bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
     lower_bounds = adata.var['lower_bound'].to_numpy()
     bin_widths = (
         (adata.var['upper_bound'] - adata.var['lower_bound']) / bins
