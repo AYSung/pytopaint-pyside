@@ -5,7 +5,6 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-import re
 from collections.abc import Iterable
 from itertools import chain
 from pathlib import Path
@@ -249,29 +248,6 @@ def get_files_from_urls(urls: list[QUrl]) -> list[Path]:
             return []
 
     return list(chain(*map(_expand_url, urls)))
-
-
-def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
-    REQUIRED_FCS_STANDARD_KEYWORDS = [
-        'beginanalysis',
-        'begindata',
-        'beginstext',
-        'byteord',
-        'datatype',
-        'endanalysis',
-        'enddata',
-        'endstext',
-        'mode',
-        'nextdata',
-        'par',
-        'tot',
-    ]
-    return {
-        k: v.strip()
-        for k, v in metadata.items()
-        if k in REQUIRED_FCS_STANDARD_KEYWORDS + ['spill', 'spillover']
-        or (re.search(r'p\d+r', k, re.IGNORECASE))
-    }
 
 
 def get_fcs_version(filepath: Path) -> str:

@@ -70,7 +70,7 @@ class FlowData:
 
         data = fcs.data.to_numpy()
 
-        if fcs.version == 'FCS3.0':
+        if fcs.version in ['FCS3.0']:
             tube_name_kw = 'TUBE NAME'
             if (spill := fcs.nonstandard_keywords.get('SPILL')) is not None:
                 # apply compensation
