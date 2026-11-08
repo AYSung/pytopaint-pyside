@@ -386,20 +386,19 @@ def clip_xform_data(adata: ad.AnnData) -> np.ndarray:
 
 def discretize_data(adata: ad.AnnData, bins: int) -> np.ndarray:
     arr = clip_xform_data(adata)
-    bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
-    return np.array(
-        [
-            discretize_array(**bounds[i], bins=bins, arr=row)
-            for i, row in enumerate(arr.T)
-        ]
-    ).T.astype(np.uint16)
+    # bounds = adata.var[['lower_bound', 'upper_bound']].to_dict(orient='records')
+    lower_bounds = adata.var['lower_bound'].to_numpy()
+    bin_widths = (
+        (adata.var['upper_bound'] - adata.var['lower_bound']) / bins
+    ).to_numpy()
+    return ((arr - lower_bounds) // bin_widths).astype(np.uint16)
 
 
 def discretize_array(
-    lower_bound: float, upper_bound: float, bins: int, arr: np.ndarray
-) -> np.ndarray:
-    bins = np.linspace(lower_bound, upper_bound, num=bins)
-    return np.searchsorted(bins, arr, side='left')
+    lower_bound: float, upper_bound: float, bins: int, arr: npt.NDArray
+) -> npt.NDArray:
+    bin_width = (upper_bound - lower_bound) / bins
+    return (arr - lower_bound) // bin_width
 
 
 def get_axis_ticks(adata: ad.AnnData, bins: int) -> dict[str, list[tuple[int, str]]]:
