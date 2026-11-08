@@ -1,16 +1,15 @@
 [project]
 name = "pytopaint-pyside"
-version = "0.4.3"
+version = "0.5.0"
 description = "Cluster analysis software for flow cytometry data"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
     "anndata>=0.12.18",
-    "flowio>=1.4.0",
-    "flowutils>=1.2.2",
     "geopandas>=1.1.3",
     "polars>=1.42.1",
     "pyarrow>=24.0.0",
+    "pyreflow",
     "pyside6>=6.11.0",
     "pyyaml>=6.0.3",
     "scikit-learn>=1.9.0",
@@ -31,6 +30,9 @@ reportUnknownArgumentType = false
 reportUnknownParameterType = false
 reportUnknownMemberType = false
 reportCallIssue = false
+
+[tool.uv.sources]
+pyreflow = { git = "https://github.com/usnistgov/fireflow.git", subdirectory = "pyreflow" }
 
 [dependency-groups]
 dev = [

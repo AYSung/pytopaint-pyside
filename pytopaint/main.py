@@ -261,7 +261,8 @@ class MainWindow(QMainWindow):
         )
         self.painter_tabs.currentChanged.connect(
             lambda: export_fcs_action.setEnabled(
-                self.painter_tabs.count() and self.get_active_painter().fcs is not None
+                self.painter_tabs.count()
+                and self.get_active_painter().data.fcs is not None
             )
         )
         file_menu.addAction(export_fcs_action)

@@ -11,10 +11,11 @@ import re
 from pathlib import Path
 
 import anndata as ad
-import flowio
-import flowutils
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
+from pyreflow import CoreDataset3_0
+from pyreflow.typing import AnyCoreDataset
 
 from pytopaint.channels import clean_marker_name, sort_channels
 from pytopaint.colors import Color
@@ -29,9 +30,15 @@ from pytopaint.layout import dict_to_yaml, get_best_layout, to_grid
 
 
 class FlowData:
+    fcs: AnyCoreDataset
     adata: ad.AnnData
 
-    def __init__(self, adata: ad.AnnData) -> None:
+    def __init__(
+        self,
+        adata: ad.AnnData,
+        fcs: AnyCoreDataset | None,
+    ) -> None:
+        self.fcs = fcs
         self.adata = adata
 
         self.set_scale(
@@ -47,38 +54,118 @@ class FlowData:
         )
         self.set_size(bins=get_resolution())
         self.set_zoom(bins=get_zoom_resolution())
-
         self.load_analyses()
 
     @classmethod
-    def from_fcs(cls, fcs: flowio.FlowData):
-        cleaned_channel_names = clean_channel_names(fcs)
+    def from_fcs(cls, fcs: AnyCoreDataset): ...
+
+    @classmethod
+    def from_fcs_3_0(cls, fcs: CoreDataset3_0):
+        time_index, time_label, _ = fcs.temporal
+        scatter_indices = [
+            i
+            for i, label in enumerate(fcs.all_shortnames)
+            if label.startswith('FSC-') or label.startswith('SSC-')
+        ]
+        fluoro_indices = [i for i, label in enumerate(fcs.all_longnames) if label]
+
+        file_prefix = fcs.src if fcs.src is not None else Path(fcs.fil).stem
+        case_id = extract_case_number(file_prefix)
+
+        data = fcs.data.to_numpy()
+        if (spill := fcs.nonstandard_keywords.get('SPILL')) is not None:
+            # apply compensation
+            spillover_matrix, markers = get_spillover_matrix(spill)
+            _indices = [
+                i for i, label in enumerate(fcs.all_shortnames) if label in markers
+            ]
+            data = apply_compensation(data, spillover_matrix, _indices)
+
+        cleaned_channel_names: np.array[str] = clean_channel_names(
+            fcs, scatter_indices + [time_index]
+        )
         empty_channel_mask: np.array[bool] = cleaned_channel_names != ''
-        adata = ad.AnnData(X=compensate(fcs)[:, empty_channel_mask].astype(np.float32))
+        adata = ad.AnnData(X=data[:, empty_channel_mask])
 
-        adata.uns['filename'] = fcs.name
-        adata.uns['tube'] = fcs.text.get('tube name')
-        adata.uns['case_id'] = extract_case_number(Path(fcs.name).stem)
+        adata.uns['filename'] = fcs.fil
+        adata.uns['tube'] = fcs.nonstandard_keywords.get('TUBE NAME')
+        adata.uns['case_id'] = case_id
 
-        bit_mode = extract_bit_mode(fcs)
+        bit_mode = extract_bit_mode(fcs, scatter_indices[0])
         adata.uns['bit_mode'] = bit_mode
         adata.uns['scaling_factor'] = get_default_scaling_factor(bit_mode)
 
         adata.var_names = cleaned_channel_names[empty_channel_mask]
         adata.var['channel_type'] = np.select(
             [
-                adata.var_names.isin(cleaned_channel_names[fcs.scatter_indices]),
-                adata.var_names.isin(cleaned_channel_names[fcs.fluoro_indices]),
+                adata.var_names.isin(cleaned_channel_names[scatter_indices]),
+                adata.var_names.isin(cleaned_channel_names[fluoro_indices]),
             ],
             ['scatter', 'fluoro'],
             default='other',
         )
-        adata.var['pnn_label'] = np.array(fcs.pnn_labels)[empty_channel_mask]
-        adata.var['pns_label'] = np.array(fcs.pns_labels)[empty_channel_mask]
+        adata.var['pnn_label'] = np.array(fcs.all_shortnames)[empty_channel_mask]
+        adata.var['pns_label'] = np.array(fcs.all_longnames)[empty_channel_mask]
 
         adata.obs['color'] = Color.GREY
-        adata.obs['visible'] = True
+        adata.obs['visible'] = True  # TODO: remove and use -1, -2 for hidden/excluded
 
+        return cls(adata, fcs)
+
+    @classmethod
+    def from_fcs_3_1(cls, fcs: CoreDataset3_1):
+        time_index, time_label, _ = fcs.temporal
+        scatter_indices = [
+            i
+            for i, label in enumerate(fcs.all_shortnames)
+            if label.startswith('FSC-') or label.startswith('SSC-')
+        ]
+        fluoro_indices = [i for i, label in enumerate(fcs.all_longnames) if label]
+
+        file_prefix = fcs.src if fcs.src is not None else Path(fcs.fil).stem
+        case_id = extract_case_number(file_prefix)
+
+        data = fcs.data.to_numpy()
+
+        # apply compensation
+        markers, spillover_matrix = fcs.spillover
+        _indices = [i for i, label in enumerate(fcs.all_shortnames) if label in markers]
+        data = apply_compensation(data, spillover_matrix, _indices)
+
+        cleaned_channel_names: np.array[str] = clean_channel_names(
+            fcs, scatter_indices + [time_index]
+        )
+        empty_channel_mask: np.array[bool] = cleaned_channel_names != ''
+        adata = ad.AnnData(X=data[:, empty_channel_mask])
+
+        adata.uns['filename'] = fcs.fil
+        adata.uns['tube'] = fcs.nonstandard_keywords.get('TUBENAME')
+        adata.uns['case_id'] = case_id
+
+        bit_mode = extract_bit_mode(fcs, scatter_indices[0])
+        adata.uns['bit_mode'] = bit_mode
+        adata.uns['scaling_factor'] = get_default_scaling_factor(bit_mode)
+
+        adata.var_names = cleaned_channel_names[empty_channel_mask]
+        adata.var['channel_type'] = np.select(
+            [
+                adata.var_names.isin(cleaned_channel_names[scatter_indices]),
+                adata.var_names.isin(cleaned_channel_names[fluoro_indices]),
+            ],
+            ['scatter', 'fluoro'],
+            default='other',
+        )
+        adata.var['pnn_label'] = np.array(fcs.all_shortnames)[empty_channel_mask]
+        adata.var['pns_label'] = np.array(fcs.all_longnames)[empty_channel_mask]
+
+        adata.obs['color'] = Color.GREY
+        adata.obs['visible'] = True  # TODO: remove and use -1, -2 for hidden/excluded
+
+        return cls(adata, fcs)
+
+    @classmethod
+    def from_pytometry(cls, adata: ad.AnnData):
+        raise NotImplementedError
         return cls(adata)
 
     @property
@@ -270,42 +357,33 @@ class FlowData:
         self._load_analysis(data, [f'PC {i + 1}' for i in range(data.shape[1])])
 
 
-def extract_bit_mode(fcs: flowio.FlowData) -> int:
-    scatter_index = fcs.scatter_indices[0] + 1
-    pnr = fcs.channels[scatter_index].get('pnr', 2**18)
+def extract_bit_mode(fcs: AnyCoreDataset, index: int) -> int:
+    pnr = int(
+        fcs.standard_keywords(req_or_opt='both', root_or_meas='both').get(
+            f'$P{index + 1}R', '262144'
+        )
+    )
     return int(math.log2(pnr))
 
 
-def clean_channel_names(fcs: flowio.FlowData) -> np.ndarray[str]:
+def clean_channel_names(
+    fcs: AnyCoreDataset, non_fluoro_indices: list[int]
+) -> np.ndarray[str]:
     return np.where(
-        np.isin(
-            np.arange(0, fcs.channel_count), fcs.scatter_indices + [fcs.time_index]
-        ),
-        fcs.pnn_labels,
-        list(map(clean_marker_name, fcs.pns_labels)),
+        np.isin(np.arange(0, fcs.par), non_fluoro_indices),
+        fcs.all_shortnames,
+        list(map(clean_marker_name, fcs.all_longnames)),
     )
 
 
-def compensate(fcs: flowio.FlowData) -> np.ndarray:
-    if spill := fcs.text.get('spill') or fcs.text.get('spillover'):
-        spill_matrix, _ = flowutils.compensate.get_spill(spill)
-        return flowutils.compensate.compensate(
-            fcs.as_array(), spill_matrix, fcs.fluoro_indices
-        )
-
-    return fcs.as_array().astype(np.float32)
-
-
-def asinh_transform(adata: ad.AnnData, scaling_factor: float) -> np.ndarray:
-    return flowutils.transforms.asinh(
-        adata.X,
-        channel_indices=np.arange(0, adata.n_vars)[
-            adata.var['channel_type'] == 'fluoro'
-        ],
-        t=scaling_factor * math.sinh(1),
-        m=1 / math.log(10),
-        a=0,
-    ).astype(np.float32)
+def asinh_transform(
+    adata: ad.AnnData, scaling_factor: float
+) -> npt.NDArray[np.float32]:
+    data = adata.X.copy()
+    indices = np.arange(0, adata.n_vars)[adata.var['channel_type'] == 'fluoro']
+    xform_data = np.arcsinh(data[:, indices] / scaling_factor)
+    data[:, indices] = xform_data
+    return data.astype(np.float32)
 
 
 def lower_clip_limits(adata: ad.AnnData, lower_bound: float) -> np.ndarray:
@@ -429,7 +507,7 @@ def _channel_fluor_map(pnn_labels: pd.Series):
 
 
 def extract_case_number(filename: str) -> str:
-    if match := re.match(r'[ZY][- ](\d{2})?[- ]?(\d{4,}) [\w\- ]+$', filename):
+    if match := re.match(r'[ZY][- ](\d{2})?[- ]?(\d{4,}).*$', filename):
         return f'IP{match.group(1) or "xx"}-{int(match.group(2)):05}'
     else:
         return filename
@@ -460,3 +538,52 @@ def get_analysis_dims(
 
     axis_ticks = {column: _umap_axis_ticks(column) for column in columns}
     return bin_arr, axis_ticks
+
+
+def get_spillover_matrix(
+    matrix_string: str,
+) -> tuple[npt.NDArray[np.float32], list[str]]:
+    """
+    Code is modified from: https://github.com/whitews/FlowUtils
+    Pedersen NW, Chandran PA, Qian Y, et al. Automated Analysis of Flow Cytometry
+    Data to Reduce Inter-Lab Variation in the Detection of Major Histocompatibility
+    Complex Multimer-Binding T Cells. Front Immunol. 2017;8:858.
+    Published 2017 Jul 26. doi:10.3389/fimmu.2017.00858
+
+    Compensate NumPy event data given spillover matrix. Extracts spillover matrix from FCS text entry.
+
+    :param text: Text value from the $SPILL or $SPILLOVER metadata keyword in an FCS file
+    :return: A tuple containing: (spillover matrix new_spill, column headers)
+    """
+    spill = matrix_string.split(',')
+    n = int(spill[0])
+    markers = spill[1 : (n + 1)]
+    markers = [item.strip().replace('\n', '') for item in markers]
+    items = [item.strip().replace('\n', '') for item in spill[n + 1 :]]
+    new_spill = np.reshape(list(map(float, items)), (n, n))
+    return new_spill, markers
+
+
+def apply_compensation(
+    data: npt.NDArray[np.float32],
+    spill_matrix: npt.NPArray[np.float32],
+    indices: list[int],
+) -> npt.NDArray[np.float32]:
+    """
+    Code is modified from: https://github.com/whitews/FlowUtils
+    Pedersen NW, Chandran PA, Qian Y, et al. Automated Analysis of Flow Cytometry
+    Data to Reduce Inter-Lab Variation in the Detection of Major Histocompatibility
+    Complex Multimer-Binding T Cells. Front Immunol. 2017;8:858.
+    Published 2017 Jul 26. doi:10.3389/fimmu.2017.00858
+    Compensate NumPy event data given spillover matrix.
+
+    :param data: NumPy array of the event data
+    :param spill_matrix: Compensation matrix as a NumPy array (without headers)
+    :param fluoro_indices: List of fluorescent markers in the order found in the columns of the provided spill_matrix.
+    :return: Polars dataframe of compensated event data with the
+        non-fluorescent columns unmodified.
+    """
+    comp_data = np.linalg.solve(spill_matrix.T, data[:, indices].T).T
+    data[:, indices] = comp_data
+
+    return data.astype(np.float32)

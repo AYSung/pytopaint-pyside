@@ -8,8 +8,6 @@
 from collections import deque
 from functools import wraps
 
-import anndata as ad
-import flowio
 import pandas as pd
 from PySide6.QtCore import QThreadPool, Signal, Slot
 from PySide6.QtGui import (
@@ -59,11 +57,9 @@ class Painter(QWidget):
     menuActionTriggered = Signal(int, dict)
     memorySlotUpdated = Signal(int, object)
 
-    def __init__(self, data: FlowData, fcs: flowio.FlowData = None):
+    def __init__(self, data: FlowData):
         super().__init__()
         self.configure_shortcuts()
-
-        self.fcs = fcs
 
         self.paint_actions = {
             MenuAction.SET_ACTIVE: self.change_color,
@@ -154,16 +150,6 @@ class Painter(QWidget):
 
         self.activeColorChanged.emit(self.active_color)
         self.highlightsUpdated.emit(self.highlighted_colors)
-
-    @classmethod
-    def from_fcs(cls, fcs: flowio.FlowData):
-        data = FlowData.from_fcs(fcs)
-        return cls(data, fcs)
-
-    @classmethod
-    def from_adata(cls, adata: ad.AnnData):
-        data = FlowData(adata)
-        return cls(data)
 
     def configure_shortcuts(self) -> None:
         configure_paint_shortcuts(self)

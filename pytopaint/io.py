@@ -7,13 +7,16 @@
 
 import re
 from collections.abc import Iterable
-from io import BytesIO
 from itertools import chain
 from pathlib import Path
 
 import anndata as ad
-import flowio
+
+# import flowio
 import yaml
+from pyreflow import CoreDataset3_0, CoreDataset3_1
+from pyreflow.api import fcs_read_header, fcs_read_std_dataset
+from pyreflow.typing import AnyCoreDataset
 from PySide6.QtCore import QDir, QObject, QUrl, Signal, Slot
 from PySide6.QtWidgets import (
     QApplication,
@@ -23,6 +26,7 @@ from PySide6.QtWidgets import (
 )
 
 from pytopaint.config import get_painter_layout_directory
+from pytopaint.flowdata import FlowData
 from pytopaint.layout import LayoutConfig
 from pytopaint.reporting import generate_pdf
 from pytopaint.widgets.dialogs import TubeSelector
@@ -102,33 +106,34 @@ class IOManager(QObject):
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
-        file_path, _ = QFileDialog.getSaveFileName(
-            parent=None,
-            caption='Export Deidentified FCS',
-            dir=self.last_save_dir,
-            filter='FCS (*.fcs)',
-        )
-        if not file_path:
-            return
-
-        sample: flowio.FlowData = painter.fcs
-        event_mask = painter.state['visible']
-        event_matrix = sample.as_array()[event_mask]
-
-        stream = BytesIO()
-        flowio.create_fcs(
-            stream,
-            event_matrix.flatten(),
-            sample.pnn_labels,
-            opt_channel_names=sample.pns_labels,
-            metadata_dict=_scrub_metadata(sample.text),
-        )
-        stream.seek(0)
-
-        with open(file_path, 'wb') as f:
-            f.write(stream.getbuffer())
-
-        self.last_save_dir = str(Path(file_path).parent)
+        raise NotImplementedError
+        # file_path, _ = QFileDialog.getSaveFileName(
+        #     parent=None,
+        #     caption='Export Deidentified FCS',
+        #     dir=self.last_save_dir,
+        #     filter='FCS (*.fcs)',
+        # )
+        # if not file_path:
+        #     return
+        #
+        # sample: flowio.FlowData = painter.fcs
+        # event_mask = painter.state['visible']
+        # event_matrix = sample.as_array()[event_mask]
+        #
+        # stream = BytesIO()
+        # flowio.create_fcs(
+        #     stream,
+        #     event_matrix.flatten(),
+        #     sample.pnn_labels,
+        #     opt_channel_names=sample.pns_labels,
+        #     metadata_dict=_scrub_metadata(sample.text),
+        # )
+        # stream.seek(0)
+        #
+        # with open(file_path, 'wb') as f:
+        #     f.write(stream.getbuffer())
+        #
+        # self.last_save_dir = str(Path(file_path).parent)
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
@@ -208,8 +213,8 @@ class IOManager(QObject):
 
 
 def open_fcs(file: Path) -> Painter:
-    fcs = flowio.FlowData(file)
-    return Painter.from_fcs(fcs)
+    data = read_fcs(file)
+    return Painter(data)
 
 
 def open_session(file: Path) -> Painter:
@@ -257,10 +262,97 @@ def get_files_from_urls(urls: list[QUrl]) -> list[Path]:
 
 
 def _scrub_metadata(metadata: dict[str, str]) -> dict[str, str]:
+    REQUIRED_FCS_STANDARD_KEYWORDS = [
+        'beginanalysis',
+        'begindata',
+        'beginstext',
+        'byteord',
+        'datatype',
+        'endanalysis',
+        'enddata',
+        'endstext',
+        'mode',
+        'nextdata',
+        'par',
+        'tot',
+    ]
     return {
         k: v.strip()
         for k, v in metadata.items()
-        if k
-        in flowio.fcs_keywords.FCS_STANDARD_REQUIRED_KEYWORDS + ['spill', 'spillover']
+        if k in REQUIRED_FCS_STANDARD_KEYWORDS + ['spill', 'spillover']
         or (re.search(r'p\d+r', k, re.IGNORECASE))
     }
+
+
+def get_fcs_version(filepath: Path) -> str:
+    return fcs_read_header(filepath).version
+
+
+def read_fcs(filepath: Path) -> FlowData:
+    fcs_version = get_fcs_version(filepath)
+    match fcs_version:
+        case 'FCS3.0':
+            dataset = _read_fcs_3_0(filepath)
+            return FlowData.from_fcs_3_0(dataset)
+        case 'FCS3.1':
+            dataset = _read_fcs_3_1(filepath)
+            return FlowData.from_fcs_3_1(dataset)
+        case _:
+            raise NotImplementedError
+            # return fcs_read_std_dataset(filepath)
+
+
+def _read_fcs_3_0(filepath: Path) -> CoreDataset3_0:
+    dataset, _ = fcs_read_std_dataset(
+        filepath,
+        ignore_optical_only_keys=['G'],
+        add_missing_timestep=True,
+        allow_missing_crc='true',
+    )
+    return dataset
+
+
+def _read_fcs_3_1(filepath: Path) -> CoreDataset3_1:
+    dataset, _ = fcs_read_std_dataset(
+        filepath,
+        trim_value_whitespace='trim',
+        allow_missing_crc='true',
+        version_override='loose',
+    )
+    return dataset
+
+
+def export_fcs(dataset: AnyCoreDataset, filepath: Path) -> None:
+    dataset.src = 'DEIDENTIFIED'
+    dataset.fil = 'DEIDENTIFIED'
+    dataset.sys = 'DEIDENTIFIED'
+    dataset.cyt = 'DEIDENTIFIED'
+    dataset.cytsn = 'DEIDENTIFIED'
+    dataset.op = 'DEIDENTIFIED'
+    dataset.proj = 'DEIDENTIFIED'
+    dataset.smno = 'DEIDENTIFIED'
+    dataset.inst = 'DEIDENTIFIED'
+    dataset.date = None
+    dataset.btim = None
+    dataset.etim = None
+
+    if dataset.version == 'FCS3.0':
+        dataset.nonstandard_keywords = {
+            k: v
+            for k, v in dataset.nonstandard_keywords.items()
+            if k.lower() in ['spill', 'tube name']
+        }
+
+    elif dataset.version == 'FCS3.1':
+        dataset.creator = 'DEIDENTIFIED'
+        dataset.begindatetime = None
+        dataset.enddatetime = None
+        dataset.carriertype = 'DEIDENTIFIED'
+        dataset.carrierid = 'DEIDENTIFIED'
+        dataset.platename = 'DEIDENTIFIED'
+        dataset.plateid = 'DEIDENTIFIED'
+        dataset.wellid = 'DEIDENTIFIED'
+        dataset.locationid = 'DEIDENTIFIED'
+        dataset.nonstandard_keywords = {}
+
+    dataset.write_dataset(filepath, compute_crc=True, override_fil=True)
