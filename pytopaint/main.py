@@ -83,9 +83,8 @@ class MainWindow(QMainWindow):
         self.colorPaletteChanged.connect(self.painter_tabs.colorPaletteChanged)
 
         self.io_manager = IOManager(self)
-        self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
+        self.io_manager.filesOpened.connect(self.painter_tabs.add_painters)
         self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
-
         self.painter_tabs.allTabsClosed.connect(self.io_manager.reset_case_dir)
 
         self.configure_menu_bar()

@@ -51,6 +51,12 @@ class PainterTabs(QTabWidget):
         while self.count() > 0:
             self.handle_tab_close(0)
 
+    @Slot(object)
+    def add_painters(self, painters: list[Painter]):
+        for painter in sort_painters(painters):
+            self.add_painter(painter)
+        self.setCurrentIndex(self.count() - len(painters))
+
     def add_painter(self, painter: Painter):
         self.resizeTriggered.connect(painter.handle_resize)
         self.rescaleTriggered.connect(painter.handle_rescale)
@@ -73,3 +79,30 @@ class PainterTabs(QTabWidget):
             text = 'Welcome to PytoPaint!\n\nOpen files / directories by dragging and dropping into this window or via the File menu'
 
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, text)
+
+
+def sort_painters(painters: list[Painter]):
+    TUBE_ORDER = {
+        'B CELL': 0,
+        'T CELL': 1,
+        'BMS': 2,
+        'AML/MDS': 3,
+        'MMIC': 4,
+        'VS38C': 5,
+        'BLL-REFLEX MRD TUBE': 12,
+        'CART-19 TUBE 3': 13,
+        'CART-19 TUBE 4': 14,
+        'T-ALL REFLEX TUBE': 22,
+        'BM T-LL TUBE 4': 24,
+        'CLL REFLEX TUBE': 31,
+        'HC REFLEX TUBE': 32,
+        'MYCOSIS TUBE': 66,
+        'HES TUBE': 67,
+        'MPO': 91,
+        'MPO ISO': 92,
+        'TDT': 93,
+        'TDT ISO': 94,
+    }
+    return sorted(
+        painters, key=lambda x: TUBE_ORDER.get(x.data.tube.upper(), float('inf'))
+    )

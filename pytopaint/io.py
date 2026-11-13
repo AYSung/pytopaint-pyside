@@ -34,7 +34,7 @@ from pytopaint.widgets.painter import Painter
 
 
 class IOManager(QObject):
-    fileOpened = Signal(object)
+    filesOpened = Signal(object)
     finished = Signal(bool)
 
     last_file_dir: str
@@ -60,6 +60,7 @@ class IOManager(QObject):
         progress = QProgressDialog(
             'Opening files...', 'Cancel', 0, len(files), self.parent()
         )
+        painters = []
 
         progress.open()
         self.finished.emit(False)
@@ -69,7 +70,7 @@ class IOManager(QObject):
 
             try:
                 painter = self.file_parsers[file.suffix.lower()](file)
-                self.fileOpened.emit(painter)
+                painters.append(painter)
             except ValueError as e:
                 print(f'Error opening {file}')
                 print(e)
@@ -77,6 +78,7 @@ class IOManager(QObject):
                 progress.setValue(i)
                 QApplication.processEvents()
 
+        self.filesOpened.emit(painters)
         self.finished.emit(True)
 
     @Slot()
