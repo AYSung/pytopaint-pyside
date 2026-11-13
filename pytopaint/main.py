@@ -86,6 +86,8 @@ class MainWindow(QMainWindow):
         self.io_manager.fileOpened.connect(self.painter_tabs.add_painter)
         self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
 
+        self.painter_tabs.allTabsClosed.connect(self.io_manager.reset_case_dir)
+
         self.configure_menu_bar()
 
         central_widget = QWidget()
@@ -229,6 +231,13 @@ class MainWindow(QMainWindow):
         # File Menu
         file_menu = menu_bar.addMenu('&File')
 
+        new_case_action = QAction('&New Case', self)
+        new_case_action.setShortcut(QKeySequence('Ctrl+N'))
+        new_case_action.triggered.connect(self.open_new_case)
+        file_menu.addAction(new_case_action)
+
+        file_menu.addSeparator()
+
         open_file_action = QAction('&Open File(s)', self)
         open_file_action.setShortcut(QKeySequence.StandardKey.Open)
         open_file_action.triggered.connect(self.io_manager.open_files_dialog)
@@ -239,10 +248,7 @@ class MainWindow(QMainWindow):
         open_dir_action.triggered.connect(self.io_manager.open_dir_dialog)
         file_menu.addAction(open_dir_action)
 
-        new_case_action = QAction('Close Tabs and Open &New Directory', self)
-        new_case_action.setShortcut(QKeySequence('Ctrl+N'))
-        new_case_action.triggered.connect(self.open_new_case)
-        file_menu.addAction(new_case_action)
+        file_menu.addSeparator()
 
         save_session_action = QAction('&Save Session As', self, enabled=False)
         save_session_action.triggered.connect(
@@ -431,7 +437,7 @@ class MainWindow(QMainWindow):
     @Slot()
     def open_new_case(self):
         self.painter_tabs.close_all_tabs()
-        self.io_manager.open_dir_dialog()
+        self.io_manager.open_case_dialog()
 
     def closeEvent(self, event):
         set_window_position(self.pos())

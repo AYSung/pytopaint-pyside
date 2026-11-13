@@ -135,7 +135,7 @@ class FlowData:
 
     @property
     def case_id(self) -> str:
-        return self.adata.uns.get('case_id', Path(self.filename).stem)
+        return self.adata.uns.get('case_id', Path(self.fcs.fil).stem)
 
     @property
     def bit_mode(self) -> int:

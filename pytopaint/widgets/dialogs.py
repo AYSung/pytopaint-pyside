@@ -113,9 +113,9 @@ def shortcut_dialog(parent: QWidget) -> QDialog:
     column_1.addWidget(
         _shortcut_table(
             [
+                ('New Case', 'Ctrl + N'),
                 ('Open File(s)', 'Ctrl + O'),
                 ('Open Directory', 'Ctrl + Shift + O'),
-                ('Close Tabs and Open Directory', 'Ctrl + N'),
                 ('Export PDF Report', 'Ctrl + P'),
                 ('Close Current Tab', 'Ctrl + W'),
                 ('Close All Tabs', 'Ctrl + Shift + W'),

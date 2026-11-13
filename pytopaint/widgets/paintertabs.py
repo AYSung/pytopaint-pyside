@@ -17,6 +17,7 @@ class PainterTabs(QTabWidget):
     rescaleTriggered = Signal(object)
     colorPaletteChanged = Signal()
     zoomUpdated = Signal()
+    allTabsClosed = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -35,6 +36,9 @@ class PainterTabs(QTabWidget):
         self.removeTab(index)
         if widget is not None:
             widget.deleteLater()
+
+        if self.count() == 0:
+            self.allTabsClosed.emit()
 
     @Slot(object)
     def handle_rescale(self, scale_config: dict[str, float]) -> None:

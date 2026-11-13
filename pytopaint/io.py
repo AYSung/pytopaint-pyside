@@ -37,12 +37,24 @@ class IOManager(QObject):
     fileOpened = Signal(object)
     finished = Signal(bool)
 
+    last_file_dir: str
+    last_file_parent_dir: str
+    last_case_dir: str
+    last_case_parent_dir: str
+    last_save_dir: str
+
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.last_open_dir = QDir.homePath()
-        self.last_open_file_dir = QDir.homePath()
+        self.last_file_dir = QDir.homePath()
+        self.last_file_parent_dir = QDir.homePath()
+        self.reset_case_dir()
         self.last_save_dir = QDir.homePath()
         self.file_parsers = {'.fcs': open_fcs, '.h5ad': open_session}
+
+    @Slot()
+    def reset_case_dir(self):
+        self.last_case_dir = QDir.homePath()
+        self.last_case_parent_dir = QDir.homePath()
 
     def open_files(self, files: list[Path]) -> None:
         progress = QProgressDialog(
@@ -72,7 +84,7 @@ class IOManager(QObject):
         files, _ = QFileDialog.getOpenFileNames(
             None,
             'Select File(s)',
-            self.last_open_file_dir,
+            self.last_file_dir,
             'Flow Data (*.fcs *.h5ad)',
         )
 
@@ -81,14 +93,14 @@ class IOManager(QObject):
             return
 
         self.open_files(paths)
-        self.last_open_file_dir = str(paths[-1].parent)
+        self.last_file_dir = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
         dir = QFileDialog.getExistingDirectory(
             None,
             'Select Directory',
-            self.last_open_dir,
+            self.last_file_parent_dir,
             QFileDialog.Option.ShowDirsOnly,
         )
         dir = Path(dir)
@@ -97,13 +109,31 @@ class IOManager(QObject):
             return
 
         self.open_files(files)
-        self.last_open_file_dir = str(dir)
-        self.last_open_dir = str(dir.parent)
+        self.last_file_dir = str(dir)
+        self.last_file_parent_dir = str(dir.parent)
+
+    @Slot()
+    def open_case_dialog(self) -> None:
+        dir = QFileDialog.getExistingDirectory(
+            None,
+            'Select Case Directory',
+            self.last_case_parent_dir,
+            QFileDialog.Option.ShowDirsOnly,
+        )
+        dir = Path(dir)
+        files = get_child_files(dir)
+        if not files:
+            return
+
+        self.open_files(files)
+        self.last_case_dir = str(dir)
+        self.last_case_parent_dir = str(dir.parent)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
         if paths:
             self.open_files(paths)
+            self.last_file_dir = str(paths[-1].parent)
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
@@ -188,11 +218,16 @@ class IOManager(QObject):
 
         case_numbers = {tube.data.case_id for tube in tubes}
         default_export_name = case_numbers.pop() if len(case_numbers) == 1 else ''
+        export_dir = (
+            self.last_case_dir
+            if self.last_case_dir != QDir.homePath()
+            else self.last_file_dir
+        )
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
             caption='Export PDF Report',
-            dir=self.last_open_file_dir + f'/{default_export_name}',
+            dir=export_dir + f'/{default_export_name}',
             filter='PDF (*.pdf)',
         )
 
