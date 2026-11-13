@@ -244,7 +244,7 @@ def open_fcs(file: Path) -> Painter:
 
 def open_session(file: Path) -> Painter:
     adata = ad.io.read_h5ad(file)
-    return Painter.from_adata(adata)
+    return Painter(FlowData(adata))
 
 
 def get_child_files(dir: Path) -> list[Path]:
@@ -313,6 +313,8 @@ def _read_fcs_3_0(filepath: Path) -> CoreDataset3_0:
         add_missing_timestep=True,
         allow_missing_crc='true',
     )
+    if not dataset.fil:
+        dataset.fil = str(filepath)
     return dataset
 
 
@@ -320,9 +322,13 @@ def _read_fcs_3_1(filepath: Path) -> CoreDataset3_1:
     dataset, _ = fcs_read_std_dataset(
         filepath,
         trim_value_whitespace='trim',
+        ignore_optical_only_keys=['G'],
+        add_missing_timestep=True,
         allow_missing_crc='true',
         version_override='loose',
     )
+    if not dataset.fil:
+        dataset.fil = str(filepath)
     return dataset
 
 
