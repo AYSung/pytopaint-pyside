@@ -48,13 +48,13 @@ class IOManager(QObject):
         self.last_file_dir = QDir.homePath()
         self.last_file_parent_dir = QDir.homePath()
         self.reset_case_dir()
+        self.last_case_parent_dir = QDir.homePath()
         self.last_save_dir = QDir.homePath()
         self.file_parsers = {'.fcs': open_fcs, '.h5ad': open_session}
 
     @Slot()
     def reset_case_dir(self):
         self.last_case_dir = QDir.homePath()
-        self.last_case_parent_dir = QDir.homePath()
 
     def open_files(self, files: list[Path]) -> None:
         progress = QProgressDialog(

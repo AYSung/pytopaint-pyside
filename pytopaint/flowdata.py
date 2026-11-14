@@ -97,7 +97,7 @@ class FlowData:
         adata = ad.AnnData(X=data[:, empty_channel_mask])
 
         adata.uns['filename'] = fcs.fil
-        adata.uns['tube'] = fcs.nonstandard_keywords.get(tube_name_kw)
+        adata.uns['tube'] = fcs.nonstandard_keywords.get(tube_name_kw, '')
         adata.uns['case_id'] = case_id
 
         bit_mode = extract_bit_mode(fcs, scatter_indices[0])
@@ -151,7 +151,7 @@ class FlowData:
 
     @property
     def tube(self) -> str:
-        return self.adata.uns.get('tube')
+        return self.adata.uns.get('tube', '')
 
     @property
     def highlighted_colors(self) -> list[Color]:
