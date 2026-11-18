@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from pytopaint.io import (
-    _is_not_blank_or_viability,
+    _contains_filter_string,
     _is_valid_filetype,
     _read_fcs_3_0,
     _read_fcs_3_1,
@@ -21,12 +21,12 @@ def test_is_valid_filetype():
     assert not _is_valid_filetype(Path('test/'))
 
 
-def test_is_not_blank_or_viability():
-    assert _is_not_blank_or_viability(Path('test.fcs'))
-    assert _is_not_blank_or_viability(Path('test.h5ad'))
-    assert not _is_not_blank_or_viability(Path('test_BLANK.fcs'))
-    assert not _is_not_blank_or_viability(Path('test_viability.fcs'))
-    assert not _is_not_blank_or_viability(Path('test_CELL COUNT.fcs'))
+def test_contains_filter_string():
+    assert _contains_filter_string(Path('test.fcs'))
+    assert _contains_filter_string(Path('test.h5ad'))
+    assert not _contains_filter_string(Path('test_BLANK.fcs'))
+    assert not _contains_filter_string(Path('test_viability.fcs'))
+    assert not _contains_filter_string(Path('test_CELL COUNT.fcs'))
 
 
 def test_get_child_files():
