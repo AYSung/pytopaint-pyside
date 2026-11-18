@@ -6,6 +6,7 @@
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 from collections.abc import Iterable
+from enum import Enum, auto
 from itertools import chain
 from pathlib import Path
 
@@ -33,28 +34,62 @@ from pytopaint.widgets.dialogs import TubeSelector
 from pytopaint.widgets.painter import Painter
 
 
+class Directory(Enum):
+    LAST_FILE = auto()
+    LAST_CASE = auto()
+    LAST_CASE_PARENT = auto()
+    LAST_SAVE = auto()
+
+
 class IOManager(QObject):
     filesOpened = Signal(object)
     finished = Signal(bool)
 
-    last_file_dir: str
-    last_file_parent_dir: str
-    last_case_dir: str
-    last_case_parent_dir: str
-    last_save_dir: str
+    saved_paths: dict[Directory, str]
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.last_file_dir = QDir.homePath()
-        self.last_file_parent_dir = QDir.homePath()
-        self.reset_case_dir()
-        self.last_case_parent_dir = QDir.homePath()
-        self.last_save_dir = QDir.homePath()
+        self.saved_dirs = {
+            Directory.LAST_FILE: None,
+            Directory.LAST_CASE: None,
+            Directory.LAST_CASE_PARENT: None,
+            Directory.LAST_SAVE: None,
+        }
         self.file_parsers = {'.fcs': open_fcs, '.h5ad': open_session}
+
+    @property
+    def last_file_dir(self) -> str:
+        return (
+            self.saved_dirs.get(Directory.LAST_FILE)
+            or self.saved_dirs.get(Directory.LAST_CASE)
+            or self.saved_dirs.get(Directory.LAST_CASE_PARENT)
+            or QDir.homePath()
+        )
+
+    @property
+    def last_file_parent_dir(self) -> str:
+        if (last_file_dir := self.saved_dirs.get(Directory.LAST_FILE)) is not None:
+            return str(Path(last_file_dir).parent)
+        else:
+            return self.saved_dirs.get(Directory.LAST_CASE_PARENT, QDir.homePath())
+
+    @property
+    def last_case_parent_dir(self) -> str:
+        return (
+            self.saved_dirs.get(Directory.LAST_CASE_PARENT) or self.last_file_parent_dir
+        )
+
+    @property
+    def last_case_dir(self) -> str:
+        return self.saved_dirs.get(Directory.LAST_CASE) or self.last_file_dir
+
+    @property
+    def last_save_dir(self) -> str:
+        return self.saved_dirs[Directory.LAST_SAVE]
 
     @Slot()
     def reset_case_dir(self):
-        self.last_case_dir = QDir.homePath()
+        self.saved_dirs[Directory.LAST_CASE] = None
 
     def open_files(self, files: list[Path]) -> None:
         progress = QProgressDialog(
@@ -95,7 +130,7 @@ class IOManager(QObject):
             return
 
         self.open_files(paths)
-        self.last_file_dir = str(paths[-1].parent)
+        self.saved_dirs[Directory.LAST_FILE] = str(paths[-1].parent)
 
     @Slot()
     def open_dir_dialog(self) -> None:
@@ -111,8 +146,7 @@ class IOManager(QObject):
             return
 
         self.open_files(files)
-        self.last_file_dir = str(dir)
-        self.last_file_parent_dir = str(dir.parent)
+        self.saved_dirs[Directory.LAST_FILE] = str(dir)
 
     @Slot()
     def open_case_dialog(self) -> None:
@@ -122,20 +156,24 @@ class IOManager(QObject):
             self.last_case_parent_dir,
             QFileDialog.Option.ShowDirsOnly,
         )
+
+        if not dir:
+            return
+
         dir = Path(dir)
+        self.saved_dirs[Directory.LAST_CASE_PARENT] = str(dir.parent)
         files = get_child_files(dir)
         if not files:
             return
 
         self.open_files(files)
-        self.last_case_dir = str(dir)
-        self.last_case_parent_dir = str(dir.parent)
+        self.saved_dirs[Directory.LAST_CASE] = str(dir)
 
     def open_files_from_urls(self, urls: list[QUrl]) -> None:
         paths = get_files_from_urls(urls)
         if paths:
             self.open_files(paths)
-            self.last_file_dir = str(paths[-1].parent)
+            self.saved_dirs[Directory.LAST_FILE] = str(paths[-1].parent)
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
@@ -155,7 +193,7 @@ class IOManager(QObject):
 
         export_fcs(fcs, file_path)
 
-        self.last_save_dir = str(Path(file_path).parent)
+        self.saved_dirs[Directory.LAST_SAVE] = str(Path(file_path).parent)
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
@@ -174,7 +212,7 @@ class IOManager(QObject):
         temp_data.layers.clear()
         temp_data.write(filename=file_path, compression='gzip')
 
-        self.last_save_dir = str(Path(file_path).parent)
+        self.saved_dirs[Directory.LAST_SAVE] = str(Path(file_path).parent)
 
     @Slot()
     def load_layout(self) -> LayoutConfig:
@@ -220,11 +258,7 @@ class IOManager(QObject):
 
         case_numbers = {tube.data.case_id for tube in tubes}
         default_export_name = case_numbers.pop() if len(case_numbers) == 1 else ''
-        export_dir = (
-            self.last_case_dir
-            if self.last_case_dir != QDir.homePath()
-            else self.last_file_dir
-        )
+        export_dir = self.last_case_dir
 
         file_path, _ = QFileDialog.getSaveFileName(
             parent=None,
