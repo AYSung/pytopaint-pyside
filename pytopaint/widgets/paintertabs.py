@@ -86,7 +86,7 @@ def sort_painters(painters: list[Painter]):
         'B CELL': 0,
         'T CELL': 1,
         'BMS': 2,
-        'AML/MDS': 3,
+        'AML-MDS': 3,
         'MMIC': 4,
         'VS38C': 5,
         'BLL-REFLEX MRD TUBE': 12,
@@ -98,9 +98,9 @@ def sort_painters(painters: list[Painter]):
         'HC REFLEX TUBE': 32,
         'MYCOSIS TUBE': 66,
         'HES TUBE': 67,
-        'MPO': 91,
+        'MPO TUBE': 91,
         'MPO ISO': 92,
-        'TDT': 93,
+        'TDT TUBE': 93,
         'TDT ISO': 94,
     }
     return sorted(
