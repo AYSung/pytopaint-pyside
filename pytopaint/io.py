@@ -71,7 +71,7 @@ class IOManager(QObject):
         if (last_file_dir := self.saved_dirs.get(Directory.LAST_FILE)) is not None:
             return str(Path(last_file_dir).parent)
         else:
-            return self.saved_dirs.get(Directory.LAST_CASE_PARENT, QDir.homePath())
+            return self.saved_dirs.get(Directory.LAST_CASE_PARENT) or QDir.homePath()
 
     @property
     def last_case_parent_dir(self) -> str:
