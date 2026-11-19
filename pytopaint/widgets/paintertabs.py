@@ -82,27 +82,28 @@ class PainterTabs(QTabWidget):
 
 
 def sort_painters(painters: list[Painter]):
-    TUBE_ORDER = {
-        'B CELL': 0,
-        'T CELL': 1,
-        'BMS': 2,
-        'AML-MDS': 3,
-        'MMIC': 4,
-        'VS38C': 5,
-        'BLL-REFLEX MRD TUBE': 12,
-        'CART-19 TUBE 3': 13,
-        'CART-19 TUBE 4': 14,
-        'T-ALL REFLEX TUBE': 22,
-        'BM T-LL TUBE 4': 24,
-        'CLL REFLEX TUBE': 31,
-        'HC REFLEX TUBE': 32,
-        'MYCOSIS TUBE': 66,
-        'HES TUBE': 67,
-        'MPO TUBE': 91,
-        'MPO ISO': 92,
-        'TDT TUBE': 93,
-        'TDT ISO': 94,
-    }
+    TUBE_ORDER = [
+        'B CELL',
+        'T CELL',
+        'BMS',
+        'AML-MDS',
+        'MMIC',
+        'VS38C',
+        'BLL-REFLEX MRD TUBE',
+        'CART-19 TUBE 3',
+        'CART-19 TUBE 4',
+        'T-ALL REFLEX TUBE',
+        'BM T-LL REFLEX TUBE',
+        'MPO TUBE',
+        'MPO ISO',
+        'TDT TUBE',
+        'TDT ISO',
+        'CLL REFLEX TUBE',
+        'HC REFLEX TUBE',
+        'MYCOSIS TUBE',
+        'HES TUBE',
+    ]
+    SORT_KEYS = {k: i for i, k in enumerate(TUBE_ORDER)}
     return sorted(
-        painters, key=lambda x: TUBE_ORDER.get(x.data.tube.upper(), float('inf'))
+        painters, key=lambda x: SORT_KEYS.get(x.data.tube.upper(), float('inf'))
     )
