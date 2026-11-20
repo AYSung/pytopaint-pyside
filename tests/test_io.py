@@ -1,6 +1,7 @@
 from pathlib import Path
 
 from pytopaint.io import (
+    IOPaths,
     _contains_filter_string,
     _is_valid_filetype,
     _read_fcs_3_0,
@@ -9,6 +10,53 @@ from pytopaint.io import (
     get_child_files,
     get_fcs_version,
 )
+
+
+def test_io_paths():
+    io_paths = IOPaths()
+    home_dir = str(Path.home())
+    assert io_paths.home == Path.home()
+
+    assert io_paths.last_case_dir == home_dir
+    assert io_paths.last_case_parent_dir == home_dir
+    assert io_paths.last_file_dir == home_dir
+    assert io_paths.last_file_parent_dir == home_dir
+    assert io_paths.last_save_dir == home_dir
+
+    io_paths.set_file_dir(Path('test/path/to/first/file/'))
+    io_paths.set_file_parent_dir(Path('test/path/to/first/'))
+    assert io_paths.last_case_dir == home_dir
+    assert io_paths.last_case_parent_dir == 'test/path/to/first'
+    assert io_paths.last_file_dir == 'test/path/to/first/file'
+    assert io_paths.last_file_parent_dir == 'test/path/to/first'
+
+    io_paths = IOPaths()
+    io_paths.set_case_dir(Path('test/path/to/case/'))
+    io_paths.set_case_parent_dir(Path('test/path/to/'))
+    assert io_paths.last_case_dir == 'test/path/to/case'
+    assert io_paths.last_case_parent_dir == 'test/path/to'
+    assert io_paths.last_file_dir == 'test/path/to/case'
+    assert io_paths.last_file_parent_dir == 'test/path/to'
+
+    io_paths.set_file_dir(Path('test/path/to/different/file/'))
+    io_paths.set_file_parent_dir(Path('test/path/to/different/'))
+    assert io_paths.last_case_dir == 'test/path/to/case'
+    assert io_paths.last_case_parent_dir == 'test/path/to'
+    assert io_paths.last_file_dir == 'test/path/to/different/file'
+    assert io_paths.last_file_parent_dir == 'test/path/to/different'
+
+    io_paths.reset_case_dir()
+    assert io_paths.last_case_dir == home_dir
+    assert io_paths.last_case_parent_dir == 'test/path/to'
+    assert io_paths.last_file_dir == 'test/path/to/different/file'
+    assert io_paths.last_file_parent_dir == 'test/path/to/different'
+
+    io_paths.set_save_dir('test/path/to/save/file/')
+    assert io_paths.last_case_dir == home_dir
+    assert io_paths.last_case_parent_dir == 'test/path/to'
+    assert io_paths.last_file_dir == 'test/path/to/different/file'
+    assert io_paths.last_file_parent_dir == 'test/path/to/different'
+    assert io_paths.last_save_dir == 'test/path/to/save/file/'
 
 
 def test_is_valid_filetype():
