@@ -171,7 +171,7 @@ class IOManager(QObject):
             return
 
         self.open_files(files)
-        self.saved_paths.set_last_file(dir)
+        self.saved_paths.set_file_dir(dir)
 
     @Slot()
     def open_case_dialog(self) -> None:
@@ -200,8 +200,8 @@ class IOManager(QObject):
         if paths:
             self.open_files(paths)
             last_file = paths[-1]
-            self.saved_paths.set_last_file(last_file.parent)
-            self.saved_paths.set_last_file_parent(last_file.parent.parent)
+            self.saved_paths.set_file_dir(last_file.parent)
+            self.saved_paths.set_file_parent_dir(last_file.parent.parent)
 
     @Slot()
     def export_fcs(self, painter: Painter) -> None:
@@ -221,7 +221,7 @@ class IOManager(QObject):
 
         export_fcs(fcs, file_path)
 
-        self.saved_paths.set_last_save(file_path.parent)
+        self.saved_paths.set_save_dir(file_path.parent)
 
     @Slot()
     def save_session(self, painter: Painter) -> None:
@@ -240,7 +240,7 @@ class IOManager(QObject):
         temp_data.layers.clear()
         temp_data.write(filename=file_path, compression='gzip')
 
-        self.saved_paths.set_last_save(file_path.parent)
+        self.saved_paths.set_save_dir(file_path.parent)
 
     @Slot()
     def load_layout(self) -> LayoutConfig:
