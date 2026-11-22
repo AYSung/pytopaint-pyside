@@ -71,7 +71,6 @@ class FlowData:
         data = fcs.data.to_numpy()
 
         if fcs.version in ['FCS3.0']:
-            tube_name_kw = 'TUBE NAME'
             if (spill := fcs.nonstandard_keywords.get('SPILL')) is not None:
                 # apply compensation
                 spillover_matrix, markers = get_spillover_matrix(spill)
@@ -81,8 +80,6 @@ class FlowData:
                 data = apply_compensation(data, spillover_matrix, _indices)
 
         elif fcs.version in ['FCS3.1', 'FCS3.2']:
-            tube_name_kw = 'TUBENAME'
-
             # apply compensation
             markers, spillover_matrix = fcs.spillover
             _indices = [
@@ -97,7 +94,11 @@ class FlowData:
         adata = ad.AnnData(X=data[:, empty_channel_mask])
 
         adata.uns['filename'] = fcs.fil
-        adata.uns['tube'] = fcs.nonstandard_keywords.get(tube_name_kw, '')
+        adata.uns['tube'] = (
+            fcs.nonstandard_keywords.get('TUBE NAME')
+            or fcs.nonstandard_keywords.get('TUBENAME')
+            or ''
+        )
         adata.uns['case_id'] = case_id
 
         bit_mode = extract_bit_mode(fcs, scatter_indices[0])
