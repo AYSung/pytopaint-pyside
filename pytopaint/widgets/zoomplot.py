@@ -50,3 +50,7 @@ class ZoomPlot(QDialog):
             self.closeRequested.emit()
         else:
             super().keyPressEvent(e)
+
+    @property
+    def processing(self) -> bool:
+        return self.biplot.processing

@@ -8,6 +8,7 @@
 from typing import override
 
 import pandas as pd
+import shiboken6
 from PySide6.QtCore import (
     QBuffer,
     QDir,
@@ -62,6 +63,7 @@ class Biplot(QWidget):
     x_axis: XAxis
     y_axis: YAxis
     title_label: PlotTitle
+    processing: bool
 
     def __init__(
         self,
@@ -80,6 +82,8 @@ class Biplot(QWidget):
         self.df = data
         self.state = state
         self.active_color = active_color
+
+        self.processing = False
 
         channels = sort_channels(data.columns)
         x_channel = x_channel if x_channel in channels else None
@@ -912,8 +916,12 @@ class BiplotUpdater(QRunnable):
     def run(self):
         if self.data is None and self.state is None:
             return
+
+        self.biplot.processing = True
         if self.data is not None:
             self.biplot.set_data(self.data, self.axis_ticks)
         self.biplot.update_plot_data(self.state)
         self.biplot.plot.draw_canvas()
-        self.biplot.updateFinished.emit()
+        self.biplot.processing = False
+        if shiboken6.isValid(self.biplot):
+            self.biplot.updateFinished.emit()

@@ -8,7 +8,7 @@
 from functools import wraps
 
 import pandas as pd
-from PySide6.QtCore import QObject, Signal, Slot
+from PySide6.QtCore import Signal, Slot
 from PySide6.QtWidgets import QGridLayout
 
 from pytopaint.colors import Color
@@ -25,6 +25,7 @@ class BiplotGrid(QGridLayout):
     highlightsUpdated = Signal(list)
     highlightSizeChanged = Signal(int)
     updatePlot = Signal()
+    updateData = Signal(object, object, object)
     resizeTriggered = Signal(int)
     menuActionTriggered = Signal(int, dict)
 
@@ -48,8 +49,6 @@ class BiplotGrid(QGridLayout):
 
         self.zoom_plot = None
         self.zoom_dialog = None
-
-        self.update_manager = BiplotUpdateManager(self)
 
         self.activeColorChanged.connect(self.update_active_color)
         self.highlightsUpdated.connect(self.update_highlighted_colors)
@@ -83,12 +82,12 @@ class BiplotGrid(QGridLayout):
     @Slot(object, object)
     def update_data(self, data: FlowData) -> None:
         self.data = data
-        self.update_manager.update_data(data)
+        self.updateData.emit(data.binned_df, data.axis_ticks, None)
 
     @Slot(object)
     def update_state(self, state: pd.DataFrame) -> None:
         self.state = state
-        self.update_manager.update_state(state)
+        self.updateData.emit(None, None, state)
 
     def new_biplot(
         self,
@@ -113,9 +112,9 @@ class BiplotGrid(QGridLayout):
 
     def connect_biplot_signals(self, biplot: Biplot) -> None:
         biplot.menuActionTriggered.connect(self.menuActionTriggered)
-        biplot.updateFinished.connect(self.update_manager.on_update_finished)
+        biplot.updateFinished.connect(self.on_update_finished)
         self.highlightsUpdated.connect(biplot.plot.update_highlighted_colors)
-        self.update_manager.updateData.connect(biplot.update_data)
+        self.updateData.connect(biplot.update_data)
         self.updatePlot.connect(biplot.plot.set_canvas)
         self.activeColorChanged.connect(biplot.activeColorChanged)
         biplot.removeTriggered.connect(self.remove_biplot)
@@ -250,9 +249,6 @@ class BiplotGrid(QGridLayout):
 
     @Slot(str, str)
     def open_zoom(self, x_channel: str, y_channel: str) -> None:
-        if self.update_manager.running:
-            return
-
         biplot = Biplot(
             data=self.data.zoom_df,
             axis_ticks=self.data.zoom_axis_ticks,
@@ -273,9 +269,6 @@ class BiplotGrid(QGridLayout):
 
     @Slot()
     def close_zoom(self) -> None:
-        if self.update_manager.running:
-            return
-
         self.zoom_plot.close()
         self.zoom_plot.deleteLater()
         self.zoom_plot = None
@@ -284,27 +277,16 @@ class BiplotGrid(QGridLayout):
     def plot_count(self) -> int:
         return self.count() + (self.zoom_plot is not None)
 
+    @property
+    def finished_processing(self) -> bool:
+        biplots_processing = not any(filter(lambda x: x.processing, self.get_biplots()))
+        return (
+            biplots_processing
+            if self.zoom_plot is None
+            else biplots_processing and not self.zoom_plot.processing
+        )
 
-class BiplotUpdateManager(QObject):
-    updateData = Signal(object, object, object)
-
-    def __init__(self, biplot_grid: BiplotGrid):
-        super().__init__()
-        self.finished_count = 0
-        self.biplot_grid = biplot_grid
-        self.running = False
-
-    def update_data(self, data: FlowData):
-        self.running = True
-        self.updateData.emit(data.binned_df, data.axis_ticks, None)
-
-    def update_state(self, state: pd.DataFrame):
-        self.running = True
-        self.updateData.emit(None, None, state)
-
+    @Slot()
     def on_update_finished(self):
-        self.finished_count += 1
-        if self.finished_count == self.biplot_grid.plot_count:
-            self.finished_count = 0
-            self.biplot_grid.update_plots()
-            self.running = False
+        if self.finished_processing:
+            self.update_plots()
