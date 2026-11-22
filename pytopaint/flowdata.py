@@ -70,16 +70,17 @@ class FlowData:
 
         data = fcs.data.to_numpy()
 
-        if fcs.version in ['FCS3.0']:
-            if (spill := fcs.nonstandard_keywords.get('SPILL')) is not None:
-                # apply compensation
-                spillover_matrix, markers = get_spillover_matrix(spill)
-                _indices = [
-                    i for i, label in enumerate(fcs.all_shortnames) if label in markers
-                ]
-                data = apply_compensation(data, spillover_matrix, _indices)
+        if fcs.version in ['FCS3.0'] and (
+            spill := fcs.nonstandard_keywords.get('SPILL')
+        ):
+            # apply compensation
+            spillover_matrix, markers = get_spillover_matrix(spill)
+            _indices = [
+                i for i, label in enumerate(fcs.all_shortnames) if label in markers
+            ]
+            data = apply_compensation(data, spillover_matrix, _indices)
 
-        elif fcs.version in ['FCS3.1', 'FCS3.2']:
+        elif fcs.version in ['FCS3.1', 'FCS3.2'] and fcs.spillover:
             # apply compensation
             markers, spillover_matrix = fcs.spillover
             _indices = [
