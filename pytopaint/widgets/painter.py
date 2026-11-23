@@ -7,9 +7,10 @@
 
 from collections import deque
 from functools import wraps
+from typing import override
 
 import pandas as pd
-from PySide6.QtCore import QThreadPool, Signal, Slot
+from PySide6.QtCore import QSize, Qt, QThreadPool, Signal, Slot
 from PySide6.QtGui import (
     QCursor,
     QKeySequence,
@@ -17,7 +18,7 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
-    QSizePolicy,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -108,13 +109,13 @@ class Painter(QWidget):
 
         self.memory_states = self.data.memory_states
 
-        palette = Palette(state=self.state, memory_states=self.memory_states)
-        palette.menuActionTriggered.connect(self.menuActionTriggered)
-        self.activeColorChanged.connect(palette.activeColorChanged)
-        self.stateChanged.connect(palette.update_labels)
-        self.highlightsUpdated.connect(palette.highlightsUpdated)
-        self.colorPaletteChanged.connect(palette.colorPaletteChanged)
-        self.memorySlotUpdated.connect(palette.update_memory_slot)
+        self.palette = Palette(state=self.state, memory_states=self.memory_states)
+        self.palette.menuActionTriggered.connect(self.menuActionTriggered)
+        self.activeColorChanged.connect(self.palette.activeColorChanged)
+        self.stateChanged.connect(self.palette.update_labels)
+        self.highlightsUpdated.connect(self.palette.highlightsUpdated)
+        self.colorPaletteChanged.connect(self.palette.colorPaletteChanged)
+        self.memorySlotUpdated.connect(self.palette.update_memory_slot)
 
         self.biplot_grid = BiplotGrid(
             data=self.data,
@@ -133,23 +134,35 @@ class Painter(QWidget):
         self.highlightSizeChanged.connect(self.biplot_grid.update_highlight_size)
         self.zoomTriggered.connect(self.biplot_grid.open_zoom)
 
-        biplot_grid_container = QWidget()
-        biplot_grid_container.setSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed
+        biplot_scroll_area = QScrollArea(self)
+        biplot_scroll_area.setWidgetResizable(True)
+        biplot_scroll_area.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
-        biplot_grid_container.setLayout(self.biplot_grid)
-        self.biplot_grid.update_layout(self.data.layout)
+        biplot_scroll_area.setHorizontalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAsNeeded
+        )
 
-        layout = QVBoxLayout()
+        self.biplot_grid_container = QWidget()
+        self.biplot_grid_container.setLayout(self.biplot_grid)
+        self.biplot_grid.update_layout(self.data.layout)
+        biplot_scroll_area.setWidget(self.biplot_grid_container)
+
+        layout = QVBoxLayout(self)
         layout.setSpacing(0)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.addWidget(palette)
-        layout.addWidget(biplot_grid_container)
-        layout.addStretch()
-        self.setLayout(layout)
+        layout.addWidget(self.palette)
+        layout.addWidget(biplot_scroll_area)
 
         self.activeColorChanged.emit(self.active_color)
         self.highlightsUpdated.emit(self.highlighted_colors)
+
+    @override
+    def sizeHint(self) -> QSize:
+        return QSize(
+            max(self.palette.width(), self.biplot_grid_container.width()),
+            self.biplot_grid_container.height() + self.palette.height() + 10,
+        )
 
     def configure_shortcuts(self) -> None:
         configure_paint_shortcuts(self)

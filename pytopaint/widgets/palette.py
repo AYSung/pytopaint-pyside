@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+
 import pandas as pd
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QAction, QIcon, QMouseEvent, QPainter, QPixmap
@@ -40,6 +41,7 @@ class Palette(QWidget):
     def __init__(self, state: pd.DataFrame, memory_states: dict[int, pd.DataFrame]):
         super().__init__()
         self.setStyleSheet('color: #bababa')
+        self.setMinimumWidth(1245)
 
         layout = QHBoxLayout()
         layout.setSpacing(0)
@@ -49,6 +51,7 @@ class Palette(QWidget):
         self.total_events_label.setFixedWidth(150)
         self.total_events_label.setStyleSheet('QLabel { margin: 0px 0px 0px 10px }')
         layout.addWidget(self.total_events_label)
+        layout.addSpacing(20)
 
         self.color_labels = {c: ColorLabel(c) for c in COLOR_INFO}
         for color_label in self.color_labels.values():

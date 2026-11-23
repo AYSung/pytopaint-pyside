@@ -23,7 +23,6 @@ from PySide6.QtWidgets import (
     QDialog,
     QFileDialog,
     QGridLayout,
-    QLayout,
     QMainWindow,
     QMenu,
     QMessageBox,
@@ -84,8 +83,10 @@ class MainWindow(QMainWindow):
 
         self.io_manager = IOManager(self)
         self.io_manager.filesOpened.connect(self.painter_tabs.add_painters)
+        self.io_manager.filesOpened.connect(self.unlock_window_size)
         self.io_manager.finished.connect(self.painter_tabs.setUpdatesEnabled)
         self.painter_tabs.allTabsClosed.connect(self.io_manager.reset_case_dir)
+        self.painter_tabs.allTabsClosed.connect(self.lock_window_size)
 
         self.configure_menu_bar()
 
@@ -94,12 +95,26 @@ class MainWindow(QMainWindow):
         central_layout.setSpacing(0)
         central_layout.addWidget(self.painter_tabs, 0, 0)
         central_widget.setLayout(central_layout)
-        self.layout().setSizeConstraint(QLayout.SizeConstraint.SetFixedSize)
-
         self.setCentralWidget(central_widget)
+
+        self.lock_window_size()
         self.load_position()
 
         self.setAcceptDrops(True)
+
+    @Slot()
+    def lock_window_size(self) -> None:
+        self.setFixedSize(600, 400)
+
+    @Slot()
+    def unlock_window_size(self) -> None:
+        self.setMaximumSize(self.screen().availableSize())
+        self.setMinimumSize(
+            min(self.screen().availableSize().width(), 1260),
+            min(self.screen().availableSize().height(), 675),
+        )
+
+        self.resize(self.centralWidget().sizeHint())
 
     @Slot()
     def load_layout(self) -> None:

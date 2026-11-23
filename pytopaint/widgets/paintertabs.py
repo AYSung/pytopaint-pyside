@@ -5,6 +5,7 @@
 
 # You should have received a copy of the GNU General Public License along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+
 from PySide6.QtCore import Qt, Signal, Slot
 from PySide6.QtGui import QPainter
 from PySide6.QtWidgets import QTabWidget
@@ -25,7 +26,6 @@ class PainterTabs(QTabWidget):
         self.setMovable(True)
         self.setElideMode(Qt.TextElideMode.ElideMiddle)
         self.tabCloseRequested.connect(self.handle_tab_close)
-        self.setMinimumSize(600, 400)
         self.setStyleSheet(
             'QTabWidget::pane {background-color: #333333; border: 1px solid #444444; border-radius: 5px;}'
         )
