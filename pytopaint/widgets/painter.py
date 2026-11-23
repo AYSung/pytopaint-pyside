@@ -136,6 +136,13 @@ class Painter(QWidget):
 
         biplot_scroll_area = QScrollArea(self)
         biplot_scroll_area.setWidgetResizable(True)
+        biplot_scroll_area.setStyleSheet(
+            """
+            QScrollArea {
+                background-color: transparent;
+            }
+            """
+        )
         biplot_scroll_area.setVerticalScrollBarPolicy(
             Qt.ScrollBarPolicy.ScrollBarAsNeeded
         )
